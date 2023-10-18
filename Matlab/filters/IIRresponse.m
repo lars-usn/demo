@@ -1,9 +1,13 @@
-function IIRresponse(b,a)
-% function FIRresponse(b)
+function IIRresponse( b, a, displayformat)
+% function IIRresponse( b, a, displayformat)
 % 
 % Plot response of FIR filter
 
 % Lars Hoff, March 2020
+
+if nargin < 3
+    displayformat = "linear";
+end
 
 b=b(:)'; % Ensure b is a row vector, as required by 'zplane'
 a=a(:)';    
@@ -18,17 +22,40 @@ H=freqz(b,a,w);
 %=== Plot response in four graphs ===
 %--- Pole-zero plot ---
 subplot(2,2,1)
-zplane(b,a)
+[hz, hp, ht] = zplane(b,a);
+z0= hz.XData+1i*hz.YData;    % Zeros
+p = hp.XData+1i*hp.YData;    % Poles
+stable=all(abs(p)<1);
+            
+title('')
 
 %--- Frequency response ---
 subplot(2,2,2)
-plot(w,abs(H))
-PiScaledAxis(gca,'x','Normalized frequency',3)
-ylabel('Magnitude |H|')
+
 Hmin= min([0,min(abs(H))]);
 Hmax= max([0,max(abs(H))]);
-ylim([Hmin,Hmax]);
+
+if not(stable)
+    H=NaN*H;
+end
+
+if lower(displayformat) =="db"
+    plot(w, 20*log10( abs(H)) )
+    %    ylim ( 20*log10( Hmax ) + [-40 0] )
+    ylim (  [-40 0] )
+    ylabel('Magnitude |H| [dB]')
+
+else
+    plot(w, abs(H) )
+    ylim( [ Hmin, Hmax ] );
+    ylabel('Magnitude |H|')
+end
+
+PiScaledAxis(gca,'x','Normalized frequency',3)
 grid on
+if not(stable)
+    text( 0, mean([Hmin,Hmax]), 'Unstable', HorizontalAlignment='center' )
+end
 
 subplot(2,2,4)
 plot(w,angle(H) )

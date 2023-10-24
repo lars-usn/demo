@@ -1,1 +1,1 @@
-# demo
+# demo-programs-courses

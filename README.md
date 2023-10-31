@@ -29,4 +29,5 @@ The programs are written in Matlab, NI LabVIEW, or JupyterLab for the courses 'T
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
 - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`
 - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `array_beamprofile.mlapp`
+- Theory and animation of the radiated field from a single-element transducer (JupyterLab interactive widget) `radiated-field-single-element-transducer.ipynb` 
   

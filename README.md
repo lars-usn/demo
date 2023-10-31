@@ -1,7 +1,7 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
-Small applications written to illustrate pheniomena thought in courses, either for demonstrations in the classroom, or for use by  students on their own.
-The programs are written in Matlab, NI LabVIEW, or JupyterLab for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
+Small applications written to illustrate pheniomena thought in courses, either for classroom demonstration or for use by students on their own.
+The programs are written in Matlab, NI LabVIEW, or JupyterLab to the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
 
 ## TSE2280 Measurement Technology and Signal Processing
 

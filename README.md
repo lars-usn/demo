@@ -1,4 +1,4 @@
-# Demo Programs for Courses at the University of South-eastern Norway
+# Demo Programs for Courses at the University of South-Eastern Norway
 
 Small applications written to illustrate pheniomena thought in courses, either for demonstrations in the classroom, or for use by  students on their own.
 The programs are written in Matlab, NI LabVIEW, or JupyterLab for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
@@ -28,5 +28,5 @@ The programs are written in Matlab, NI LabVIEW, or JupyterLab for the courses 'T
 
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
 - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`
-- - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `array_beamprofile.mlapp`
+- Beam profile from a single-element ultrasound trasnducer (Matlab-app) `array_beamprofile.mlapp`
   

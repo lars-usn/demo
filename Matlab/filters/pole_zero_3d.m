@@ -1,4 +1,4 @@
-function PoleZero3D(b,a,dispformat)
+function pole_zero_3d(b,a,dispformat)
 % function PoleZero3D(b,a,dispformat)
 %  3D illustration of pole-zero plot in the z-plane and frequency response
 %

@@ -1,5 +1,5 @@
-function  PiScaledAxis(hax,ax,label,N,w)
-% function  PiScaledAxis(hax,ax,label,N,w)
+function  pi_scaled_axis(hax,ax,label,N,w)
+% function  pi_scaled_axis(hax,ax,label,N,w)
 %
 % Format axis scaled and labeled in units of pi
 % Use for normalized frequency axis (omega hat) and phase

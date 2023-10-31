@@ -20,7 +20,7 @@ The programs are written in Matlab, NI LabVIEW, or JupyterLab to the courses 'TS
 - Response of IIR-filter (Matlab-app) `iir_filter.mlapp`
 - Response of IIR-filter (Matlab-function) `iir_response.m`
 - Running-average FIR-filter `running_average_example.mlapp`
-- Illustration of the Dirichle-kernel (MAtlab-app) `dirichletkernel.mlapp`
+- Illustration of the Dirichle-kernel (Matlab-app) `dirichletkernel.mlapp`
 - 3D illustration of pole-zero plot in the z-plane (MAtlab-function) `pole_zero_3d.m`
   
 ### Support Functions

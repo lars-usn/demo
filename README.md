@@ -1,7 +1,7 @@
 # Demo Programs for Courses at the University of South-eastern Norway
 
-Small applications written to illustrate pheniomena thought in courses, either for demonstrations n the classroom, or for use by  students on their own.
-The programs are written in Matlab, NI LabVIEW, or JupytherLab for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
+Small applications written to illustrate pheniomena thought in courses, either for demonstrations in the classroom, or for use by  students on their own.
+The programs are written in Matlab, NI LabVIEW, or JupyterLab for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
 
 ## TSE2280 Measurement Technology and Signal Processing
 
@@ -27,4 +27,6 @@ The programs are written in Matlab, NI LabVIEW, or JupytherLab for the courses '
 - Scale x- and y-axes in units of \pi `pi_scaled_axis.m`
 
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
-- 
+- Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`
+- - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `array_beamprofile.mlapp`
+  

@@ -41,9 +41,8 @@ Huc = Hz(b,a,zuc,   dispformat); % Unit circle
 Hre = Hz(b,a,x,    dispformat);  % Real axis
 Him = Hz(b,a,1i*x, dispformat);  % Imaginary axis
 
-if zmax==0
+if zmax=0
     zmax= max( max( abs(Huc) ) );    % Max magnitude on unit circle
-end
 
 hold on
 plot3( x, zeros(size(x)),    Hre, 'k-', 'linewidth', 1 )

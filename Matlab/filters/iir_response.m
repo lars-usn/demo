@@ -1,10 +1,12 @@
-function IIRresponse( b, a, displayformat)
-% function IIRresponse( b, a, displayformat)
+function iir_response( b, a, displayformat)
+% function iir_response( b, a, displayformat)
 % 
 % Plot response of FIR filter
 
 % Lars Hoff, March 2020
+%   Updated Nov 2023, LH
 
+%% Organise input arguments
 if nargin < 3
     displayformat = "linear";
 end
@@ -12,14 +14,16 @@ end
 b=b(:)'; % Ensure b is a row vector, as required by 'zplane'
 a=a(:)';    
 
-N= length(b);
-w= linspace(-pi,pi,2001);   % Normalized frequency
-z= exp(1i*w);               % z on unit circle
+%% Initialise 
+N = length(b);
+w = linspace(-pi,pi,2001);   % Normalized frequency
+z = exp(1i*w);               % z on unit circle
 
-%--- System function H(z) calculated from definition ---
+%% System function H(z) calculated from definition 
 H=freqz(b,a,w);
 
-%=== Plot response in four graphs ===
+%% Plot response in four graphs 
+
 %--- Pole-zero plot ---
 subplot(2,2,1)
 zplane(b,a)
@@ -32,10 +36,8 @@ Hmax= max([0,max(abs(H))]);
 
 if lower(displayformat) =="db"
     plot(w, 20*log10( abs(H)) )
-%    ylim ( 20*log10( Hmax ) + [-40 0] )
-    ylim (  [-40 0] )
+    ylim ( 20*log10( Hmax ) + [-40 0] )
     ylabel('Magnitude |H| [dB]')
-
 else
     plot(w, abs(H) )
     ylim( [ Hmin, Hmax ] );

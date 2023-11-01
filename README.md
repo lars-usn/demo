@@ -36,12 +36,15 @@ The programs were written for classroom demonstration over several, using differ
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `pole_zero_3d.m` |
   
 ### Support Functions
-- Scale x- and y-axes in units of &pi \pi `pi_scaled_axis.m`
-- | &pi; | &#960; | Greek small letter pi | π |  
+| Description  | Type | Function Name | 
+| -- | -- | -- | 
+| Scale x- and y-axes in units of &pi; | Matlab-function | `pi_scaled_axis.m` |
 
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
-- Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`
-- Beam profile from ultrasound transducer array (Matlab-app) `array_beamprofile.mlapp`
-- Theory and illlustration of radiated field from a single-element transducer (JupyterLab interactive widget) `radiated-field-single-element-transducer.ipynb`
-- Simple illustration of pulse length and bandwidth (JupyterLab interactive widget) `pulse-length-and-bandwidth.ipynb`
+| Description  | Type | Function Name | 
+| -- | -- | -- | 
+| Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
+| Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
+| Theory and illlustration of radiated field from a single-element transducer | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
+| Simple illustration of pulse length and bandwidth                           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
   

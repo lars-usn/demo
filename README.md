@@ -34,10 +34,10 @@ The programs were written for classroom demonstration over several, using differ
 | Running-average FIR-filter                     | Matlab-function | `running_average_example.mlapp` |
 | Illustration of the Dirichle-kernel            | Matlab-app      |  `dirichletkernel.mlapp` |
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `pole_zero_3d.m` |
-| Amplitude modulation (AM)                       | LabVIEW Vi       | `AM Demo.vi` |
-| Beat, two signals close in frequency            | LabVIEW Vi       | `Beat Demo.vi` |
-| Beat as slowly moving phasors                   | LabVIEW Vi       | `Beat Blink.vi`|
-| Beat signals played as sound                    | LabVIEW Vi       | `Beat Sound.vi`|
+| Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
+| Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
+| Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
+| Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
 
   
 ### Support Functions

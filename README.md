@@ -1,8 +1,11 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
-Collection of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own.
+Collection of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
+The Matlab functions are to be  called from the Matlab console or from antoher Matlab-function.
 
-The programs were written for classroom demonstration over several, using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
+The programs were written for classroom demonstration over several, using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
+
+Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.
 
 ## TSE2280 Measurement Technology and Signal Processing
 
@@ -10,8 +13,9 @@ The programs were written for classroom demonstration over several, using differ
 
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Step response of a first-order dynamic system | Matlab-app | `first_order_step_resp.mlapp` |
+| Step response of a first-order dynamic system   | Matlab-app | `first_order_step_resp.mlapp` |
 | Step response of a second-order dynamic system  | Matlab-app |`second_order_step_resp.mlapp` |
+| Step response of a second-order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 
 ### Signals
 | Description  | Type | Function Name | 
@@ -23,6 +27,9 @@ The programs were written for classroom demonstration over several, using differ
 | Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `aliasing_frequency.mlapp` |
 | Simple demonstration of aliasing                                            | Matlab-app | `aliasing_simple.mlapp` |
 | Sampling of stripes in image, Moire-pattern                                 | Matlab-app |  `moire_sampling.mlapp` |
+| Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
+| Spectrogram of sound, real-time. SImplified code                            | LabVIEW VI | `Sound Spectrogram Simple.vi`
+
 
 ### Filters
 | Description  | Type | Function Name | 
@@ -38,6 +45,9 @@ The programs were written for classroom demonstration over several, using differ
 | Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
 | Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
 | Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
+| FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
+| Period of summed sine-waves                     | LabVIEW VI       | `Periodicity.vi`|
+
 
   
 ### Support Functions

@@ -12,7 +12,7 @@ The programs are written in Matlab, NI LabVIEW, or JupyterLab to the courses 'TS
 ### Signals
 - Illustration of sine- and cosine-functions as complex phasors (Matlab-app) `phasor_demo.mlapp`
 - Convolution (Matlab-app) `convolution_demo.mlapp`
-- Illustration of arbitrary signals being constructed from sine-waves, i.e. Fourier coefficients (Matlab-app) `fouriersynthesis.mlapp`
+- Illustration of how signals are constructed from sine-waves: Fourier coefficients (Matlab-app) `fouriersynthesis.mlapp`
 
 ### Filters
 - Frequency response of FIR-filter (Matlab-app) `fir_frequency.mlapp`
@@ -28,7 +28,7 @@ The programs are written in Matlab, NI LabVIEW, or JupyterLab to the courses 'TS
 
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
 - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`
-- Beam profile from a single-element ultrasound trasnducer (Matlab-app) `array_beamprofile.mlapp`
-- Theory and animation of the radiated field from a single-element transducer (JupyterLab interactive widget) `radiated-field-single-element-transducer.ipynb`
+- Beam profile from ultrasound transducer array (Matlab-app) `array_beamprofile.mlapp`
+- Theory and illlustration of radiated field from a single-element transducer (JupyterLab interactive widget) `radiated-field-single-element-transducer.ipynb`
 - Simple illustration of pulse length and bandwidth (JupyterLab interactive widget) `pulse-length-and-bandwidth.ipynb`
   

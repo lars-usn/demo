@@ -22,39 +22,17 @@ H=freqz(b,a,w);
 %=== Plot response in four graphs ===
 %--- Pole-zero plot ---
 subplot(2,2,1)
-<<<<<<< HEAD
-[hz, hp, ht] = zplane(b,a);
-z0= hz.XData+1i*hz.YData;    % Zeros
-p = hp.XData+1i*hp.YData;    % Poles
-stable=all(abs(p)<1);
-            
-=======
 zplane(b,a)
->>>>>>> 3144cc2493f8296685eeb2282b881b182d6a214a
 title('')
 
 %--- Frequency response ---
 subplot(2,2,2)
-<<<<<<< HEAD
-
-Hmin= min([0,min(abs(H))]);
-Hmax= max([0,max(abs(H))]);
-
-if not(stable)
-    H=NaN*H;
-end
-
-if lower(displayformat) =="db"
-    plot(w, 20*log10( abs(H)) )
-    %    ylim ( 20*log10( Hmax ) + [-40 0] )
-=======
 Hmin= min([0,min(abs(H))]);
 Hmax= max([0,max(abs(H))]);
 
 if lower(displayformat) =="db"
     plot(w, 20*log10( abs(H)) )
 %    ylim ( 20*log10( Hmax ) + [-40 0] )
->>>>>>> 3144cc2493f8296685eeb2282b881b182d6a214a
     ylim (  [-40 0] )
     ylabel('Magnitude |H| [dB]')
 
@@ -63,20 +41,13 @@ else
     ylim( [ Hmin, Hmax ] );
     ylabel('Magnitude |H|')
 end
-<<<<<<< HEAD
-
-=======
->>>>>>> 3144cc2493f8296685eeb2282b881b182d6a214a
-PiScaledAxis(gca,'x','Normalized frequency',3)
+pi_scaled_axis(gca,'x','Normalized frequency',3)
 grid on
-if not(stable)
-    text( 0, mean([Hmin,Hmax]), 'Unstable', HorizontalAlignment='center' )
-end
 
 subplot(2,2,4)
 plot(w,angle(H) )
-PiScaledAxis(gca,'x','Normalized frequency',3)
-PiScaledAxis(gca,'y','Phase',2)
+pi_scaled_axis(gca,'x','Normalized frequency',3)
+pi_scaled_axis(gca,'y','Phase',2)
 grid on
 
 %--- Impulse response ---

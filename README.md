@@ -2,7 +2,7 @@
 
 Collection of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own.
 
-The programs were written ad-hoc for demonstration purposes over several, using different tools to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
+The programs were written for classroom demonstration over several, using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'
 
 ## TSE2280 Measurement Technology and Signal Processing
 

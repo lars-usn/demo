@@ -17,7 +17,7 @@ The programs were written for classroom demonstration over several, using differ
 - Aliasing: Several frequencies fitting the same sample points (Matlab-app) `aliasing_frequencies.mlapp`
 - Sampling and aliasing illustrated in the frequency domain (Matlab-app) `aliasing_frequency.mlapp`
 - Simple demonstration of aliasing (Matlab-app) `aliasing_simple.mlapp`
-- Sampling of stripes in image, Moire-pattern  `moire_sampling.mlapp`
+- Sampling of stripes in image, Moire-pattern (Matlab-app) `moire_sampling.mlapp`
 
 ### Filters
 - Frequency response of FIR-filter (Matlab-app) `fir_frequency.mlapp`

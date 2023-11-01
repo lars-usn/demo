@@ -14,13 +14,15 @@ The programs were written for classroom demonstration over several, using differ
 | Step response of a second-order dynamic system  | Matlab-app |`second_order_step_resp.mlapp` |
 
 ### Signals
-- Illustration of sine- and cosine-functions as complex phasors (Matlab-app) `phasor_demo.mlapp`
-- Convolution (Matlab-app) `convolution_demo.mlapp`
-- Illustration of how signals are constructed from sine-waves: Fourier coefficients (Matlab-app) `fouriersynthesis.mlapp`
-- Aliasing: Several frequencies fitting the same sample points (Matlab-app) `aliasing_frequencies.mlapp`
-- Sampling and aliasing illustrated in the frequency domain (Matlab-app) `aliasing_frequency.mlapp`
-- Simple demonstration of aliasing (Matlab-app) `aliasing_simple.mlapp`
-- Sampling of stripes in image, Moire-pattern (Matlab-app) `moire_sampling.mlapp`
+| Desccription  | Type | Function Name | 
+| -- | -- | -- | 
+| Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
+| Convolution | Matlab-app |  `convolution_demo.mlapp` |
+| Illustration of how signals are constructed from sine-waves: Fourier coefficients | Matlab-app | `fouriersynthesis.mlapp` |
+| Aliasing: Several frequencies fitting the same sample points                      | Matlab-app | `aliasing_frequencies.mlapp` |
+| Sampling and aliasing illustrated in the frequency domain                         | Matlab-app | `aliasing_frequency.mlapp` |
+| Simple demonstration of aliasing                                                  | Matlab-app | `aliasing_simple.mlapp` |
+| Sampling of stripes in image, Moire-pattern                                       | Matlab-app |  `moire_sampling.mlapp` |
 
 ### Filters
 - Frequency response of FIR-filter (Matlab-app) `fir_frequency.mlapp`

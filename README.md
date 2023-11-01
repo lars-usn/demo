@@ -7,8 +7,11 @@ The programs were written for classroom demonstration over several, using differ
 ## TSE2280 Measurement Technology and Signal Processing
 
 ### Dynamic Systems
-- Step response of a first-order dynamic system (Matlab-app) `first_order_step_resp.mlapp`
-- Step response of a second-order dynamic system (Matlab-app) `second_order_step_resp.mlapp`
+
+| Desccription  | Type | Function Name | 
+| -- | -- | -- | 
+| Step response of a first-order dynamic system | Matlab-app | `first_order_step_resp.mlapp` |
+| Step response of a second-order dynamic system  | Matlab-app |`second_order_step_resp.mlapp` |
 
 ### Signals
 - Illustration of sine- and cosine-functions as complex phasors (Matlab-app) `phasor_demo.mlapp`
@@ -26,10 +29,11 @@ The programs were written for classroom demonstration over several, using differ
 - Response of IIR-filter (Matlab-function) `iir_response.m`
 - Running-average FIR-filter `running_average_example.mlapp`
 - Illustration of the Dirichle-kernel (Matlab-app) `dirichletkernel.mlapp`
-- 3D illustration of pole-zero plot in the z-plane (MAtlab-function) `pole_zero_3d.m`
+- 3D illustration of pole-zero plot in the z-plane (Matlab-function) `pole_zero_3d.m`
   
 ### Support Functions
-- Scale x- and y-axes in units of \pi `pi_scaled_axis.m`
+- Scale x- and y-axes in units of &pi \pi `pi_scaled_axis.m`
+- | &pi; | &#960; | Greek small letter pi | π |  
 
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
 - Beam profile from a single-element ultrasound trasnducer (Matlab-app) `element_beamprofile.mlapp`

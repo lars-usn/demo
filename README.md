@@ -45,6 +45,6 @@ The programs were written for classroom demonstration over several, using differ
 | -- | -- | -- | 
 | Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
 | Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
-| Theory and illlustration of radiated field from a single-element transducer | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
+| Radiated field from a single-element transducer | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
 | Simple illustration of pulse length and bandwidth                           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
   

@@ -3,8 +3,9 @@
 Collection of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
+Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.
 The Matlab functions are to be  called from the Matlab console or from antoher Matlab-function.
+The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
 
 ## TSE2280 Measurement Technology and Signal Processing
 

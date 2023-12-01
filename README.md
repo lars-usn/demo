@@ -27,7 +27,7 @@ The Matlab functions are to be  called from the Matlab console or from antoher M
 | Simple demonstration of aliasing                                            | Matlab-app | `aliasing_simple.mlapp` |
 | Sampling of stripes in image, Moire-pattern                                 | Matlab-app |  `moire_sampling.mlapp` |
 | Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
-| Spectrogram of sound, real-time. SImplified code                            | LabVIEW VI | `Sound Spectrogram Simple.vi`
+| Spectrogram of sound, real-time. Simplified code                            | LabVIEW VI | `Sound Spectrogram Simple.vi`
 
 
 ### Filters

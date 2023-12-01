@@ -60,6 +60,7 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 | -- | -- | -- | 
 | Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
 | Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
-| Radiated field from a single-element transducer | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
-| Simple illustration of pulse length and bandwidth                           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
+| Radiated field from a single-element transducer             | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
+| Simple illustration of pulse length and bandwidth           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
+| Simple example files to start simulations in Field II       | Matlab functions  | Folder `field-ii-examples`   |
   

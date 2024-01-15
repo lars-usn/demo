@@ -17,36 +17,36 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 | Step response of a second-order dynamic system  | Matlab-app |`second_order_step_resp.mlapp` |
 | Step response of a second-order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 
-### Signals
+### Signals 
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
 | Convolution | Matlab-app |  `convolution_demo.mlapp` |
+| Periodicity, sine-waves with different frequencies                    | LabVIEW VI       | `Periodicity.vi`|
 | Illustration of signals constructed from sine-waves: Fourier coefficients   | Matlab-app | `fouriersynthesis.mlapp` |
-| Aliasing: Several frequencies fitting the same sample points                | Matlab-app | `aliasing_frequencies.mlapp` |
-| Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `aliasing_frequency.mlapp` |
-| Simple demonstration of aliasing                                            | Matlab-app | `aliasing_simple.mlapp` |
-| Sampling of stripes in image, Moire-pattern                                 | Matlab-app |  `moire_sampling.mlapp` |
 | Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
 | Spectrogram of sound, real-time. Simplified code                            | LabVIEW VI | `Sound Spectrogram Simple.vi`
+| Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
+| Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
+| Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
+| Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
+| Aliasing: Several frequencies fitting the same sample points                | Matlab-app | `aliasing_frequencies.mlapp` |
+| Simple demonstration of aliasing                                            | Matlab-app | `aliasing_simple.mlapp` |
+| Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `aliasing_frequency.mlapp` |
+| Sampling of stripes in image, Moire-pattern                                 | Matlab-app |  `moire_sampling.mlapp` |
 
 
 ### Filters
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Frequency response of FIR-filter               | Matlab-app | `fir_frequency.mlapp` |
 | Simple bandpass FIR-filter                     | Matlab-app | `fir_simple_bandpass.mlapp` |
+| Running-average FIR-filter                     | Matlab-function | `running_average_example.mlapp` |
+| Illustration of the Dirichlet-kernel            | Matlab-app      |  `dirichletkernel.mlapp` |
+| Frequency response of FIR-filter               | Matlab-app | `fir_frequency.mlapp` |
 | Response of IIR-filter                         | Matlab-app | `iir_filter.mlapp`  |
 | Response of IIR-filter                         | Matlab-function | `iir_response.m`  |
-| Running-average FIR-filter                     | Matlab-function | `running_average_example.mlapp` |
-| Illustration of the Dirichle-kernel            | Matlab-app      |  `dirichletkernel.mlapp` |
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `pole_zero_3d.m` |
-| Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
-| Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
-| Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
-| Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
 | FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
-| Period of summed sine-waves                     | LabVIEW VI       | `Periodicity.vi`|
 
 
   

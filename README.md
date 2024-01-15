@@ -7,6 +7,17 @@ Note that the LabVIEW and Matlab programs will need access to all files in their
 The Matlab functions are to be  called from the Matlab console or from antoher Matlab-function.
 The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
 
+#  Ultrasound
+## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
+| Description  | Type | Function Name | 
+| -- | -- | -- | 
+| Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
+| Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
+| Radiated field from a single-element transducer             | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
+| Simple illustration of pulse length and bandwidth           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
+| Simple example files to start simulations in Field II       | Matlab functions  | Folder `field-ii-examples`   |
+  
+# Signal Processing
 ## TSE2280 Measurement Technology and Signal Processing
 
 ### Dynamic Systems
@@ -55,12 +66,3 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 | -- | -- | -- | 
 | Scale x- and y-axes in units of &pi; | Matlab-function | `pi_scaled_axis.m` |
 
-## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
-| Description  | Type | Function Name | 
-| -- | -- | -- | 
-| Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
-| Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
-| Radiated field from a single-element transducer             | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
-| Simple illustration of pulse length and bandwidth           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
-| Simple example files to start simulations in Field II       | Matlab functions  | Folder `field-ii-examples`   |
-  

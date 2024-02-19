@@ -41,10 +41,10 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 | Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
 | Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
 | Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
-| Aliasing: Several frequencies fitting the same sample points                | Matlab-app | `aliasing_frequencies.mlapp` |
-| Simple demonstration of aliasing                                            | Matlab-app | `aliasing_simple.mlapp` |
-| Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `aliasing_frequency.mlapp` |
-| Sampling of stripes in image, Moire-pattern                                 | Matlab-app |  `moire_sampling.mlapp` |
+| Aliasing: Several frequencies fitting the same sample points                | Matlab-app | `AliasingDemo2.mlapp` |
+| Simple demonstration of aliasing                                            | Matlab-app | `AliasingDemo1..mlapp` |
+| Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `AliasingFrequencyDomain.mlapp` |
+| Sampling of stripes in image, Moire-pattern                                 | Matlab-app | `MoireDemo.mlapp` |
 
 
 ### Filters

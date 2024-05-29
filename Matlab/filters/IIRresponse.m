@@ -1,70 +1,82 @@
-function iir_response( b, a, displayformat)
-% function iir_response( b, a, displayformat)
+function iirresponse( b, a, displayformat)
+% function iirresponse( b, a, displayformat)
 % 
-% Plot response of FIR filter
+% Plot response of IIR filter
 
 % Lars Hoff, March 2020
 %   Updated Nov 2023, LH
+%           May 2024, LH
 
-%% Organise input arguments
+%% Organise and initialise
 if nargin < 3
     displayformat = "linear";
 end
 
-b=b(:)'; % Ensure b is a row vector, as required by 'zplane'
+% Ensure a and b are row vectors as required by 'zplane'
+b=b(:)'; 
 a=a(:)';    
 
-%% Initialise 
-N = length(b);
-w = linspace(-pi,pi,2001);   % Normalized frequency
-z = exp(1i*w);               % z on unit circle
+N = length( b );
+w = linspace( -pi, pi, 2001 );   % Normalized frequency vector
 
-%% System function H(z) calculated from definition 
-H=freqz(b,a,w);
+% calculate system function H(z) from definition 
+H = freqz( b, a, w );
 
-%% Plot response in four graphs 
-
-%--- Pole-zero plot ---
+%% Pole-zero plot
 subplot(2,2,1)
-zplane(b,a)
+[ hz, hp, ht ]=zplane( b,a );
+xlabel( 'Re\{z\}' )
+ylabel( 'Im\{z\}' )
+
+z0 = hz.XData+1i*hz.YData;    % Zeros
+zp = hp.XData+1i*hp.YData;    % Poles
+stable = all( abs(zp)<1 );
 title('')
 
-%--- Frequency response ---
+%% Frequency response
 subplot(2,2,2)
-Hmin= min([0,min(abs(H))]);
-Hmax= max([0,max(abs(H))]);
+Hmin= min( [ 0, min(abs(H)) ] );
+Hmax= max( [ 0, max(abs(H)) ] );
+
+% Remove frequency response if the system is unstable
+if not(stable)  
+    H = NaN*ones( size(H) );
+end
 
 if lower(displayformat) =="db"
-    plot(w, 20*log10( abs(H)) )
+    plot( w, 20*log10( abs(H)) )
     ylim ( 20*log10( Hmax ) + [-40 0] )
-    ylabel('Magnitude |H| [dB]')
+    ylabel( '|H| [dB]')
 else
-    plot(w, abs(H) )
+    plot( w, abs(H) )
     ylim( [ Hmin, Hmax ] );
-    ylabel('Magnitude |H|')
+    ylabel( '|H|' )
 end
-pi_scaled_axis(gca,'x','Normalized frequency',3)
+
+wAxisLabel = '$\hat \omega$';
+piaxis(gca,'x', wAxisLabel, 3 )
 grid on
 
 subplot(2,2,4)
 plot(w,angle(H) )
-pi_scaled_axis(gca,'x','Normalized frequency',3)
-pi_scaled_axis(gca,'y','Phase',2)
+piaxis( gca, 'x', wAxisLabel, 3 )
+piaxis( gca, 'y', '$\angle H$',2)
 grid on
 
-%--- Impulse response ---
+%% Impulse response 
 N = 20;
-nz =2;
-n = (-nz:N);          % Plot a few zero-points before and after the filter length
-x= zeros(size(n));
-x(nz+1)=1;
-h = filter(b,a,x);
-ni= (n>=0 & n<N);      % Part of n covered by the filter
+
+% Create impulse and calculate response
+nZero =2;
+n = ( -nZero:N ) ;     % Include some zero-points before and after the filter length
+x = zeros( size(n) );
+x( nZero+1 )=1;         
+h = filter( b, a, x );
 
 subplot(2,2,3)
-stem(n,h,'filled')
-xlim([min(n) max(n)])
-ylim(1.2*[min(h) max(h)])
+stem( n, h, 'filled' )
+xlim( [ min(n) max(n) ] )
+ylim( 1.2*[ min(h) max(h) ] )
 grid on
 xlabel ('n')
 ylabel ('h[n]')

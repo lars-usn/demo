@@ -23,17 +23,18 @@ function polezero3d( b, a, zmax, dispFormat )
 if nargin<4, dispFormat='abs';  end
 if nargin<3, zmax = 2;          end
 
-
-%% Create grid, calculate and plot result
 xmax = 1.5; % Span of real and imaginary axes
+
+%% Create grid and 
 x = linspace( -xmax, xmax, 100);
 [ zr, zim ] = meshgrid( x, x );
 z = zr + 1i*zim;
 
+%% Calculate and plot response
 H = Hz( b, a, z, dispFormat );      % Calculate system function H
 surf( zr, zim, H, 'EdgeColor', 'none' );
 
-%% Create plot markers
+%% Create and plot markers
 nPoints = 100;
 phi     = linspace( 0, 2*pi, nPoints );  % Angle vector
 uc      = exp( 1i*phi );                 % z on unit circle
@@ -66,7 +67,7 @@ end
 
 %% Internal functions
 
-%--- Calculate system function H(z) directly from coefficients a and b
+% Calculate system function H(z) directly from coefficients a and b
 function H = Hz ( b, a, z, dispformat )
 
 % Denominator A(z)
@@ -85,7 +86,7 @@ end
 
 H = B./A;
 
-%--- Select linear or dB-scale
+% Select linear or dB-scale
 switch lower(dispformat)
     case "db",  H = 20*log10(abs(H));
     otherwise,  H = abs(H);

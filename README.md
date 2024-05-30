@@ -33,7 +33,6 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
-| Convolution | Matlab-app |  `convolution_demo.mlapp` |
 | Periodicity, sine-waves with different frequencies                    | LabVIEW VI       | `Periodicity.vi`|
 | Illustration of signals constructed from sine-waves: Fourier coefficients   | Matlab-app | `fouriersynthesis.mlapp` |
 | Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
@@ -42,28 +41,25 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 | Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
 | Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
 | Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
-| Aliasing: Several frequencies fitting the same sample points                | Matlab-app | `AliasingDemo2.mlapp` |
-| Simple demonstration of aliasing                                            | Matlab-app | `AliasingDemo1..mlapp` |
-| Sampling and aliasing illustrated in the frequency domain                   | Matlab-app | `AliasingFrequencyDomain.mlapp` |
-| Sampling of stripes in image, Moire-pattern                                 | Matlab-app | `MoireDemo.mlapp` |
-
+| Aliasing: Several frequencies fitting the same sample points    | Matlab-app | `aliasing_demo.mlapp` |
+| Simple demonstration of aliasing                                | Matlab-app | `aliasing_frequencies_demo.mlapp` |
+| Sampling and aliasing illustrated in the frequency domain       | Matlab-app | `aliasing_frequencydomain_demo.mlapp` |
+| Sampling of an image, Moire-pattern                             | Matlab-app | `aliasing_images_demo.mlapp` |
+| Stripes in image, Moire-pattern                                 | Matlab-app | `moirepattern_demo.mlapp` |
 
 ### Filters
+These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Simple bandpass FIR-filter                     | Matlab-app | `fir_simple_bandpass.mlapp` |
-| Running-average FIR-filter                     | Matlab-function | `running_average_example.mlapp` |
-| Illustration of the Dirichlet-kernel            | Matlab-app      |  `dirichletkernel.mlapp` |
-| Frequency response of FIR-filter               | Matlab-app | `fir_frequency.mlapp` |
-| Response of IIR-filter                         | Matlab-app | `iir_filter.mlapp`  |
+| Illustration of convolution                    | Matlab-app      | `convolution_demo.mlapp` |
+| Running-average FIR-filter                     | Matlab-function | `running_average_demo.mlapp` |
+| Illustration of the Dirichlet-kernel           | Matlab-app      |  `dirichlet_kernel_demo.mlapp` |
+| Frequency response of FIR-filter               | Matlab-app | `fir_response_demo.mlapp` |
+| Simple bandpass FIR-filter                     | Matlab-app | `fir_bandpass_demo.mlapp` |
+| Response of IIR-filter                         | Matlab-app | `iir_response_demo.mlapp`  |
 | Response of IIR-filter                         | Matlab-function | `iir_response.m`  |
-| 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `pole_zero_3d.m` |
+| Comparison of common lowpass-filter topologies | Matlab-app      | `lowpass_response_demo.mlapp` |
+| 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `polezero3d.m` |
 | FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
-
-
-  
-### Support Functions
-| Description  | Type | Function Name | 
-| -- | -- | -- | 
-| Scale x- and y-axes in units of &pi; | Matlab-function | `pi_scaled_axis.m` |
+| Scale x- and y-axes in units of &pi; | Matlab-function | `piaxis.m` |
 

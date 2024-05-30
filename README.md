@@ -58,6 +58,7 @@ These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 
 | Simple bandpass FIR-filter                     | Matlab-app | `fir_bandpass_demo.mlapp` |
 | Response of IIR-filter                         | Matlab-app | `iir_response_demo.mlapp`  |
 | Response of IIR-filter                         | Matlab-function | `iir_response.m`  |
+| Comparison of common lowpass-filter topologies | Matlab-app      | `lowpass_response_demo.mlapp` |
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `polezero3d.m` |
 | FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
 | Scale x- and y-axes in units of &pi; | Matlab-function | `piaxis.m` |

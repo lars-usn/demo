@@ -1,10 +1,10 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
-Collection of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
+This repository contains a  of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
 Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.
-The Matlab functions are to be  called from the Matlab console or from antoher Matlab-function.
+The Matlab functions are called from the Matlab console or from antoher Matlab-function.
 The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
 
 #  Ultrasound
@@ -21,14 +21,15 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 ## TSE2280 Measurement Technology and Signal Processing
 
 ### Dynamic Systems
-
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Step response of a first-order dynamic system   | Matlab-app | `first_order_step_resp.mlapp` |
-| Step response of a second-order dynamic system  | Matlab-app |`second_order_step_resp.mlapp` |
+| Step response of a first-order dynamic system   | Matlab-app | `firstorder_step_demo.mlapp` |
+| Frequency response of a first-order dynamic system   | Matlab-app | `firstorder_frequency_demo.mlapp` |
+| Step response of a second-order dynamic system  | Matlab-app | `secondorder_step_demo.mlapp` |
 | Step response of a second-order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 
 ### Signals 
+These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First"m 
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |

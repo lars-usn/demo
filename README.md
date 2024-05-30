@@ -29,7 +29,7 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 | Step response of a second-order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 
 ### Signals 
-These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First"m 
+These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |

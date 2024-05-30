@@ -33,7 +33,6 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
-| Convolution | Matlab-app |                   |`convolution_demo.mlapp` |
 | Periodicity, sine-waves with different frequencies                    | LabVIEW VI       | `Periodicity.vi`|
 | Illustration of signals constructed from sine-waves: Fourier coefficients   | Matlab-app | `fouriersynthesis.mlapp` |
 | Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
@@ -52,9 +51,9 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Illustration of convolution                    | Matlab-app | |'convolution_demo.mlapp'|
+| Illustration of convolution                    | Matlab-app      | `convolution_demo.mlapp` |
 | Running-average FIR-filter                     | Matlab-function | `running_average_demo.mlapp` |
-| Illustration of the Dirichlet-kernel            | Matlab-app      |  `dirichlet_kernel_demo.mlapp` |
+| Illustration of the Dirichlet-kernel           | Matlab-app      |  `dirichlet_kernel_demo.mlapp` |
 | Frequency response of FIR-filter               | Matlab-app | `fir_response_demo.mlapp` |
 | Simple bandpass FIR-filter                     | Matlab-app | `fir_bandpass_demo.mlapp` |
 | Response of IIR-filter                         | Matlab-app | `iir_response_demo.mlapp`  |

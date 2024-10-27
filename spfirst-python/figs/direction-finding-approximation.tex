@@ -1,0 +1,41 @@
+\begin{tikzpicture}[scale=3][>=stealth]
+
+\def\thetanum{31}
+\def\angle{59}
+\def\ymax{2.0}
+\def\xmax{3}
+\def\yr{1.6}
+\def\xv{1.2}
+\def\d{1}
+\def\sourcesize{0.06}
+\def\arcsize{0.8}
+	
+% Colours
+\colorlet{anglecolor}{blue} 
+\colorlet{roadcolor}{gray!20!black} 
+\colorlet{ycolor}{red} 
+\colorlet{xcolor}{blue}
+\colorlet{dcolor}{red}
+	
+% Styles  
+\tikzstyle{important line}=[very thick] 
+	
+% Axes
+\draw[important line, ->] (0, -0.2) -- (0, \ymax)  node[right]{y};
+	
+% Microphones
+\filldraw[fill=ycolor, draw=black] (0, \yr) coordinate(M1) circle (\sourcesize);
+\filldraw[fill=ycolor, draw=black] (\d, \yr) coordinate(M2) circle (\sourcesize);
+
+\draw[-] (M1) -- ++(-\angle : 2.1) node[near end, above ]{$s_1$};
+\draw[-] (M2) -- ++(-\angle : 2.1) node[near end, above ]{$s_2$};
+\draw[- ] (M1) -- node[above] {$d$} (M2);
+		
+\draw[] (M2) -- ++(-90-\angle: \d*0.87) coordinate (dsin) ;
+\draw[thick, dcolor] (M1) --  ++(-\angle : \d*0.51) node[anchor=north east, midway, fill=white]{$d \sin \theta$};
+
+%\filldraw[fill=anglecolor!10!white, draw=anglecolor] (M1)  -- ++(0, -0.5)  arc(-90:-64.6:0.5) coordinate(ARC) -- cycle;
+\draw[anglecolor] (M1)++(0, -\arcsize)  arc(-90:-\angle:\arcsize) coordinate(ARC) node[midway, below]{$\theta$};
+	
+\end{tikzpicture}
+

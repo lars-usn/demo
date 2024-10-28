@@ -7,7 +7,7 @@ Created on Sun Oct 27 14:53:16 2024
 
 import numpy as np
 import matplotlib.pyplot as plt
-from cmath import pi, exp     # For readability, also covered by numpy
+from cmath import pi, exp, sqrt     # For readability, also covered by numpy
 
 # Colors and line widths
 COLOR_UNIT_CIRCLE = 'lightsteelblue'
@@ -24,10 +24,14 @@ def unitcircle(amax=1.5, ax=None):
 
     Parameters
     ----------
-    amax : Float
+    amax : Float, optional
         Maximum scale on Re- and Im-axis
 
+    ax : Axes object of Matplotlib, optional
+        Axis to plot the results. A new axis is created if not specified
+
     Returns
+    -------
     ax : Axes object of Matplotlib
         Handle to axes containing the plot
     """
@@ -49,33 +53,50 @@ def unitcircle(amax=1.5, ax=None):
     ax.set_xlabel("Re {z}")
     ax.set_ylabel("Im {z}")
 
+    ax.grid(visible=True, which='major', axis='both')
+
     return ax
 
 
-def phasor(zk, include_sum=False, ax=None):
+def plot_phasor(zk, include_sum, include_label, ax):
     """Show complex numbers as phasors in the complex plane (Argand-diagram).
 
     Parameters
     ----------
-    zk : 1D array of float
+    zk : complex or list of complex
         Complex numbers to show
 
-    include_sum : Boolean, optional
-        Include the sum of the numbers
+    include_sum=True : Boolean, optional
+        Show the sum of the numbers in the plots
+
+    include_label=False : Boolean, optional
+        Label the phasors z1, z2, ...
+
+    ax=None : Axes object of Matplotlib, optional
+        Axis to plot the results. A new axis is created if not specified
 
     Returns
+    -------
     ax : Axes object of Matplotlib
         Handle to axes containing the plot
     """
 
+    # Convert input data to NumPy array
+    single = np.isscalar(zk)
+    if single:
+        zk = np.array([zk])
+        include_sum = False     # Sum is meaningless for scalar
+
+    if isinstance(zk, list):
+        zk = np.array(zk)
+
     # Find maximum and draw complex plane with unit circle
-    amax = max(abs(zk))
-
+    amax = np.max(abs(zk))
     if include_sum:
-        z_sum = sum(zk)
-        amax = 1.1*max(amax, abs(z_sum))
+        z_sum = np.sum(zk)
+        amax = max(amax, abs(z_sum))
 
-    ax = unitcircle(amax, ax)
+    ax = unitcircle(1.1*amax, ax)
 
     # Draw complex vactors
     k = 0
@@ -87,9 +108,10 @@ def phasor(zk, include_sum=False, ax=None):
                  length_includes_head=True)
 
         k += 1
-        z_id = f" $z_{k}$ "
-        ax.text(z.real, z.imag, z_id,
-                color=COLOR_PHASORS)
+        if include_label and not single:
+            z_id = f" $z_{k}$ "
+            ax.text(z.real, z.imag, z_id,
+                    color=COLOR_PHASORS)
 
     # Draw sum
     if include_sum:
@@ -106,29 +128,38 @@ def phasor(zk, include_sum=False, ax=None):
     return ax
 
 
-def signal(zk, frequency=1, include_sum=False, ax=None):
+def plot_signal(zk, frequency=1,
+                include_sum=True,
+                include_label=False,
+                ax=None):
     """Show complex amplitudes and resulting signals.
 
     Parameters
     ----------
-    zk : 1D array of float
+    zk : complex or list of complex
         Complex numbers to show
 
-    include_sum : Boolean, optional
-        Include the sum of the numbers
+    frequency=1 : Float
+        Frequency used to plot the signals
+
+    include_sum=True : Boolean, optional
+        Show the sum of the numbers in the plots
+
+    include_label=False : Boolean, optional
+        Label the phasors z1, z2, ...
+
+    ax=None : Axes object of Matplotlib, optional
+        Axis to plot the results. A new axis is created if not specified
 
     Returns
+    -------
     ax : Axes object of Matplotlib
         Handle to axes containing the plot
     """
-    fig = plt.figure()
-    ax_phasor = fig.add_subplot(1, 3, 1)
 
-    ax_phasor = phasor(zk, include_sum, ax_phasor)
-
-    t_end = 2/frequency
+    t_end = 1/frequency
     fs = 32*frequency
-    t = np.arange(0, t_end, 1/fs)
+    t = np.arange(-t_end, t_end, 1/fs)
 
     xc = np.zeros((len(t), len(zk)), dtype=np.complex128)
     for k in range(len(zk)):
@@ -136,16 +167,74 @@ def signal(zk, frequency=1, include_sum=False, ax=None):
 
     x = xc.real
 
-    ax_signal = fig.add_subplot(1, 3, (2, 3))
-    ax_signal.plot(t, x, color=COLOR_PHASORS)
+    ax.plot(t, x, color=COLOR_PHASORS)
 
     if include_sum:
         xs = x.sum(axis=1)
-        ax_signal.plot(t, xs, color=COLOR_SUM)
+        ax.plot(t, xs, color=COLOR_SUM)
 
-    ax_signal.set_xlabel("Time [s]")
-    ax_signal.set_ylabel("Amplitude")
+    if include_label:
+        t_delay = -np.angle(zk)/(2*pi*frequency)
+        for k in range(len(zk)):
+            z_id = f"$z_{k+1}$"
+            ax.text(t_delay[k], abs(zk[k]), z_id,
+                    color=COLOR_PHASORS,
+                    backgroundcolor='white')
 
-    ax_signal.grid(visible=True, which='major', axis='both')
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Amplitude")
+
+    ax.set_box_aspect(1)
+    ax.grid(visible=True, which='major', axis='both')
+
+    return
+
+
+def phasor(zk,
+           include_sum=True,
+           include_label=False,
+           include_signal=False,
+           frequency=1,
+           ax=None):
+    """Show complex amplitudes and resulting signals.
+
+    Parameters
+    ----------
+    zk : complex or list of complex
+        Complex numbers to show
+
+    frequency=1 : Float
+        Frequency used to plot the signals
+
+    include_sum=True : Boolean, optional
+        Show the sum of the numbers in the plots
+
+    include_label=False : Boolean, optional
+        Label the phasors z1, z2, ...
+
+    include_signal=False : Boolean, optional
+        Include a plot of signals as function of time
+
+    ax=None : Axes object of Matplotlib, optional
+        Axis to plot the results. A new axis is created if not specified
+
+    Returns
+    -------
+    ax_phasor : Axes object of Matplotlib
+        Handle to axes containing the phasor plot
+
+    ax_signal : Axes object of Matplotlib
+        Handle to axes containing the signal traces
+    """
+    fig = plt.figure(figsize=(10, 5))
+    if include_signal:
+        ax_phasor = fig.add_subplot(1, 2, 1)
+        ax_signal = fig.add_subplot(1, 2, 2)
+    else:
+        ax_phasor = fig.add_subplot(1, 1, 1)
+
+    plot_phasor(zk, include_sum, include_label, ax_phasor)
+    if include_signal:
+        plot_signal(zk, frequency, include_sum, include_label, ax_signal)
 
     return

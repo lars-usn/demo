@@ -1,57 +1,52 @@
 \input{../defs/tse2280-lab-definitions.tex}
 \labfoot{2}
 \hyphenpenalty=5000
-\newcommand{\numpy}{NumPy\xspace}
-\newcommand{\matplotlib}{Matplotlib\xspace}
-\newcommand{\scipy}{SciPy\xspace}
-\newcommand{\cmath}{cmath\xspace}
-\newcommand{\jupyterlab}{JupyterLab\xspace}
 
 \begin{document}
 \logo
 \thispagestyle{fancy}	
 
 \title{Direction Finding with Two Microphones} 
-\author{TSE2280 Signal Processing. Lab 1}
+\author{TSE2280 Signal Processing. Lab 2}
 \date{Spring 2025}
 \maketitle
 
 
 \section{Introduction}
 \suppressfloats[t]
-This lab is a modified version of the lab \emph{Lab P-3: Introduction to Complex Exponentials – Direction Finding}\cite{mcclellan_lab_2016} that accompanies the course text-book \emph{DSP First} by McClellan et~al \cite{mcclellan_dsp_2016}. The original lab has been converted from Matlab to Python and some of exercises have been changed. 
+This lab is a modified version of the lab \emph{Lab P-3: Introduction to Complex Exponentials – Direction Finding}\cite{mcclellan_lab_2016} that accompanies the text-book. The original lab has been converted from Matlab to Python and some of exercises have been changed. 
 
-The lab demonstrates concepts from Chapters 2 and 3 in the text-book. The intention is to give a better understanding of sinusoidal signals and how they are described by complex amplitude vectors, \emph{phasors}.
+The lab demonstrates concepts from Chapters 2 and 3 in the course text-book \emph{Signal Processing First} by McClellan et~al \cite{mcclellan_dsp_2016}. The intewntion is to give a better understanding of sinusoidal signals how they are described by complex amplitude vectors, \emph{phasors}.
 
 The exercise was made for the course \emph{TSE2280 - Measurements and Signal Processing} taught at the University of South-Eastern Norway.
 
 \subsection{Aim}
-The first part of this lab gives training in how to create and manipulate sinusoidal signals using complex exponentials in Python. The last part uses this to estimate the direction of a sound source from the phase difference between signals received by two microphones. 
-This type of direction estimates is the basis for steering and focusing ultrasound beams with \emph{phased arrays} in sonar and medical ultrasound. The same principle is also used to steer radar beams and in wifi and 5G antennas.
+The first part of this lab gives training in using Python with complex exponentials to create and manipulate sinusoidal  signals. The last part uses  this to estimate the direction of a sound source by using the phase difference between signals received by two microphones. 
+This type of direction estimates is the basis for steering and focusing ultrasound beams with \emph{phased arrays} in sonar and medical ultrasound. It is also used to steer radar beams and in wifi and 5G antennas.
 
-This lab is a computer simulation only, but can be extended to a real situation withou much extra equipment. Record a sound with two microphones using the stereo channels in your sound card, and then test the method on the recorded signal.
+This lab is a computer simulation only. You can quite easily test it on a real situation. Record a sound with two microphones using the stereo channels in your sound card, and then test the method on the recorded signal.
 
 
-\subsection{Software Tools: Python with Spyder and \jupyterlab}
-The programs for the lab shall be written in Python using the modules \numpy for representing signals and \matplotlib for plotting graphs. Later exercises will use the signal processing module in \scipy (\texttt{scipy.signal}) but \scipy is not needed in this exercise.
+\subsection{Software Tools: Python with Spyder and Jupyter Lab}
+The programs for the lab shall be written in Python using the libraries \emph{Numpy} for representing signals and \emph{Matplotlib} for plotting graphs. Later exercises will use the signal processing library in \emph{Scipy} (\emph{scipy.signal}) but Scipy is not needed in this exercise.
 
-Python's module for complex numbers \cmath can make the code easier to read. But be aware that \cmath handles scalar numbers only. The signals are more conveniently represented by arrays as in \numpy.
-The recommended setup of libraries for this exerceise is shown in \tableref{import-libraries}
+You may also load Python's mathematics library for complex numbers \emph{cmath}, but be aware that this handle scalar numbers only. The signals are more conveniently represented by arrays as in Numpy.
+The recommended setup of libraries for this exerceie is shown in \tableref{import-libraries}
 
 The recommended Python programming environment for this and the following labs is \emph{Spyder}\cite{raybaut_spyder_2024}, which is included in the \emph{Anaconda}\cite{noauthor_anaconda_2024} package management. However, any Python package management and programming environment should function.
 
-All code files shall be included with the lab report. We recommend collecting everything, code, text and figures, into a single \jupyterlab Notebook\cite{project_jupyter_jupyter_nodate}, but a pdf with separate Python files is also acceptable.
+All code files shall be included with the lab report. We recommend collecting everything, i.e.~code, text and figures, into a single \emph{Jupyter Notebook}\cite{project_jupyter_jupyter_nodate}, but a pdf with separate Python files is also acceptable.
 
 
 \begin{table}[t!]
-\caption{Recommended format for importing the Python libraries used in this exercise. \numpy is used to manipulate signals and time-vectors as arrays and \matplotlib is used to plot the results in graphs.
-The complex math library \cmath can be included to have simpler access to mathematical constants and functions, like $\pi$ and the complex exponential \texttt{exp}. This is strictly not necessary as these are also included in \numpy. Note that the \cmath functions can handle scalars only, not arrays. }
+\caption{Recommended format for importing the Python libraries used in this exercise. \emph{Numpy} is used to manipulate signals and time-vectors as arrays. \emph{Matplotlib}'s \emph{pyplot} is used to plot the results in graphs.
+	The complex math library \emph{cmath} is included to have more direct access the mathematical constants and functions, in this case $\pi$ and the complex exponential \texttt{exp}. This is strictly not necessary as these are also included in Numpy. Note that the \emph{cmath} functions can handle scalars only, not arrays. }
 \label{tab:import-libraries}
 \begin{lstlisting}[style=pythonstyle]]
 		
 import numpy as np
 import matplotlib.pyplot as plt
-from cmath import pi, exp, sqrt     # For readability, also covered by NumPy
+from cmath import pi, exp     # For readability, also covered by numpy
 		
 \end{lstlisting}
 \end{table}
@@ -59,8 +54,8 @@ from cmath import pi, exp, sqrt     # For readability, also covered by NumPy
 
 \section{Theory}
 
-\subsection{Sinusoidal Signals and Phasors}
-The aim of the first part of this lab is to obtain experience with complex numbers, and using phasors and complex exponentials to represent sinusoidal signals.
+\subsection{Sinusoidial Signals and Phasors}
+The aim of the first part of this lab is to obtain experience with complex numbers, and using phasors and complex exponentials to represent sinusoidial signals.
 
 Recall from the lectures that a sinusoidal signal $x(t)$ is written as 
 \begin{align}
@@ -69,16 +64,16 @@ Recall from the lectures that a sinusoidal signal $x(t)$ is written as
 	X &= A e^{j\phi} 
 \end{align}
 where $A$ is the amplitude, $\omega = 2\pi f$ is the angular frequency, $f$ is the frequency, and $\phi$ is the phase. $	X = A e^{j\phi} $ is a \emph{phasor} or \emph{complex amplitude} that includes both the amplitude and the phase of the signal.
-Analysis of sinusoidal signals like $x(t)$ is in general simpler by manipulating phasors as complex numbers compared to using the amplitude and phase separately.
+Analysis of sinusoidal signals like $x(t)$ is in general simpler by manipulating phasors instead of using the amplitude and phase separately.
 
-\subsection{Complex Numbers in Python with \numpy}
-Analysis of complex quantities in Python is simple. When using the library \numpy, complex numbers are handled almost exactly as real numbers, i.e.~most of the usual mathematical operators and functions can be used on complex numbers.
+\subsection{Complex Numbers in Python with Numpy}
+Analysis of complex quantities in Python is simple. When using the library \emph{Numpy}, complex numbers are handled almost exactly as real numbers, i.e.~most of the usual mathematical operators and functions can be used on complex numbers.
 
-\tableref{complex-overview} lists the basic operations in complex numbers in Python using \numpy. Note that all function calls in this table are prefixed by \verb|np| due to the way \numpy was imported, see \tableref{import-libraries}. Note also that a complex number in Python has three public members, \verb|real|, \verb|imag|, and \verb|conjugate()|.
+\tableref{complex-overview} lists the basic operations in complex numbers in Python using \emph{Numpy}. Note that all function calls in this table are prefixed by \texttt{np} due to the way \emph{Numpy }was imported, see \tableref{import-libraries}. Note also that a complex number in Python has three public members, \texttt{real}, \texttt{imag}, and \texttt{conjugate()}
 
 \begin{table}[t!]
-	\caption{Overview of basic complex number operations in Python. Detailed explanations and more functions are found in the documentation for \numpy.
-	The function calls in this table are prefixed by \texttt{np} in accordance with how \numpy was imported, see \tableref{import-libraries}.
+	\caption{Overview of basic complex number operations in Python. Detailed explanations and more functions are found in the documentation for Numpy.
+	The function calls in this table are prefixed by \texttt{np} in accordance with the \emph{Numpy} was imported, see \tableref{import-libraries}.
 	}
 	\label{tab:complex-overview}
 \begin{tabular}{llll}
@@ -97,7 +92,7 @@ Analysis of complex quantities in Python is simple. When using the library \nump
 	\verb|np.imag(z)| 	& \verb|z.imag|	&	Imaginary part.		& $\Im\{z\} = y $	\\ 
 	\verb|np.exp(1j*theta)|	& 		&Complex exponential. 	& $e^{j\theta} = cos\theta + j\sin\theta$ \\
 	\\
-	\hline 
+	\hline \\
 \end{tabular}
 \end{table}
 
@@ -133,8 +128,8 @@ Consider now a signal $x_h(t)$ where the frequencies $f_k$ of the individual cos
 The individual signals $\cos(2\pi k f_0 t +\phi_k)$ are called \emph{harmonics} and the summed signal $x_h(t)$ can be written as
 \begin{align}
 	x_h(t)= \sum_{k=1}^{N}  A_k \cos(2\pi k f_0 t +j\phi_k)
-	= \Re\left\{ \sum_{k=1}^{N}  X_k  e^{j2\pi k f_0 t } \right\}  \:.
-	\label{eq:harmonicsum}
+		= \Re\left\{ \sum_{k=1}^{N}  X_k  e^{j2\pi k f_0 t } \right\}  \:.
+		\label{eq:harmonicsum}
 \end{align}
 The periods $T_k$ of the individual waves are 
 \begin{align}
@@ -142,69 +137,51 @@ The periods $T_k$ of the individual waves are
 \end{align}
 After the period $T_0=k T_k$ of the fundamental frequency, the individual signals have repeated themselves $k$. Hence, all he frequency components will also be periodic with period $T_0$, and the resulting signal $x_h(t)$ will be periodic with period given by the fundamental frequency $f_0$ as $T_0=1/f_0$.
 
+Note that \emph{phasor addition} \emph{cannot} be used on this case, it can only be applied to signals where \emph{all frequency components are equal}.
+
 \section{Programming Tips}
 
 \subsection{Complex Numbers and Phasors}
-The Python file \verb|zplot.py| contains functions to plot complex numbers as phasors, add them, and show the resulting phasor plots and sinusoids. 
-The the description for the function \verb|phasor()| in  \verb|zplot|  is shown in \tableref{zplot}.
+The Python file \verb|zplot.py| contains functions to plot complex numbers as phasors, add them, and show the resulting phasor plots and sinusoids. The functions are listed in \tableref{zplot}
 
-\begin{table}[h!]
-\caption{Function \texttt{phasor()} to show complex numbers as phasors in the complex plane (Argand-diagrams). The functions are found in the file \texttt{zplot.py} included for this lab. }
-\label{tab:zplot}
-\begin{lstlisting}[style=pythonstyle]]
+\begin{table}
+	\caption{Functions to show complex numbers as phasors in the complex plane, called Argand-diagrams. The functions are found in the file \emph{zplot.py} included for this lab. }
+	\label{tab:zplot}
+	\begin{tabularx}{\textwidth}{lX}
+		\\
+		Command					& Description		\\
+		\hline \\
+		\verb|import zplot| & 
+		\multicolumn{1}{l}{Import the library to illustrate complex numbers. } \\
+		\\
+		\verb|zplot.unitcircle()|		& Plot the complex plane with the unit circle. \\ \\
+		\verb|zplot.phasor(z_array)|  	& Plot the complex numbers in the \numpy array \verb|z_array| and their sum as phasors. \\ \\
+%		\verb|zplot.signal(z_array, frequency)|  	& Plot the phasor diagram with \verb|zplot.phasor| and show the resulting signals as time traces. \verb|frequency | is set to \num{1} if not specified. \\
+%		\\
+		\hline \\
+	\end{tabularx}
 	
-def phasor(zk,
-		   include_sum=True,
-		   include_label=False,
-		   include_signal=False,
-		   frequency=1,
-		   ax=None):
-	"""Show complex amplitudes and resulting signals.
-
-	Parameters
-	----------
-	zk : complex or list of complex
-		Complex numbers to show
-	
-	frequency=1 : Float, optional
-		Frequency used to plot the signals
-	
-	include_sum=True : Boolean, optional
-		Show the sum of the numbers in the plots
-	
-	include_label=False : Boolean, optional
-		Label the phasors z1, z2, ...
-	
-	include_signal=False : Boolean, optional
-		Include a plot of signals as function of time
-	
-	ax=None : Axes object of Matplotlib, optional
-		Axis to plot the results. A new axis is created if not specified	
-	"""
-	
-\end{lstlisting}
 \end{table}
 
+
 \subsection{Vectorization}
-\numpy module allows mathematical operations to be used on arrays. This is convenient when defining signals such as $x(t)=A \cos(2\pi f t + \phi)$. Here, the amplitude $A$ and phase $\phi$ are scalars, while the time $t$ is a vector spanning the time interval to be investigated. 
+\emph{Numpy} module allows mathematical operations to be used on arrays. This is convenient when defining signals such as $x(t)=A \cos(2\pi f t + \phi)$. Here, the amplitude $A$ and phase $\phi$ are scalars, while the time $t$ is a vector spanning the time interval to be investigated. 
 
-Vectors spanning e.g., a time interval are created in \numpy by one of these methods
+Vectors spanning e.g., a time interval are created in \emph{numpy} by one of these methods
 
-\begin{enumerate}[1)]
-	\item Specifying start, stop and step by the function \texttt{arange}. \\ 
-	 A time vector $t$ is  typically defined as 
-	 \verb|  t = np.arange(t_start, t_end, dt|), \\
-	 where \verb|t_start| is the first point in the time-vector \verb|t|, \verb|t_end| marks the end of \verb|t|, and \verb|dt| is the interval between the time points. Note that the value \verb|t_end| is not included in the time vector, \verb|t| will end on the last point before \verb|t_end|.
-	 
-	\item Specifying start, stop, and total number of points by the function \texttt{linspace}. \\
-	A time vector $t$ is typically defined as \verb| t = np.linspace(t_start, t_end, n_points)|, \\
-	where \verb|t_start| is the first point in $t$, \verb|t_end| marks the end of \verb|t|, and \verb|n_points| is number of points in the vector. 
-	Note again that the last value \verb|t_end| is not included in the time vector, \verb|t| will end on the last point before \verb|t_end|.
-
-	\item Specifying start, stop, and total number of points by the function \texttt{logspace}. \\ 
-	This is the same as \verb|linspace|, but the numbers are evenly spaced on a logarithmic scale, and the start and end points are specified by their logarithms: \verb|start=2| means the first value is \num{e2}=\num{100}.
-\end{enumerate}
+\subsubsection*{Specifying start, stop and step by the function \texttt{arange}} 
+A time vector $t$ will typically be defined as\\
+\verb|t = np.arange(t_start, t_end, dt|), \\
+where \verb|t_start| is the first point in $t$, \verb|t_end| marks the end of $t$, and \verb|dt| is the interval between the time points. Note that the value \verb|t_end| is not included in the time vector, $t$ will end on the last point before \verb|t_end|.
 	
+\subsubsection*{Specifying start, stop, and total number of points by the function \texttt{linspace}. }
+Using this method, a time vector $t$ will typically be defined as \\
+\verb|t = np.linspace(t_start, t_end, n_points)|, \\
+where \verb|t_start| is the first point in $t$, \verb|t_end| marks the end of $t$, and \verb|n_points| is number of points in the time vector. Note again that the last value \verb|t_end| is not included in the time vector, $t$ will end on the last point before \verb|t_end|.
+	
+\subsubsection*{Specifying start, stop, and total number of points by the function \texttt{logspace}.} 
+	
+This is the same as \verb|linspace|, but the numbers are evenly spaced on a logarithmic scale, and the start and end points are specified by their logarithms: \verb|start=2| means the first value is \num{e2}=\num{100}.
 
 
 \section{Training Exercises}
@@ -221,8 +198,7 @@ Use the complex numbers $z_1 = 2e^{j\pi/3}$ and $z_2= -\sqrt{2} + 5j$ for all th
 	
 		Use the Python functions or methods to find the real and imaginary part, $\Re\{z\}$ and $\Im\{z\}$, the magnitude $|z|$ and phase $\angle z$ .
 	
-		Display $z_1$ and $z_2$ and the sum $z_1+z_2$ as phasors with \verb|zplot.phasor|. 		
-		Note that the input must be specified as a \verb|list|, this is done by enclosing the numbers in square brackets, e.g., \verb|[z1, z2]|.
+		Display $z_1$ and $z_2$ and the sum $z_1+z_2$ as phasors with \verb|zplot.phasor|.
 
 	\item Find the complex conjugate $z^*$ and inverse $1/z$ for $z_1$ and $z_2$ and plot them using \verb|zplot|.
 	
@@ -261,7 +237,7 @@ Collect the answers and code in one notebook in Jupyter Lab and hand in this to 
 		Note that the phase must be converted to radians before calculating the result. 
 		What is the phase in radians in this case?
 		
-		Use \matplotlib to plot the results.
+		Use \emph{Matplotlib} to plot the results.
 				
 		Calculate the value of $x(t)$ at $t=0$. Does this agree with the plot?
 
@@ -270,10 +246,10 @@ Collect the answers and code in one notebook in Jupyter Lab and hand in this to 
 
 \subsubsection*{Reporting}	
 Collect the answers and code into one notebook in Jupyter Lab and upload it to Canvas.
-
+1
 \begin{table}[h!]
 	\caption{Skeleton for a function to generate a cosine signal from amplitude, frequency, and phase.
-	The first lines are the recommended function call and documentation text. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are to be returned. }
+	The first lines are the recommended function call and documentation text. The last line specifies that the signal $x$ and time vector $t$ are to be returned. }
 	\label{tab:make-cos}
 \begin{lstlisting}[style=pythonstyle]]
 
@@ -296,7 +272,7 @@ def make_cos(A, f0, phase, duration):
 	x: 1D array of float
 		Cosine-wave
 	t: 1D array of float
-		Time vector in seconds
+		Time vactor in seconds
 	"""
 	
 	--- Your code comes here ---
@@ -320,7 +296,7 @@ To handle this situation, it can be convenient to have a function that can gener
 	
 	The function shall return the summed signal $x(t)$ and the time vector $t$ where the signal is evaluated.
 	
-	The frequencies $f_k$ and complex amplitudes $X_k$ shall be specified as \numpy arrays, and the function shall accept any number of frequency components. 
+	The frequencies $f_k$ and complex amplitudes $X_k$ shall be specified as Numpy arrays, and the function shall accept any number of frequency components. 
 	
 	Each frequency $f_k$ shall match a complex amplitude $X_k$, so these vectors must have equal length. The resulting function must check for this and shall return an error message if the lengths are different. 
 	
@@ -330,7 +306,8 @@ To handle this situation, it can be convenient to have a function that can gener
 	\item Demonstrate that your function works by plotting the output for a signal that is the sum of the following components.
 	\begin{center}
 		\begin{tabular}{ccc}
-				&	Frequency	& Complex amplitude	\\
+			\hline
+				&	Frequencies	& Complex amplitudes	\\
 			k	&	$f_k$ [Hz]		& $X_k$  			\\
 			\hline
 			1	&	\num{0}		& \num{10}				\\
@@ -339,9 +316,9 @@ To handle this situation, it can be convenient to have a function that can gener
 		\hline
 		\end{tabular}
 	\end{center}
-	Set the sample rate to \qty{10000}{Samples/s}, the duration of the signal to \qty{0.1}{s}, and the start time to \qty{0}{s}. Plot the result with \matplotlib.
+	Set the sample rate to \qty{10000}{Samples/s}, the duration of the signal to \qty{0.1}{s}, and the start time to \qty{0}{s}. Plot the result with \emph{Matplotlib}.
 	
-	\item Measure the period $T_0 $ of the signal from the graph. Compare this to the periods $T_k$ of the individual frequency components $f_k$.
+	\item Measure the period $T_0 $ of the signal from the graph. Compare this with the periods $T_k$ of the individual frequency components $f_k$.
 	
 	Explain how the period of the summed signal can be calculated from the periods of the individual components.
 	
@@ -352,6 +329,7 @@ To handle this situation, it can be convenient to have a function that can gener
 	over a time range that covers 3 periods. 
 	
 	Plot the signal $x$ a function of time $t$.
+	
 
 \end{enumerate}
 
@@ -360,8 +338,8 @@ Collect the answers and code into one notebook in Jupyter Lab and upload it to C
 
 \begin{table}[t!]
 	\caption{Skeleton for a function to generate signal by summing cosine-functions with different complex amplitudes and frequencies.		
-	The first lines are the recommended function call and documentation text. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are to be returned. 	
-	Note how the start time \texttt{t\_start} is specified as an optional argument with default value \num{0}.
+	The first lines are the recommended function call and documentation text. The last line specifies that the signal \emph{x} and time vector \emph{t} are to be returned. 	
+	Note that the start time \emph{t\_start} is specified as an optional argument with default value \num{0}.
 	}
 	\label{tab:summed_cos}
 	
@@ -399,9 +377,10 @@ def make_summed_cos(fk, Xk, fs, duration, t_start=0):
 	
 \end{lstlisting}
 \end{table}
+	
 
 \section{Lab Exercise: Direction finding}
-The text in this exercise is taken from \cite{mcclellan_lab_2016}, with some small modifications.
+The text in this exercise is almost entirely copied from \cite{mcclellan_lab_2016}.
 
 Why do humans have two ears? One answer is that the brain can process acoustic signals received at the two ears and determine the direction to the source of the acoustic energy. Using sinusoids, we can describe and analyze a simple scenario that explains this direction finding capability in terms of phase differences (or time-delay differences). 
 
@@ -412,36 +391,36 @@ Consider a simple measurement system that consists of two microphones that can b
 
 The scenario is illustrated in \Fig{overview} where a vehicle travelling on the roadway has a siren that is transmitting a very loud sinusoidal waveform whose frequency is $f_s$=\qty{400}{Hz}. The roadway forms the $x$-axis of a coordinate system.
 
-The two receivers (microphones) are located some distance away and are aligned parallel to the roadway. The distance from the road is $y_r$=\qty{100}{m}, and the receiver separation is $d$=\qty{0.4}{m}. The signals at the receivers must be processed to find the angle from Receiver M1 to the vehicle, which is denoted as $\theta$ in Fig. 1.
+The two receivers (microphones) are located some distance away and are aligned parallel to the roadway. The distance from the road is $y_r$=\qty{100}{m}, and the receiver separation is $d$=\qty{0.4}{m}. The signals at the receivers must be processed to find the angle from Receiver (1) to the vehicle, which is denoted as $\theta$ in Fig. 1.
 
 \begin{stdfig}
 	\input{../figs/direction-finding-main-illustration.tex}
-	\caption{Direction finding using two microphones. A vehicle at position $x_v$ travels along the $x$-axis while emitting a sound with frequency $f_s$=\qty{400}{Hz}. The sound is picked up by two microphones M1 and M2 positioned with spacing $d$=\qty{0.40}{m}. The difference in propagation distance $\Delta r=r_1-r_2$ causes a phase-shift between the signals received by the two microphones. This phase shift can be used to estimate the direction to the vehicle emitting the sound, specified by the angle $\theta$. }
+	\caption{Direction finding using two microphones. A vehicle at position $x_v$ travels along the $x$-axis while emitting a sound with frequency $f_s$=\qty{400}{Hz}. The sound is picked up by two microphones M1 and M2 positioned with spacing $d$=\qty{0.40}{m}. The difference in propagation distance $\Delta s= s_1-s_2$ causes a phase-shift between the signals received by the two microphones. This phase shift can be used to estimate the direction to the vehicle emitting the sound, specified by the angle $\theta$. }
 	\label{fig:overview}
 \end{stdfig}
 
 \begin{stdfig}
 	\input{../figs/direction-finding-approximation.tex}
-	\caption{Zoomed-in version of \Fig{overview} to show the difference in propagation distance $\Delta s$ from the sound source to the two  microphones. When the distance to the source is very long compared to the distance between the microphones,$r_1, r_2 \ll d$, the paths can be approximated as parallel and the difference in distance is 
-		$\Delta r=r_1-r_2 \approx d sin \theta$
+	\caption{Zoomed-in version of \Fig{overview} to show the difference in propagation distance $\Delta s$ from the sound source to the two  microphones. When the distance to the source is very long compared to the distance between the microphones,$s_1, s_2 \ll d$, the paths can be approximated as parallel and the difference in distance is 
+		$\Delta s = s_1 - s_2 \approx d sin \theta$
 		where $\theta$ is the direction to the source. }
 	\label{fig:far_field_zoom}
 \end{stdfig}
 
 
 \begin{enumerate}[a)]
-	\item The delay from the sound is transmitted by the source to it is received by the microphone can be computed for both propagation paths. First, consider path $r_1$ from the vehicle to receiver M1. The time delay is the distance from the vehicle location at coordinate ($x_v$,0) to the
+	\item The delay from the sound is transmitted by the source to it is received by the microphone can be computed for both propagation paths. First , consider Path (1) from the vehicle to Receiver (1). The time delay is the distance from the vehicle location at coordinate ($x_v$,0) to the
 	receiver at coordinate (0,$y_r$), divided by the speed of sound $c$.
 	The speed of sound in air can be set to $c$=\qty{340}{m/s}. 
 	
 	Write a mathematical expression for the time delay as function of the vehicle position $x_v$. 
-	Call this delay $t_1$.
+		Call this delay $t_1$.
 		
-	\item Write a mathematical formula for the time delay of the signal that travels path $r_2$ from the transmitter at coordinate ($x_v$,0) to receiver M2 at coordinate ($d$, $y_r$).
+	\item Write a mathematical formula for the time delay of the signal that travels \emph{path (2)} from the transmitter at coordinate ($x_v$,0) to Receiver (2) at coordinate ($d$, $y_r$).
 	
 	Call this delay $t_2$ and express it as a function of the vehicle position $x_v$.
 	
-	\item The signals at the two receivers, $x_1(t)$ at M1 and $x_2(t)$ at M2, are delayed copies of the transmitted signal,
+	\item The received signals at the receivers, $x_1(t)$ and $x_2(t)$,  are delayed copies of the transmitted signal,
 	\begin{align*}
 		x_1(t)&= s(t-t_1)  &	x_2(t)&= s(t-t_2)  
 	\end{align*}
@@ -449,22 +428,24 @@ The two receivers (microphones) are located some distance away and are aligned p
 	
 	Assume that the source signal $s(t)$ is a zero-phase sinusoid at $f_0$=\qty{400}{Hz}, and set the amplitude of the transmitted signal to $A_s$=\num{1000}. 
 	
-	Make a plot of $x_1(t)$ and $x_2(t)$ when the vehicle position $x_v$=\qty{100}{m}.
+	Make a plot of $x_1(t)$ and $x_1(t)$ when the vehichle position $x_v$=\qty{100}{m}.
 	
+	Use subplots to put both signals on the figure. 
 	Plot 3 periods and measure the relative time-shift between the two received
 	signals by comparing the peak locations.
 	
 	\item How do we convert relative time-shift into the direction $\theta$?
 	
-	The distance from the microphones to the source is often much larger than the distance between the microphones. We can then ignore that the angles from M1 and M2 are slightly different, and assume that the paths are close to parallel with the same angle $\theta$. This situation is illustrated in \Fig{far_field_zoom}, where we have zoomed in on the microphones in \Fig{overview}. 
+	The distance from the microphones to the source is often much larger than the distance between the microphones. We can then ignore that the angles from $M1$ and $M2$ are actually slightly different, and assume that the paths are close to parallel, with the same angle $\theta$. This situation is illustrated in \Fig{far_field_zoom}, where we have zoomed in on the microphones in \Fig{overview}. 
+	This
 	
-	The difference $\Delta r$ in propagation distance for the two paths $r_1$ and $r_2$ from the source to the microphones can now be approximated to
+	The distance in propagation length for the two paths $s_1$ and $s_2$ from the source to the microphones can now be approximated to, see \Fig{far_field_zoom}
 	\begin{align}
-		\Delta r = r_1-r_2 = d \sin\theta 
+		\Delta s = s_1-s_2 = d \sin\theta 
 	\end{align}
 	This is called the \emph{far field approximation} and is often used to find the beam pattern from antennas, loudspeakers, ultrasound trasnducers, and other sources.
 	
-	The propagation time $t$ along the paths is given as $t=r/c$, giving the time-shift $\Delta t$ between the signals arriving at the two microphones as
+	The propagation time $t$ along the paths is given as $t=s/c$, giving the time-shift $\Delta t$ between the signals arriving at the two microphones as
 	\begin{align}
 		\Delta t = t_1-t_2 = \frac{d \sin\theta }{c} \:,
 	\end{align}
@@ -472,35 +453,58 @@ The two receivers (microphones) are located some distance away and are aligned p
 	\begin{align}
 		\Delta \phi = -2\pi \Delta t f_s = -2 \pi \frac{d f_s \sin\theta }{c} 
 		= -2 \pi \frac{d \sin\theta }{\lambda_s}\:,
-		\label{eq:phaseshift-approximated}
 	\end{align}
 	where $\lambda_s=c/f_s$ is the wavelength of the emitted sound.
 	
-	For the relative time-shift obtained in the previous part, 
+	For the relative time-shift obtained in the previous part, calculate $\theta$. In addition, use geometry and the values
+	of $x_v$ and $y_r$ to figure out what the “true value” of $\theta$ should be. 
 	
-	Calculate $\theta$ fro the time-shift you found in the example above.
-	
-	In addition, use geometry and the values of $x_v$ and $y_r$ to find the true value of $\theta$, i.e., not using the approximation \Eq{phaseshift-approximated}. 
-	
-	Compare the two results and verify that your calculated value of $\theta$ is very close to the true value.
+	Verify that your calculated value of $\theta$ is very close to the true value.
 	
 	\item The objective in the rest of this lab is to write a Python function that will process the received signals to find direction. 
+	To do this, the received signals will be given as complex amplitudes, and a Python function called
+	DF gen is supplied for generating the receiver signals.
 	
-	Calculate the complex amplitudes $X_1 = A_1 e^{j\phi_1}$ and $X_2 = A_2 e^{j\phi_2}$ received at M1 and M2 as function of vehicle position $x_v$
+	\begin{lstlisting}[style=pythonstyle]
+	function [X1,X2,theta] = DF_gen(xx)
+	%DF_GEN generate complex amplitudes at the two receivers
+	% for the Direction Finding Lab
+	% usage [X1,X2,theta] = DF_gen;
+	%
+	% X1 = complex amplitude at Receiver #1
+	% X2 = complex amplitude at Receiver #2
+	% theta = the TRUE value of the "direction" in DEGREES
+	%
+	% alternate usage:
+	% [X1,X2,theta] = DF_gen(xx);
+	%
+	% xx = vector of "x positions" of the vehicle
+	% then X1, X2 and theta are vectors
+	
+	\end{lstlisting}
+	
+	When you have only the complex amplitudes, the relative time-shift cannot be measured directly, so the measurement has to be done with the phases. In other words, the receivers will have complex amplitudes $X_1 = A_1 e^{j\phi_1}$ and $X_2 = A_2 e^{j\phi_2}$. 
+	and we must determine the phase difference $\Delta \phi = \phi_1 - \phi_2$.
+	The phase difference can then be converted into a time difference according to the well-known relationship between the time-shift and phase-shift for sinusoids.
 	
 	Show that you can compute the phase difference from $X_1$ and $X_2$ by the following equation
 	\begin{align*}
 		\Delta \phi = \angle \{ X_1 X_2^* \}
 	\end{align*}
-	where the superscript * denotes the complex conjugate. Use the ideas presented here, summarised in \Fig{far_field_zoom} and \Eq{phaseshift-approximated}, to write a Python-function that will compute the direction $\theta$ from the complex amplitudes.
+	where the superscript * denotes the complex conjugate. Use the ideas in (9) and (10) to write a Python 	function that will compute the direction $\theta$ from the complex amplitudes.
 		
-	\item Run your function for the vehicle moving from $x_v$=\qty{-400}{m} meters to  $x_v$=\qty{+500}{m} in steps of one meter.
+	\item Debug the program from the previous part by using the function DF gen to test individual
+	cases. Then run your function for the vehicle moving from $x_v$=\qty{-400}{m} meters to \qty{+500}{m} in steps of one meter.
 	
-	Compare the value of $\theta$ calculated from the phase difference to the true value of $\theta$ by plotting both on the same graph.
+	Compare the computed value of $\theta$ to the true value of $\theta$ (given by DF gen) by plotting both on the same graph.
 	
-	Comment the result.
-		
+	Note that vectorization can make this program simpler and faster than running through all positions in a for-loop. Define all positions $x_v$ as a numpy-array and calculate the delays $\delta t$ and angles $\theta$ directly as arrays. 
+	
 \end{enumerate}
+
+
+
+
 
 \bibliographystyle{ieeetr}
 \bibliography{../defs/tse2280.bib}

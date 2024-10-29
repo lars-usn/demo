@@ -44,8 +44,8 @@ All code files shall be included with the lab report. We recommend collecting ev
 
 
 \begin{table}[t!]
-\caption{Recommended format for importing the Python libraries used in this exercise. \numpy is used to manipulate signals and time-vectors as arrays and \matplotlib is used to plot the results in graphs.
-The complex math library \cmath can be included to have simpler access to mathematical constants and functions, like $\pi$ and the complex exponential \texttt{exp}. This is strictly not necessary as these are also included in \numpy. Note that the \cmath functions can handle scalars only, not arrays. }
+\caption{Recommended format for importing the Python modules. \numpy is used to manipulate signals as arrays, \matplotlib to plot results.
+The complex math library \cmath can be included to have simpler access to mathematical constants and functions, e.g., $\pi$, the complex exponential, and the square root.}
 \label{tab:import-libraries}
 \begin{lstlisting}[style=pythonstyle]]
 		
@@ -61,7 +61,6 @@ from cmath import pi, exp, sqrt     # For readability, also covered by NumPy
 
 \subsection{Sinusoidal Signals and Phasors}
 The aim of the first part of this lab is to obtain experience with complex numbers, and using phasors and complex exponentials to represent sinusoidal signals.
-
 Recall from the lectures that a sinusoidal signal $x(t)$ is written as 
 \begin{align}
 	x(t)&= A cos(\omega t + \phi) = \Re\left\{ A e^{j(\omega t + \phi)} \right\} 
@@ -77,12 +76,11 @@ Analysis of complex quantities in Python is simple. When using the library \nump
 \tableref{complex-overview} lists the basic operations in complex numbers in Python using \numpy. Note that all function calls in this table are prefixed by \verb|np| due to the way \numpy was imported, see \tableref{import-libraries}. Note also that a complex number in Python has three public members, \verb|real|, \verb|imag|, and \verb|conjugate()|.
 
 \begin{table}[t!]
-	\caption{Overview of basic complex number operations in Python. Detailed explanations and more functions are found in the documentation for \numpy.
-	The function calls in this table are prefixed by \texttt{np} in accordance with how \numpy was imported, see \tableref{import-libraries}.
-	}
+	\caption{Overview of basic complex number operations in Python. Details are found in the documentation for \numpy.
+	The function calls are prefixed by \texttt{np} in accordance with how \numpy was imported, see \tableref{import-libraries}. }
 	\label{tab:complex-overview}
 \begin{tabular}{llll}
-	\\ \hline
+	%\hline
 	Command					& Member & Description					& Mathematical notation \\
 	\hline
 	\\
@@ -210,19 +208,21 @@ Vectors spanning e.g., a time interval are created in \numpy by one of these met
 \section{Training Exercises}
 
 \subsection{Complex Numbers}
-The purpose of this task is to get used to complex numbers, how to visualize them, and how to use them in Python.
+The purpose of this task is to get used to complex numbers, how to visualize them as phasors, and how to use them in Python.
 
-Use the complex numbers $z_1 = 2e^{j\pi/3}$ and $z_2= -\sqrt{2} + 5j$ for all the following exercises.
+\subsubsection*{Reporting}	
+Collect the answers and code in one notebook in Jupyter Lab and upload this to Canvas.
 
+\subsubsection*{Exercises}	
 \begin{enumerate}[1)]
 	\item Load the library \verb|zplot| to visualize the results.
 
-	\item Enter the two complex numbers $z_1$ and $z_2$. 
+	\item Enter the two complex numbers $z_1 = 2e^{j\pi/3}$ and $z_2= -\sqrt{2} + 5j$. 
 	
 		Use the Python functions or methods to find the real and imaginary part, $\Re\{z\}$ and $\Im\{z\}$, the magnitude $|z|$ and phase $\angle z$ .
 	
 		Display $z_1$ and $z_2$ and the sum $z_1+z_2$ as phasors with \verb|zplot.phasor|. 		
-		Note that the input must be specified as a \verb|list|, this is done by enclosing the numbers in square brackets, e.g., \verb|[z1, z2]|.
+		The input to \verb|zplot.phasor| is specified as a \verb|list|, this is done by enclosing the numbers in square brackets, e.g., \verb|[z1, z2]|.
 
 	\item Find the complex conjugate $z^*$ and inverse $1/z$ for $z_1$ and $z_2$ and plot them using \verb|zplot|.
 	
@@ -236,23 +236,27 @@ Use the complex numbers $z_1 = 2e^{j\pi/3}$ and $z_2= -\sqrt{2} + 5j$ for all th
 	
 	Plot them in the same diagram as $z_1$ and $z_2$ and explain the result.
 
-	\item Calculate the sums $z_1+z_1^*$ and differences $z_1-z_1^*$ and plot them in the same diagram as $z_1$. Do the same for $z_2$. Explain these results.
+	\item Calculate the sums $z_1+z_1^*$ and differences $z_1-z_1^*$ of the conjugates and plot them in the same diagram as $z_1$. Do the same for $z_2$. Explain these results.
 		
 \end{enumerate}
 
-\subsubsection*{Reporting}	
-Collect the answers and code in one notebook in Jupyter Lab and hand in this to Canvas.
 		
 		
 \subsection{Python Function to Generate a Sinusoid Signal }
+
+\subsubsection*{Reporting}	
+Collect the answers and code in one notebook in Jupyter Lab and upload this to Canvas.
+
+\subsubsection*{Exercises}	
+
 \begin{enumerate}[1)]
 	\item Write a function (\verb|def| in Python) that generates a single sinusoid, $x(t)= A \cos(\omega t + \phi)$ from the four input arguments amplitude $A$, frequency $f$, phase $\phi$ and duration. The angular frequency is $\omega=2\pi f$.
 	
 	The function shall return the sinusoidal signal $x(t)$ and the time vector $t$ where the signal is evaluated.
 	
-	The function shall generate \emph{exactly } \num{32} values of the sinusoid per period. 
+	The function shall generate exactly 32 values of the sinusoid per period. 
 
-	A skeleton of the function with the recommended function call and header is listed in \tableref{make-cos}. 
+	A skeleton of the function with the recommended function call and ducumentation string is listed in \tableref{make-cos}. 
 
 	\item Demonstrate that your function works by plotting the output for the following parameters:
 		\begin{align*}
@@ -268,12 +272,9 @@ Collect the answers and code in one notebook in Jupyter Lab and hand in this to 
 	\item Calculate the period of the resulting signal and check that this agrees with the plot.
 \end{enumerate}
 
-\subsubsection*{Reporting}	
-Collect the answers and code into one notebook in Jupyter Lab and upload it to Canvas.
-
 \begin{table}[h!]
 	\caption{Skeleton for a function to generate a cosine signal from amplitude, frequency, and phase.
-	The first lines are the recommended function call and documentation text. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are to be returned. }
+	The first lines are the recommended function call and docstring. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are returned. }
 	\label{tab:make-cos}
 \begin{lstlisting}[style=pythonstyle]]
 
@@ -289,14 +290,14 @@ def make_cos(A, f0, phase, duration):
 	phase: float
 		Phase [radians]
 	duration: float
-		Duration of signal [seconds}
+		Duration of signal [seconds]
 	
 	Returns
 	-------
 	x: 1D array of float
 		Cosine-wave
 	t: 1D array of float
-		Time vector in seconds
+		Time vector [seconds]
 	"""
 	
 	--- Your code comes here ---
@@ -306,16 +307,20 @@ def make_cos(A, f0, phase, duration):
 \end{lstlisting}
 \end{table}
 
-\subsection{Python Function to Generate a Sum of Sinosoid Signals}
-Many functions will be described as a sum of sinosoids where the frequency components have different amplitudes $A_k$, frequencies $f_k$, and phase $\phi_k$, as described in Equation~\eqref{eq:harmonicsum}.
+\subsection{Python Function to Generate a Sum of Sinusoid Signals}
+Signals are often described as a sum of sinusoids with different amplitudes $A_k$, frequencies $f_k$, and phases $\phi_k$.
+Hence, it can be convenient to have a function that generates a signal from several cosine-functions, each specified by its amplitude, frequency, and phase.
 
-To handle this situation, it can be convenient to have a function that can generate a signal from several cosine-functions, each specified by its amplitude, frequency and phase.
+\subsubsection*{Reporting}	
+Collect the answers and code in one notebook in Jupyter Lab and upload this to Canvas.
+
+\subsubsection*{Exercises}	
 
 \begin{enumerate}[1)]
 	\item Write a function that generates a signal
-	\begin{align*}
+	\begin{align}
 		x(t)= \sum_{k=1}^{N} A_k \cos(2\pi f_k t + \phi_k) =\sum_{k=1}^{N} X_k e^{j2\pi f_k t}.
-	\end{align*}
+	\end{align}
 	The input arguments are the complex amplitude $X_k=A_k e^{j\phi}$, frequency $f_k$, sample rate $f_s$ and the signal duration.
 	
 	The function shall return the summed signal $x(t)$ and the time vector $t$ where the signal is evaluated.
@@ -325,8 +330,7 @@ To handle this situation, it can be convenient to have a function that can gener
 	Each frequency $f_k$ shall match a complex amplitude $X_k$, so these vectors must have equal length. The resulting function must check for this and shall return an error message if the lengths are different. 
 	
 	A skeleton of the function with the recommended function call and header is listed in \tableref{summed_cos}. 
-	
-	
+		
 	\item Demonstrate that your function works by plotting the output for a signal that is the sum of the following components.
 	\begin{center}
 		\begin{tabular}{ccc}
@@ -355,12 +359,9 @@ To handle this situation, it can be convenient to have a function that can gener
 
 \end{enumerate}
 
-\subsubsection*{Reporting}
-Collect the answers and code into one notebook in Jupyter Lab and upload it to Canvas.
-
 \begin{table}[t!]
 	\caption{Skeleton for a function to generate signal by summing cosine-functions with different complex amplitudes and frequencies.		
-	The first lines are the recommended function call and documentation text. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are to be returned. 	
+	The first lines are the recommended function call and docstring. The last line specifies that the signal \texttt{x} and time vector \texttt{t} are to be returned. 	
 	Note how the start time \texttt{t\_start} is specified as an optional argument with default value \num{0}.
 	}
 	\label{tab:summed_cos}
@@ -372,16 +373,16 @@ def make_summed_cos(fk, Xk, fs, duration, t_start=0):
 
 	Parameters
 	----------
-	fk: 1D array of float
+	fk: List of floats
 		Frequencies [Hz]
-	Xk: 1D array of float
+	Xk: List of floats
 		Complex amplitudes (phasors)
 	fs: float
-		Sample rate [Samples/s]
+		Sample rate [Samples/second]
 	duration: float
 		Duration of signal [s]
-	t_start : float, optional
-		Start time, first point of time-vector [s]
+	t_start=0 : float, optional
+		Start time, first point of time-vector [seconds]
 	
 	fk and Xk must have the same lengths.
 
@@ -390,7 +391,7 @@ def make_summed_cos(fk, Xk, fs, duration, t_start=0):
 	x: 1D array of float
 		Signal as the sum of the frequency components
 	t: 1D array of float
-		Time vactor in seconds
+		Time vector [seconds]
 	"""
 
 	--- Your code comes here ---
@@ -407,7 +408,10 @@ Why do humans have two ears? One answer is that the brain can process acoustic s
 
 This same principle is used in many other applications including radars that locate and track airplanes, and it gives the basis for phased array transducers used in medical ultrasound and sonar.
 
-\subsection{Direction Finding with Microphones}
+\subsection*{Reporting}	
+Collect the answers and code in one notebook in Jupyter Lab and upload this to Canvas.
+
+\subsection{Exercises: Direction Finding with Microphones}
 Consider a simple measurement system that consists of two microphones that can both hear the same source signal. If the microphones are placed some distance apart, then the sound must travel different paths from the source to the receivers. When the travel paths have different lengths, the two signals will arrive at different times. Thus a comparison of the two received signals will allow us to measure the relative time difference (between peaks), and from that we can calculate the direction. If the source signal is a sinusoid, we can measure the travel time differences by measuring phases.
 
 The scenario is illustrated in \Fig{overview} where a vehicle travelling on the roadway has a siren that is transmitting a very loud sinusoidal waveform whose frequency is $f_s$=\qty{400}{Hz}. The roadway forms the $x$-axis of a coordinate system.
@@ -416,15 +420,14 @@ The two receivers (microphones) are located some distance away and are aligned p
 
 \begin{stdfig}
 	\input{../figs/direction-finding-main-illustration.tex}
-	\caption{Direction finding using two microphones. A vehicle at position $x_v$ travels along the $x$-axis while emitting a sound with frequency $f_s$=\qty{400}{Hz}. The sound is picked up by two microphones M1 and M2 positioned with spacing $d$=\qty{0.40}{m}. The difference in propagation distance $\Delta r=r_1-r_2$ causes a phase-shift between the signals received by the two microphones. This phase shift can be used to estimate the direction to the vehicle emitting the sound, specified by the angle $\theta$. }
+	\caption{Direction finding using two microphones. A vehicle at position $x_v$ travels along the $x$-axis while emitting a sound with frequency $f_s$=\qty{400}{Hz}. The sound is picked up by two microphones M1 and M2 positioned with spacing $d$=\qty{0.40}{m}. The difference in propagation distance $\Delta r=r_1-r_2$ causes a phase-shift between the signals received by the two microphones. This phase shift can be used to estimate the direction to the vehicle, specified by the angle $\theta$. }
 	\label{fig:overview}
 \end{stdfig}
 
 \begin{stdfig}
 	\input{../figs/direction-finding-approximation.tex}
-	\caption{Zoomed-in version of \Fig{overview} to show the difference in propagation distance $\Delta s$ from the sound source to the two  microphones. When the distance to the source is very long compared to the distance between the microphones,$r_1, r_2 \ll d$, the paths can be approximated as parallel and the difference in distance is 
-		$\Delta r=r_1-r_2 \approx d sin \theta$
-		where $\theta$ is the direction to the source. }
+	\caption{Zoomed-in version of \Fig{overview} to show the difference in propagation distance $\Delta r=r_1-r_2$ from the sound source to the two  microphones. When the distance to the source is very long compared to the distance between the microphones, $r_1, r_2 \gg d$, the paths can be approximated as parallel and the difference is 
+		$\Delta r\approx d sin \theta$. }
 	\label{fig:far_field_zoom}
 \end{stdfig}
 
@@ -449,14 +452,14 @@ The two receivers (microphones) are located some distance away and are aligned p
 	
 	Assume that the source signal $s(t)$ is a zero-phase sinusoid at $f_0$=\qty{400}{Hz}, and set the amplitude of the transmitted signal to $A_s$=\num{1000}. 
 	
-	Make a plot of $x_1(t)$ and $x_2(t)$ when the vehicle position $x_v$=\qty{100}{m}.
+	Make a plot of $x_1(t)$ and $x_2(t)$ when the vehicle is at position $x_v$=\qty{100}{m}.
 	
 	Plot 3 periods and measure the relative time-shift between the two received
 	signals by comparing the peak locations.
 	
 	\item How do we convert relative time-shift into the direction $\theta$?
 	
-	The distance from the microphones to the source is often much larger than the distance between the microphones. We can then ignore that the angles from M1 and M2 are slightly different, and assume that the paths are close to parallel with the same angle $\theta$. This situation is illustrated in \Fig{far_field_zoom}, where we have zoomed in on the microphones in \Fig{overview}. 
+	The distance from the microphones to the source is often much larger than the distance between the microphones. We can then ignore that the angles from M1 and M2 are slightly different, and assume the paths to be close to parallel with the same angle $\theta$. This situation is illustrated in \Fig{far_field_zoom}, where we have zoomed in on the microphones in \Fig{overview}. 
 	
 	The difference $\Delta r$ in propagation distance for the two paths $r_1$ and $r_2$ from the source to the microphones can now be approximated to
 	\begin{align}
@@ -476,19 +479,17 @@ The two receivers (microphones) are located some distance away and are aligned p
 	\end{align}
 	where $\lambda_s=c/f_s$ is the wavelength of the emitted sound.
 	
-	For the relative time-shift obtained in the previous part, 
-	
-	Calculate $\theta$ fro the time-shift you found in the example above.
+	Calculate $\theta$ for the time-shift you found in the example above.
 	
 	In addition, use geometry and the values of $x_v$ and $y_r$ to find the true value of $\theta$, i.e., not using the approximation \Eq{phaseshift-approximated}. 
 	
-	Compare the two results and verify that your calculated value of $\theta$ is very close to the true value.
+	Compare the two results and compare your calculated value of $\theta$ to the true value.
 	
-	\item The objective in the rest of this lab is to write a Python function that will process the received signals to find direction. 
+	\item The objective in the rest of this lab is to write a Python function that will process the received signals to find the direction $\theta$. 
 	
 	Calculate the complex amplitudes $X_1 = A_1 e^{j\phi_1}$ and $X_2 = A_2 e^{j\phi_2}$ received at M1 and M2 as function of vehicle position $x_v$
 	
-	Show that you can compute the phase difference from $X_1$ and $X_2$ by the following equation
+	Show that you can compute the phase difference between two phasors $X_1$ and $X_2$ by the equation
 	\begin{align*}
 		\Delta \phi = \angle \{ X_1 X_2^* \}
 	\end{align*}

@@ -1,11 +1,11 @@
 \begin{tikzpicture}[scale=3][>=stealth]
 
-	\def\angle{59}
-	\def\ymax{2.5}
+	\def\angle{33.7}
+	\def\ymax{2.2}
 	\def\xmax{2.0}
-	\def\yr{2.0}
+	\def\yr{1.8}
 	\def\xv{1.2}
-	\def\d{0.3}
+	\def\d{0.2}
 	\def\sourcesize{0.03}
 	
 	% Colours
@@ -26,17 +26,18 @@
 	% Microphones
 	\filldraw[fill=ycolor, draw=black] (-\d/2, \yr) coordinate(M1) circle (\sourcesize);
 	\filldraw[fill=ycolor, draw=black] (\d/2, \yr) coordinate(M2) circle (\sourcesize);
+	\draw[- ] (M1) -- node[above, midway, fill=white!] {$d$} (M2);
 
 	% Sound paths
-	\draw[->] (\xv, 0) -- (M1) node[above left]{M1}  node[midway, anchor=east]{$r_1$};
-	\draw[->] (\xv, 0) -- (M2) node[above right]{M2} node[midway, anchor=west]{$r_2$};;
-	\draw[-, anglecolor!50!white] (\xv, 0) -- (0,\yr);
-	\draw[- ] (M1) -- node[above, fill=white!] {$d$} (M2);
+	\draw[-] (\xv, 0) -- (M1) node[above left]{M1}  node[midway, anchor=east]{$r_1$};
+	\draw[-] (\xv, 0) -- (M2) node[above right]{M2} node[midway, anchor=west]{$r_2$};;
+	\draw[-, dashed, anglecolor] (\xv, 0) -- (0,\yr);
 		
-	\draw[draw=anglecolor] (0,\yr)++(0, -0.6)  arc(-90:-59:0.6) coordinate(ARC) 
+	% Angle
+	\draw[draw=anglecolor] (0,\yr)++(0, -0.6)  arc(-90:-90+\angle:0.6) coordinate(ARC) 
 		node[midway, below, anglecolor]{$\theta$};
 
-	% Rulesr
+	% Rulers
 	\draw[|->, xcolor] (0, -0.15) -- ++(\xv, 0) node[at end, below]{$x_v$};
 	\draw[|-|, ycolor] (-0.3, 0) -- ++(0, \yr) node[near end, left]{$y_r$};
 

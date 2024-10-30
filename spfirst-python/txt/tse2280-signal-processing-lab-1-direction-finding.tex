@@ -150,34 +150,35 @@ The the description for the function \verb|phasor()| in  \verb|zplot|  is shown 
 \caption{Function \texttt{phasor()} to show complex numbers as phasors in the complex plane (Argand-diagrams). The functions are found in the file \texttt{zplot.py} included for this lab. }
 \label{tab:zplot}
 \begin{lstlisting}[style=pythonstyle]]
-	
+
 def phasor(zk,
-		   include_sum=True,
-		   include_label=False,
+		   labels=[],
+		   include_sum=False,
 		   include_signal=False,
-		   frequency=1,
-		   ax=None):
+		   frequency=1):
 	"""Show complex amplitudes and resulting signals.
 
 	Parameters
 	----------
-	zk : complex or list of complex
+	zk : Complex or list of complex
 		Complex numbers to show
 	
-	frequency=1 : Float, optional
-		Frequency used to plot the signals
+	labels=[] : List of strings, optional
+		List of labels to mark phasors
 	
-	include_sum=True : Boolean, optional
-		Show the sum of the numbers in the plots
-	
-	include_label=False : Boolean, optional
-		Label the phasors z1, z2, ...
+	include_sum=False : Boolean, optional
+		Show the sum of all numbers as a phasor
 	
 	include_signal=False : Boolean, optional
 		Include a plot of signals as function of time
 	
-	ax=None : Axes object of Matplotlib, optional
-		Axis to plot the results. A new axis is created if not specified	
+	frequency=1 : Float, optional
+		Frequency used to plot the signals
+	
+	Returns
+	-------
+	ax : List of Matplotlib Axes
+		Handle to axes containing the plots
 	"""
 	
 \end{lstlisting}
@@ -260,7 +261,7 @@ Collect the answers and code in one notebook in Jupyter Lab and upload this to C
 
 	\item Demonstrate that your function works by plotting the output for the following parameters:
 		\begin{align*}
-			A&=\num{e4} & f&= \qty{1.5}{MHz} &	\phi&=-\angle{45} & \text{Duration \qty{e-6}{s}}
+			A&=\num{e4} & f&= \qty{1.5}{MHz} &	\phi&=-\ang{45} & \text{Duration \qty{e-6}{s}}
 		\end{align*}		
 		Note that the phase must be converted to radians before calculating the result. 
 		What is the phase in radians in this case?
@@ -356,6 +357,19 @@ Collect the answers and code in one notebook in Jupyter Lab and upload this to C
 	over a time range that covers 3 periods. 
 	
 	Plot the signal $x$ a function of time $t$.
+	
+	\item The signal above contains frequency that are all equal. In this case, the amplitude and phase can be calculated by summing its complex amplitudes, \emph{phasors}.
+	
+	Use the function \verb|zplot.phasor| from the first exercise to pot the phasor diagram for this signal.
+	
+	\verb|zplot.phasor| has optional arguments that can be set to illustrate this better
+	
+	\begin{tabular}{ll}
+		\verb|include_sum = True| & Add the sum of all the phasors to the plot. \\
+		\verb|include_signal = True| & Plot the signals corresponding to the phasors. \\
+		\verb|frequency = <value>|  & Frequency to use when plotting the signals.
+		
+	\end{tabular}
 
 \end{enumerate}
 

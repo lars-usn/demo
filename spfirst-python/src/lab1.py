@@ -5,30 +5,28 @@ Created on Wed Oct 23 22:02:03 2024
 @author: larsh
 """
 import numpy as np
-# import matplotlib.pyplot as plt
 from cmath import pi     # For readability, also covered by numpy
 
 
 def make_cos(A, f0, phase, duration):
-    """Make a cosine-function from specified parameters.
-
+    """Make a cosine-function from specified parameters.		
     Parameters
     ----------
     A : float
-        Amplitude
+    	Amplitude
     f0: float
-        Frequency [Hz]
+    	Frequency [Hz]
     phase: float
-        Phase [radians]
+    	Phase [radians]
     duration: float
-        Duration of signal [seconds}
+    	Duration of signal [seconds]
 
     Returns
     -------
     x: 1D array of float
-        Cosine-wave
+    	Cosine-wave
     t: 1D array of float
-        Time vector in seconds
+    	Time vector [seconds]
     """
     T0 = 1/f0
     dt = T0/32
@@ -43,9 +41,9 @@ def make_summed_cos(fk, Xk, fs, duration, t_start=0):
 
     Parameters
     ----------
-    fk: 1D array of float
+    fk: List of float
         Frequencies [Hz]
-    Xk: 1D array of float
+    Xk: List of complex
         Complex amplitudes (phasors)
     fs: float
         Sample rate [Samples/s]

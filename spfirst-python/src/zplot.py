@@ -15,8 +15,12 @@ COLOR_AXES = 'black'
 COLOR_PHASORS = 'tab:blue'
 COLOR_SUM = 'tab:orange'
 
-AXIS_WIDTH = 0.01
-PHASOR_WIDTH = 0.02
+AXIS_WIDTH = 1
+PHASOR_WIDTH = 1
+
+axis_style = {'color': 'black', 'linewidth': 1.0}
+phasor_line = {'color': 'tab:blue', 'linewidth': 1.5}
+phasor_marker = {'color': 'tab:blue', 'marker': 'o'}
 
 
 def unitcircle(amax=1.5, ax=None):
@@ -48,41 +52,25 @@ def unitcircle(amax=1.5, ax=None):
     ax.set_aspect(1)
     ax.add_artist(circ)
 
-    # Draw axes
-    # ax.plot([0, 0], [-amax, amax], color=COLOR_AXES, linewidth=AXIS_WIDTH)
-    # ax.plot([-amax, amax], [0, 0], color=COLOR_AXES, linewidth=AXIS_WIDTH)
+    # Draw and format axes
+    ax.plot([0, 0], [-amax, amax], **axis_style)
+    ax.plot([-amax, amax], [0, 0], **axis_style)
 
-    # Draw axes as arrows
-    ax.arrow(-amax, 0, 2*amax, 0,
-             color=COLOR_AXES,
-             width=AXIS_WIDTH,
-             head_width=10*AXIS_WIDTH,
-             length_includes_head=True)
-
-    ax.arrow(0, -amax, 0, 2*amax,
-             color=COLOR_AXES,
-             width=AXIS_WIDTH,
-             head_width=10*AXIS_WIDTH,
-             length_includes_head=True)
-
-    ax.text(0.97*amax, -0.03*amax, " Re{z} ",
-            verticalalignment='top',
-            horizontalalignment='right',
-            color=COLOR_AXES)
-
-    ax.text(0, 0.95*amax, " Im{z} ",
-            verticalalignment='top',
-            horizontalalignment='right',
-            color=COLOR_AXES)
-
-    # Format axes
     ax.set_xlim(-amax, amax)
     ax.set_ylim(-amax, amax)
 
-    # ax.set_xlabel("Re {z}")
-    # ax.set_ylabel("Im {z}")
+    ax.set_xlabel("Re {z}")
+    ax.set_ylabel("Im {z}")
 
     ax.grid(visible=True, which='major', axis='both')
+
+    return ax
+
+
+def __draw_phasor(z, color, linewidth, ax):
+    """Draw a phasor as line with a marker."""
+    ax.plot([0, z.real], [0, z.imag], color=color, linewidth=linewidth)
+    ax.plot([z.real], [z.imag], color=color, marker='o')
 
     return ax
 
@@ -128,11 +116,7 @@ def plot_phasor(zk, labels, include_sum, ax):
 
     # Draw complex vactors
     for z in zk:
-        ax.arrow(0, 0, z.real, z.imag,
-                 color=COLOR_PHASORS,
-                 width=PHASOR_WIDTH,
-                 head_width=10*PHASOR_WIDTH,
-                 length_includes_head=True)
+        __draw_phasor(z, color=COLOR_PHASORS, linewidth=PHASOR_WIDTH, ax=ax)
 
     k = 0
     for label in labels:
@@ -141,15 +125,10 @@ def plot_phasor(zk, labels, include_sum, ax):
 
     # Draw sum
     if include_sum:
-        z_id = "$ \\Sigma z $"
-        ax.arrow(0, 0, z_sum.real, z_sum.imag,
-                 color=COLOR_SUM,
-                 width=PHASOR_WIDTH,
-                 head_width=10*PHASOR_WIDTH,
-                 length_includes_head=True)
+        z_id = "  $\\Sigma z$  "
+        __draw_phasor(z_sum, color=COLOR_SUM, linewidth=PHASOR_WIDTH, ax=ax)
 
-        ax.text(z_sum.real, z_sum.imag, z_id,
-                color=COLOR_SUM)
+        ax.text(z_sum.real, z_sum.imag, z_id, color=COLOR_SUM)
 
     return ax
 

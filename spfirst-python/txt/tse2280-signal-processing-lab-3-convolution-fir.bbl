@@ -1,0 +1,26 @@
+\begin{thebibliography}{1}
+
+\bibitem{mcclellan_dsp_2016}
+J.~H. McClellan, R.~Schafer, and M.~Yoder, {\em {DSP} {First}}.
+\newblock United Kingdom: Pearson Education Limited, 2nd~ed., 2016.
+
+\bibitem{mcclellan_lab_2016}
+J.~H. McClellan, R.~Schafer, and M.~Yoder, ``Lab {P}-3: {Introduction} to
+  {Complex} {Exponentials} - {Direction} {Finding},'' tech. rep., 2016.
+
+\bibitem{raybaut_spyder_2024}
+P.~Raybaut, ``Spyder,'' 2024.
+
+\bibitem{project_jupyter_jupyter_nodate}
+\{Project Jupyter\}, ``Jupyter {Lab}.''
+
+\bibitem{numpy_numpy_nodate}
+NumPy, ``{NumPy}.''
+
+\bibitem{matplotlib_matplotlib_nodate}
+Matplotlib, ``Matplotlib.''
+
+\bibitem{scipy_scipy_nodate}
+SciPy, ``{SciPy}.''
+
+\end{thebibliography}

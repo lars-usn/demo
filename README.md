@@ -28,10 +28,10 @@ The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter No
 | Frequency response of a first order dynamic system   | Matlab-app | `firstorder_frequency_demo.mlapp` |
 | Step response of a second order dynamic system  | Matlab-app | `secondorder_step_demo.mlapp` |
 | Animation of step response for a second order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
-| Step response of a first order dynamic system  | JupyterLab | `first_order_step_response.ipynb` |
-| Frequency response of a first order dynamic system  | JupyterLab | `first_order_frequency_response.ipynb` |
-| Step response of a second order dynamic system  | JupyterLab | `second_order_step_response.ipynb` |
-| Frequency response of a second order dynamic system  | JupyterLab | `second_order_frequency_response.ipynb` |
+| Step response of a first order dynamic system  | JupyterLab widget| `first_order_step_response.ipynb` |
+| Frequency response of a first order dynamic system  | JupyterLab widget| `first_order_frequency_response.ipynb` |
+| Step response of a second order dynamic system  | JupyterLab widget| `second_order_step_response.ipynb` |
+| Frequency response of a second order dynamic system  | JupyterLab widget| `second_order_frequency_response.ipynb` |
 
 ### Signals 
 These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
@@ -51,6 +51,8 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 | Sampling and aliasing illustrated in the frequency domain       | Matlab-app | `aliasing_frequencydomain_demo.mlapp` |
 | Sampling of an image, Moire-pattern                             | Matlab-app | `aliasing_images_demo.mlapp` |
 | Stripes in image, Moire-pattern                                 | Matlab-app | `moirepattern_demo.mlapp` |
+| Aliasing in the time and frequency domains  | JupyterLab widget| `aliasing_demo.ipynb` |
+
 
 ### Filters
 These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
@@ -67,4 +69,5 @@ These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `polezero3d.m` |
 | FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
 | Scale x- and y-axes in units of &pi; | Matlab-function | `piaxis.m` |
+|FIR-filter as convolution | JupyterLab widget| `convolution_demo.ipynb` |
 

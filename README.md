@@ -1,9 +1,11 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
-This repository contains a  of small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
+## Ultrasound and Signal Processing
+
+This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.
+The LabVIEW and Matlab programs will need access to all files in their folders to function.
 The Matlab functions (.m) are called from the Matlab console or from antoher Matlab-function.
 The LabVIEW VIs (.vi) and Matlab-apps (.mlapp) are stand-alone programs with a graphical user interface.
 The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter Notebook.
@@ -24,13 +26,13 @@ The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter No
 ### Dynamic Systems
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Step response of a first order dynamic system   | Matlab-app | `firstorder_step_demo.mlapp` |
-| Frequency response of a first order dynamic system   | Matlab-app | `firstorder_frequency_demo.mlapp` |
-| Step response of a second order dynamic system  | Matlab-app | `secondorder_step_demo.mlapp` |
+| Step response of a first order dynamic system         | Matlab-app | `firstorder_step_demo.mlapp` |
+| Frequency response of a first order dynamic system    | Matlab-app | `firstorder_frequency_demo.mlapp` |
+| Step response of a second order dynamic system        | Matlab-app | `secondorder_step_demo.mlapp` |
 | Animation of step response for a second order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
-| Step response of a first order dynamic system  | JupyterLab widget| `first_order_step_response.ipynb` |
-| Frequency response of a first order dynamic system  | JupyterLab widget| `first_order_frequency_response.ipynb` |
-| Step response of a second order dynamic system  | JupyterLab widget| `second_order_step_response.ipynb` |
+| Step response of a first order dynamic system        | JupyterLab widget| `first_order_step_response.ipynb` |
+| Frequency response of a first order dynamic system   | JupyterLab widget| `first_order_frequency_response.ipynb` |
+| Step response of a second order dynamic system       | JupyterLab widget| `second_order_step_response.ipynb` |
 | Frequency response of a second order dynamic system  | JupyterLab widget| `second_order_frequency_response.ipynb` |
 
 ### Signals 

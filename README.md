@@ -58,16 +58,16 @@ These programs were written to illustrate phenomena in chapters 2 and 3 in McCle
 These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Illustration of convolution                    | Matlab-app      | `convolution_demo.mlapp` |
-| Running-average FIR-filter                     | Matlab-function | `running_average_demo.mlapp` |
-| Illustration of the Dirichlet-kernel           | Matlab-app      |  `dirichlet_kernel_demo.mlapp` |
-| Frequency response of FIR-filter               | Matlab-app | `fir_response_demo.mlapp` |
-| Simple bandpass FIR-filter                     | Matlab-app | `fir_bandpass_demo.mlapp` |
-| Response of IIR-filter                         | Matlab-app | `iir_response_demo.mlapp`  |
-| Response of IIR-filter                         | Matlab-function | `iir_response.m`  |
-| Comparison of common lowpass-filter topologies | Matlab-app      | `lowpass_response_demo.mlapp` |
-| 3D illustration of pole-zero plot in the z-plane| Matlab-function |  `polezero3d.m` |
+| Illustration of convolution                     | Matlab-app       | `convolution_demo.mlapp` |
+| Running-average FIR-filter                      | Matlab-function  | `running_average_demo.mlapp` |
+| Illustration of the Dirichlet-kernel            | Matlab-app       |  `dirichlet_kernel_demo.mlapp` |
+| Frequency response of FIR-filter                | Matlab-app       | `fir_response_demo.mlapp` |
+| Simple bandpass FIR-filter                      | Matlab-app       | `fir_bandpass_demo.mlapp` |
+| Response of IIR-filter, interactive             | Matlab-app       | `iir_response_demo.mlapp`  |
+| Response of IIR-filter, static function         | Matlab-function  | `iir_response.m`  |
+| Comparison of common lowpass-filter topologies  | Matlab-app       | `lowpass_response_demo.mlapp` |
+| 3D illustration of pole-zero plot in the z-plane| Matlab-function  |  `polezero3d.m` |
 | FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
 | Scale x- and y-axes in units of &pi; | Matlab-function | `piaxis.m` |
-|FIR-filter as convolution | JupyterLab widget| `convolution_demo.ipynb` |
+| FIR-filter as convolution                       | JupyterLab widget |`convolution_demo.ipynb` |
 

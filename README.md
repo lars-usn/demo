@@ -4,15 +4,16 @@ This repository contains a  of small applications written to illustrate phenomen
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
 Note that the LabVIEW and Matlab programs will need access to all files in their folders to function.
-The Matlab functions are called from the Matlab console or from antoher Matlab-function.
-The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user interface.
+The Matlab functions (.m) are called from the Matlab console or from antoher Matlab-function.
+The LabVIEW VIs (.vi) and Matlab-apps (.mlapp) are stand-alone programs with a graphical user interface.
+The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter Notebook.
 
 #  Ultrasound
 ## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
-| Beam profile from ultrasound transducer array               | Matlab-app | `array_beamprofile.mlapp`  |
+| Beam profile from an ultrasound transducer array             | Matlab-app | `array_beamprofile.mlapp`  |
 | Radiated field from a single-element transducer             | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
 | Simple illustration of pulse length and bandwidth           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
 | Simple example files to start simulations in Field II       | Matlab functions  | Folder `field-ii-examples`   |
@@ -23,10 +24,14 @@ The LabVIEW VIs and Matlab-apps are stand-alone programs with a graphical user i
 ### Dynamic Systems
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Step response of a first-order dynamic system   | Matlab-app | `firstorder_step_demo.mlapp` |
-| Frequency response of a first-order dynamic system   | Matlab-app | `firstorder_frequency_demo.mlapp` |
-| Step response of a second-order dynamic system  | Matlab-app | `secondorder_step_demo.mlapp` |
-| Step response of a second-order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
+| Step response of a first order dynamic system   | Matlab-app | `firstorder_step_demo.mlapp` |
+| Frequency response of a first order dynamic system   | Matlab-app | `firstorder_frequency_demo.mlapp` |
+| Step response of a second order dynamic system  | Matlab-app | `secondorder_step_demo.mlapp` |
+| Animation of step response for a second order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
+| Step response of a first order dynamic system  | JupyterLab | `first_order_step_response.ipynb` |
+| Frequency response of a first order dynamic system  | JupyterLab | `first_order_frequency_response.ipynb` |
+| Step response of a second order dynamic system  | JupyterLab | `second_order_step_response.ipynb` |
+| Frequency response of a second order dynamic system  | JupyterLab | `second_order_frequency_response.ipynb` |
 
 ### Signals 
 These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.

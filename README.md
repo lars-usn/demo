@@ -36,30 +36,31 @@ The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter No
 | Frequency response of a second order dynamic system  | JupyterLab widget| `second_order_frequency_response.ipynb` |
 
 ### Signals 
-These programs were written to illustrate phenomena in chapters 2 and 3 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
+Programs written to illustrate phenomena in chapters 2, 3 and 4 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
+| Aliasing in the time and frequency domains  | JupyterLab widget| `aliasing_demo.ipynb` |
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
-| Periodicity, sine-waves with different frequencies                    | LabVIEW VI       | `Periodicity.vi`|
 | Illustration of signals constructed from sine-waves: Fourier coefficients   | Matlab-app | `fouriersynthesis.mlapp` |
-| Spectrogram of sound, real-time                                             | LabVIEW VI | `Sound Spectrogram Advanced.vi`
-| Spectrogram of sound, real-time. Simplified code                            | LabVIEW VI | `Sound Spectrogram Simple.vi`
-| Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
-| Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
-| Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
-| Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
 | Aliasing: Several frequencies fitting the same sample points    | Matlab-app | `aliasing_demo.mlapp` |
 | Simple demonstration of aliasing                                | Matlab-app | `aliasing_frequencies_demo.mlapp` |
 | Sampling and aliasing illustrated in the frequency domain       | Matlab-app | `aliasing_frequencydomain_demo.mlapp` |
 | Sampling of an image, Moire-pattern                             | Matlab-app | `aliasing_images_demo.mlapp` |
 | Stripes in image, Moire-pattern                                 | Matlab-app | `moirepattern_demo.mlapp` |
-| Aliasing in the time and frequency domains  | JupyterLab widget| `aliasing_demo.ipynb` |
+| Spectrogram of sound, real-time                                 | LabVIEW VI | `Sound Spectrogram Advanced.vi`
+| Spectrogram of sound, real-time. Simplified code                | LabVIEW VI | `Sound Spectrogram Simple.vi`
+| Periodicity, sine-waves with different frequencies                    | LabVIEW VI       | `Periodicity.vi`|
+| Beat, two signals close in frequency            | LabVIEW VI       | `Beat Demo.vi` |
+| Beat as slowly moving phasors                   | LabVIEW VI       | `Beat Blink.vi`|
+| Beat signals played as sound                    | LabVIEW VI       | `Beat Sound.vi`|
+| Amplitude modulation (AM)                       | LabVIEW VI       | `AM Demo.vi` |
 
 
 ### Filters
-These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
+Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
+| FIR-filter as convolution                       | JupyterLab widget |`convolution_demo.ipynb` |
 | Illustration of convolution                     | Matlab-app       | `convolution_demo.mlapp` |
 | Running-average FIR-filter                      | Matlab-function  | `running_average_demo.mlapp` |
 | Illustration of the Dirichlet-kernel            | Matlab-app       |  `dirichlet_kernel_demo.mlapp` |
@@ -69,7 +70,6 @@ These programs were written to illustrate phenomena in chapters 5, 6, 9, and 10 
 | Response of IIR-filter, static function         | Matlab-function  | `iir_response.m`  |
 | Comparison of common lowpass-filter topologies  | Matlab-app       | `lowpass_response_demo.mlapp` |
 | 3D illustration of pole-zero plot in the z-plane| Matlab-function  |  `polezero3d.m` |
-| FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
 | Scale x- and y-axes in units of &pi; | Matlab-function | `piaxis.m` |
-| FIR-filter as convolution                       | JupyterLab widget |`convolution_demo.ipynb` |
+| FIR and IIR filter for noiose removal           | LabVIEW VI       | `FIR and IIR Filter.vi`|
 

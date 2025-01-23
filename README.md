@@ -11,7 +11,7 @@ The LabVIEW VIs (.vi) and Matlab-apps (.mlapp) are stand-alone programs with a g
 The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter Notebook.
 
 #  Ultrasound
-## SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)
+#### USN-course _SPE590 Specialisation Topic_ (Acoustics and Ultrasound Technology)
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
 | Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |

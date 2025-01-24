@@ -14,10 +14,10 @@ The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter No
 #### USN-course _SPE5950 Specialisation Topic - Acoustics and Ultrasound Technology_
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
-| Beam profile from an ultrasound transducer array             | Matlab-app | `array_beamprofile.mlapp`  |
 | Radiated field from a single-element transducer             | JupyterLab widget |  `radiated-field-single-element-transducer.ipynb` |
 | Simple illustration of pulse length and bandwidth           | JupyterLab widget | `pulse-length-and-bandwidth.ipynb` |
+| Beam profile from a single-element ultrasound transducer    | Matlab-app | `element_beamprofile.mlapp` |
+| Beam profile from an ultrasound transducer array             | Matlab-app | `array_beamprofile.mlapp`  |
 | Simple example files to start simulations in Field II       | Matlab functions  | Folder `field-ii-examples`   |
   
 # Signal Processing
@@ -26,20 +26,21 @@ The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter No
 ### Dynamic Systems
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Step response of a first order dynamic system         | Matlab-app | `firstorder_step_demo.mlapp` |
-| Frequency response of a first order dynamic system    | Matlab-app | `firstorder_frequency_demo.mlapp` |
-| Step response of a second order dynamic system        | Matlab-app | `secondorder_step_demo.mlapp` |
-| Animation of step response for a second order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 | Step response of a first order dynamic system        | JupyterLab widget| `first_order_step_response.ipynb` |
 | Frequency response of a first order dynamic system   | JupyterLab widget| `first_order_frequency_response.ipynb` |
 | Step response of a second order dynamic system       | JupyterLab widget| `second_order_step_response.ipynb` |
 | Frequency response of a second order dynamic system  | JupyterLab widget| `second_order_frequency_response.ipynb` |
+| Step response of a first order dynamic system         | Matlab-app | `firstorder_step_demo.mlapp` |
+| Frequency response of a first order dynamic system    | Matlab-app | `firstorder_frequency_demo.mlapp` |
+| Step response of a second order dynamic system        | Matlab-app | `secondorder_step_demo.mlapp` |
+| Animation of step response for a second order dynamic system  | LabVIEW VI | `Second Order System RT Demo.vi` |
 
 ### Signals 
 Programs written to illustrate phenomena in chapters 2, 3 and 4 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Type | Function Name | 
 | -- | -- | -- | 
-| Aliasing in the time and frequency domains  | JupyterLab widget| `aliasing_demo.ipynb` |
+| Aliasing in the time and frequency domains  | JupyterLab widget| `aliasing_frequency_demo.ipynb` |
+| Aliases in the time domain                  | JupyterLab widget| `multiple_alias_demo.ipynb` |
 | Illustration of sine- and cosine-functions as complex phasors | Matlab-app| `phasor_demo.mlapp` |
 | Illustration of signals constructed from sine-waves: Fourier coefficients   | Matlab-app | `fouriersynthesis.mlapp` |
 | Aliasing: Several frequencies fitting the same sample points    | Matlab-app | `aliasing_demo.mlapp` |

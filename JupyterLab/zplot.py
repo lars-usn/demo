@@ -12,8 +12,8 @@ from cmath import pi, exp, sqrt     # For readability, also covered by numpy
 # Colors and line widths
 COLOR_UNIT_CIRCLE = 'gray'
 COLOR_AXES = 'black'
-COLOR_PHASORS = 'tab:blue'
-COLOR_SUM = 'tab:orange'
+COLOR_PHASORS = 'C0'
+COLOR_SUM = 'C1'
 
 AXIS_WIDTH = 1
 PHASOR_WIDTH = 1
@@ -56,11 +56,11 @@ def unitcircle(amax=1.5, ax=None):
     ax.axhline(y=0, **axis_style)
     ax.axvline(x=0, **axis_style)
 
-    ax.set_xlim(-amax, amax)
-    ax.set_ylim(-amax, amax)
-
-    ax.set_xlabel("Re {z}")
-    ax.set_ylabel("Im {z}")
+    ax.set(xlim=(-amax, amax),
+           ylim=(-amax, amax),
+           xlabel="Re {z}",
+           ylabel="Im {z}",
+           title="Phasors")
 
     ax.grid(visible=True, which='major', axis='both')
 
@@ -97,7 +97,7 @@ def plot_phasor(zk, labels, include_sum, ax):
     ax : Matplotlib axes
         Handle to axes containing the plot
     """
-    # Convert input data to NumPy array
+    # Convert input data to NumPy array if necessary
     single = np.isscalar(zk)
     if single:
         zk = np.array([zk])
@@ -158,22 +158,25 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
     ax : Matplotlib axes
         Handle to axes containing the plots
     """
-    t_end = 1/frequency
-    fs = 32*frequency
-    t = np.arange(-t_end, t_end, 1/fs)
+    t_end = 1.5/frequency               # Time span 
+    fs = 32*frequency                   # Sample rate
+    t = np.arange(-t_end, t_end, 1/fs)  # Time vector
 
+    # Create time domain signals from complex exponentials 
     xc = np.zeros((len(t), len(zk)), dtype=np.complex128)
     for k in range(len(zk)):
         xc[:, k] = zk[k] * np.exp(2j*pi*frequency*t)
 
     x = xc.real
 
+    # Plot signals
     ax.plot(t, x, color=COLOR_PHASORS)
 
     if include_sum:
         xs = x.sum(axis=1)
         ax.plot(t, xs, color=COLOR_SUM)
 
+    # Add labels to signals
     k = 0
     for label in labels:
         t_delay = -np.angle(zk[k])/(2*pi*frequency)
@@ -182,10 +185,11 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
                 backgroundcolor='white')
         k += 1
 
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Amplitude")
+    # Label axes and title
+    ax.set(xlabel="Time [s]", 
+          ylabel="Amplitude",
+          title="Signals in the time domain")
 
-    ax.set_box_aspect(1)
     ax.grid(visible=True, which='major', axis='both')
 
     return ax

@@ -28,7 +28,7 @@ These demo program are written for courses in acoustics  ultrasound technology a
 | Simple example files to start simulations in Field II       |  Folder `field-ii-examples`   |
   
 # Signal Processing
-These demo program are written for use in introductory courses in signal processing at USN. They are presently used in the course [*TSE2280 Måleteknikk og signalbehandling*](https://www.usn.no/studier/studie-og-emneplaner/#/emne/TSE2280_1_2024_V%C3%85R) usnig the textbook  McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
+These demo program are written for use in introductory courses in signal processing at USN. They are presently used in the course [*TSE2280 Måleteknikk og signalbehandling*](https://www.usn.no/studier/studie-og-emneplaner/#/emne/TSE2280_1_2024_V%C3%85R) using the textbook  McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 
 ### Dynamic Systems
 | Description  | Function Name | 

@@ -5,7 +5,7 @@
 This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-All new developments are done in Python and Jupyter Notebook. The Matlab apps are still in use, while the LabVIEW files are no longer maintained.
+All new developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained. The LabVIEW files are no longer maintained but are still available .
 
 The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
 
@@ -34,37 +34,38 @@ These demo program are written for use in introductory courses in signal process
 | Description  | Function Name | 
 | -- | -- |
 | **Jupyter Notebook widgets** | | 
-| Step response of a first order dynamic system        |  `first_order_step_response.ipynb` |
-| Frequency response of a first order dynamic system   |  `first_order_frequency_response.ipynb` |
-| Step response of a second order dynamic system       |  `second_order_step_response.ipynb` |
-| Frequency response of a second order dynamic system  |  `second_order_frequency_response.ipynb` |
+| First order dynamic system - Step response         |  `first_order_step_response.ipynb` |
+| First order dynamic system - Frequency response    |  `first_order_frequency_response.ipynb` |
+| Second order dynamic system - Step response        |  `second_order_step_response.ipynb` |
+| Second order dynamic system - Frequency response   |  `second_order_frequency_response.ipynb` |
 | **Matlab** | | |
-| Step response of a first order dynamic system         | `firstorder_step_demo.mlapp` |
-| Frequency response of a first order dynamic system    | `firstorder_frequency_demo.mlapp` |
-| Step response of a second order dynamic system        | `secondorder_step_demo.mlapp` |
-| **LabVIEW** | |
-| Animation of step response for a second order dynamic system  | `Second Order System RT Demo.vi` |
+| First order dynamic system - Step response         | `firstorder_step_demo.mlapp` |
+| First order dynamic system - Frequency response    | `firstorder_frequency_demo.mlapp` |
+| Second order dynamic system - Step response        | `secondorder_step_demo.mlapp` |
+| **LabVIEW - Not maintained** | |
+| Second order dynamic system - Step response Animation of step response  | `Second Order System RT Demo.vi` |
 
 ### Signals 
 Programs written to illustrate phenomena in chapters 2, 3 and 4 in McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.
 | Description  | Function Name | 
 | -- | -- |
 | **Python and Jupyter Notebook widgets** | | 
-| Illustration of sine- and cosine-functions as complex phasors  | `phasor_demo.ipynb` |
+| Cosine-waves - Illustration of amplitude, frequency, and phase |cosine_wave_demo.ipynb
+| Cosine- and sine-functions as complex phasors  | `phasor_demo.ipynb` |
 | Periodic signals - Sum of cosine-waves with different frequencies  | `periodicity_demo.ipynb` |
-| Fourier series - Arbitrary signals constructed from cosine-waves| `fourier_synthesis_demo.ipynb` |
+| Fourier series - Arbitrary signals constructed from cosine-waves | `fourier_synthesis_demo.ipynb` |
 | Aliasing - Sampled signals in the time and frequency domains  | `aliasing_frequency_demo.ipynb` |
 | Aliasing - Multiple frequencies fitting the same sample points   | `multiple_alias_demo.ipynb` |
-| Summing of complex phasors and signals in the time domain | `zplot.py` |
+| Complex phasors - Functions to display phasors time-domain signals | `zplot.py` |
 | **Matlab** | | 
-| Illustration of sine- and cosine-functions as complex phasors | `phasor_demo.mlapp` |
-| Illustration of signals constructed from sine-waves: Fourier coefficients   | `fouriersynthesis.mlapp` |
-| Aliasing: Several frequencies fitting the same sample points   | `aliasing_demo.mlapp` |
-| Simple demonstration of aliasing                               | `aliasing_frequencies_demo.mlapp` |
-| Sampling and aliasing illustrated in the frequency domain      | `aliasing_frequencydomain_demo.mlapp` |
-| Sampling of an image, Moire-pattern                            | `aliasing_images_demo.mlapp` |
-| Stripes in image, Moire-pattern                                | `moirepattern_demo.mlapp` |
-| **LabVIEW** | | 
+| Cosine- and sine-functions as complex phasors | `phasor_demo.mlapp` |
+| Fourier series - Arbitrary signals constructed from cosine-waves   | `fouriersynthesis.mlapp` |
+| Aliasing - Several frequencies fitting the same sample points   | `aliasing_demo.mlapp` |
+| Aliasing - Simple demonstration                               | `aliasing_frequencies_demo.mlapp` |
+| Aliasing - Samplied signals illustrated in the frequency domain      | `aliasing_frequencydomain_demo.mlapp` |
+| Moire-pattern - Sampling of an image                            | `aliasing_images_demo.mlapp` |
+| Moire-pattern - Stripes in image                                | `moirepattern_demo.mlapp` |
+| **LabVIEW - Not maintained** | | 
 | Spectrogram of sound, real-time                                | `Sound Spectrogram Advanced.vi`
 | Spectrogram of sound, real-time. Simplified code               | `Sound Spectrogram Simple.vi`
 | Periodicity, sine-waves with different frequencies             | `Periodicity.vi`|
@@ -91,6 +92,6 @@ Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClella
 | Comparison of common lowpass-filter topologies    | `lowpass_response_demo.mlapp` |
 | 3D illustration of pole-zero plot in the z-plane  |  `polezero3d.m` |
 | Scale x- and y-axes in units of &pi;              | `piaxis.m` |
-| **LabVIEW** | |
+| **LabVIEW - Not maintained** | | 
 | FIR and IIR filter for noiose removal           | `FIR and IIR Filter.vi`|
 

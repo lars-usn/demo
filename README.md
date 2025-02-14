@@ -7,7 +7,7 @@ The programs were written over several years using different tools, to the cours
 
 All new developments are done in Python and Jupyter Notebook. The Matlab apps are still in use, while the LabVIEW files are no longer maintained.
 
-The JupyterLab .ipynb-files can be run interactively in JupyterLab or Jupyter Notebook.
+The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
 
 The Matlab-apps (.mlapp)  and LabVIEW VIs (.vi) are stand-alone programs with a graphical user interface.
 The Matlab functions (.m) are called from the Matlab console or from antoher Matlab-function.
@@ -50,11 +50,11 @@ Programs written to illustrate phenomena in chapters 2, 3 and 4 in McClellan et 
 | Description  | Function Name | 
 | -- | -- |
 | **Python and Jupyter Notebook widgets** | | 
-| Cosine and sine waves from a phasor rotating in the complex plane  | `phasor_demo.ipynb` |
+| Illustration of sine- and cosine-functions as complex phasors  | `phasor_demo.ipynb` |
 | Periodic signals - Sum of cosine-waves with different frequencies  | `periodicity_demo.ipynb` |
 | Fourier series - Arbitrary signals constructed from cosine-waves| `fourier_synthesis_demo.ipynb` |
 | Aliasing - Sampled signals in the time and frequency domains  | `aliasing_frequency_demo.ipynb` |
-| Aliasing - Multiple frequencies from the same sample points   | `multiple_alias_demo.ipynb` |
+| Aliasing - Multiple frequencies fitting the same sample points   | `multiple_alias_demo.ipynb` |
 | Summing of complex phasors and signals in the time domain | `zplot.py` |
 | **Matlab** | | 
 | Illustration of sine- and cosine-functions as complex phasors | `phasor_demo.mlapp` |

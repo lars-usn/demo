@@ -5,7 +5,7 @@
 This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-All new developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained. The LabVIEW files are no longer maintained but are still available .
+New developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained. The LabVIEW files are no longer maintained but are still available .
 
 The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
 

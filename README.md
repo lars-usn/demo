@@ -8,8 +8,7 @@ The programs were written over several years using different tools, to the cours
 New developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained. The LabVIEW files are no longer maintained but are still available .
 
 The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
-
-The Matlab-apps (.mlapp)  and LabVIEW VIs (.vi) are stand-alone programs with a graphical user interface.
+ Matlab-apps (.mlapp)  and LabVIEW VIs (.vi) are stand-alone programs with a graphical user interface.
 The Matlab functions (.m) are called from the Matlab console or from antoher Matlab-function.
 The Matlab and LabVIEW programs will need access to all files in their folders to function.
 

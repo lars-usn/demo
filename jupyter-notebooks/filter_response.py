@@ -9,7 +9,7 @@ class PoleZero():
     """Container for poles and zeros, values and order."""
 
     def __init__(self):
-        self.val = []
+        self.value = []
         self.order = []
 
 
@@ -88,7 +88,7 @@ class IirResponse():
         r = np.roots(poly)
         r = np.round(r, 6).astype(complex)   # Suppress roundoff-errors
 
-        z.val, z.order = np.unique(r, return_counts=True)
+        z.value, z.order = np.unique(r, return_counts=True)
 
         return z
 
@@ -101,13 +101,13 @@ class IirResponse():
             marker = 'o'
             facecolor = 'none'    # Open circles for zeros
 
-        ax.scatter(z.val.real, z.val.imag, marker=marker, s=100,
+        ax.scatter(z.value.real, z.value.imag, marker=marker, s=100,
                    color=color,
                    facecolor=facecolor)
 
         for k in range(len(z.order)):
             if z.order[k] > 1:
-                ax.text(z.val[k].real, z.val[k].imag, f'  ({z.order[k]})  ',
+                ax.text(z.value[k].real, z.value[k].imag, f'  ({z.order[k]})',
                         verticalalignment='bottom',
                         horizontalalignment='left',
                         color=color)
@@ -177,8 +177,8 @@ class IirResponse():
         self._plot_pz(self.ax[0], p, 'poles')
         self._plot_pz(self.ax[0], z, 'zeros')
 
-        p_max = np.max(np.abs(p.val))
-        z_max = np.max(np.abs(z.val))
+        p_max = np.max(np.abs(p.value))
+        z_max = np.max(np.abs(z.value))
         pz_scale = 1.5*max(p_max, z_max, 1)
         self.ax[0].set(xlim=(-pz_scale, pz_scale),
                        ylim=(-pz_scale, pz_scale))

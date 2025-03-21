@@ -17,8 +17,8 @@ class FilterResponse:
     """Demonstration of IIR filter response."""
 
     def __init__(self):
-        self.b = [1, 1, 1, 1]  # Forward coefficients
-        self.a = [1]           # Reverse coefficients
+        self.b = np.array([1, 1, 1, 1])  # Forward coefficients
+        self.a = np.array([1])           # Reverse coefficients
         self.n_samples = 20    # No. of samples in impulse response
         self.n_plots = 4       # No.of plots in figure
         self.w = np.linspace(-pi, pi, 301)    # Frequency vector
@@ -63,6 +63,51 @@ class FilterResponse:
         p = self._find_roots(self.a, n_max)
 
         return p, z
+
+    def set_roots(self, z, pole, add_conjugate=True):
+        """Find filter coefficients from roots.
+
+        Parameters
+        ----------
+        z : NumPy 1D array of complex
+            Zeros or poles
+        pole : NumPy 1D array of boolean
+            True if element is a pole, False if zero
+        add_conjugate : boolean, optional
+            Add complex conjugate if True
+        """
+        pole = np.array(pole)
+        self.b = self._get_coefficients(np.extract(~pole, z),
+                                        add_conjugate=add_conjugate)
+        self.a = self._get_coefficients(np.extract(pole, z),
+                                        add_conjugate=add_conjugate)
+        return
+
+    def set_polar_roots(self, r, theta, pole, add_conjugate=True):
+        """Plot response from roots on polar form.
+
+        Parameters
+        ----------
+        r : NumPy 1D array of float
+            Magnitudes
+        theta : NumPy 1D array of float
+            Phases
+        pole : NumPy 1D array of boolean
+            True if element is a pole, False if zero
+        add_conjugate : boolean, optional
+            Add complex conjugate if True
+
+        """
+        pole = np.array(pole)
+        self.b = self._get_coefficients_polar(np.extract(~pole, r),
+                                              np.extract(~pole, theta),
+                                              add_conjugate=add_conjugate)
+
+        self.a = self._get_coefficients_polar(np.extract(pole, r),
+                                              np.extract(pole, theta),
+                                              add_conjugate=add_conjugate)
+
+        return
 
     def plot(self):
         """Plot all signals and spectra."""
@@ -109,11 +154,14 @@ class FilterResponse:
         self.ax[0].set(xlim=(-1, self.n_samples),
                        ylim=(-h_max, h_max))
 
+        np.set_printoptions(precision=3)
+        self.ax[0].set_title(f'b = {self.b}  ,    a = {self.a}')
+
         # Frequency response, for stable system only
         if stable:
             H_mag = np.abs(self.H())
             self.ax[1].plot(self.w/pi, H_mag, color=col)
-            self.ax[1].set_ylim(0, np.max(H_mag))
+            self.ax[1].set_ylim(0, 1.2*np.max(H_mag))
 
             self.ax[3].plot(self.w/pi, np.angle(self.H())/pi, color=col)
 
@@ -198,6 +246,37 @@ class FilterResponse:
         z.value, z.order = np.unique(r, return_counts=True)
 
         return z
+
+    def _get_coefficients(self, roots, add_conjugate=True):
+        """Find filter coefficients from zeros."""
+        if roots.size> 0:
+            roots = np.array(roots)   # Ensure NumPy array
+            if roots.ndim == 0:       # Ensure array dimension is not 0
+                roots = np.expand_dims(roots, 0)
+            if add_conjugate:  # Add complex conjugaes if not real
+                roots = np.concatenate([roots,
+                                        np.conj(roots[abs(roots.imag) > 1e-6])])
+            coeff = np.poly(roots)
+            coeff = np.real_if_close(coeff)
+        else:
+            coeff = [1]
+
+        return coeff
+
+    def _get_coefficients_polar(self, r, theta, add_conjugate=True):
+        """Find coefficients from polar form roots."""
+        if r.size> 0:
+            r = np.array(r)
+            theta = np.array(theta)
+            z = r * np.exp(1j*theta)
+            z.imag[abs(z.imag) < 1e-10] = 0.0   # Remove small imaginary residue
+    
+            coeff = self._get_coefficients(z, add_conjugate=add_conjugate)
+
+        else:
+            coeff = [1]
+
+        return coeff
 
     def _plot_pz(self, ax, z, pz_type, color='C0'):
         """Draw poles or zeros in specified axis."""

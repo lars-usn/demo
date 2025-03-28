@@ -156,9 +156,10 @@ class FilterResponse:
         self.ax[0].set(xlim=(-1, self.n_samples),
                        ylim=(-h_max, h_max))
 
+        # Show filter coefficients and/or text message
         if print_coefficients:
-            np.set_printoptions(precision=3)
-            self.ax[0].set_title(f'b = {self.b}  ,    a = {self.a}')
+            np.set_printoptions(precision=3, suppress=True)
+            self.ax[0].set_title(f'b = {self.b}\na = {self.a}')
 
         if textstr is not None:
             self.ax[2].text(0.70, 0.95, textstr,

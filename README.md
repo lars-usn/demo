@@ -80,9 +80,10 @@ Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClella
 | -- | -- |
 | **Jupyter Notebook widgets** | | 
 | FIR-filter as convolution                         | `convolution_demo.ipynb` |
-| Filter responses and pole-zero diagram            |'iir_filter_demo.ipynb'|
-| Simple FIR bandpass filter demo |                 |'simple_bandpass_fir_demo.ipynb'|
-| Calculate filter response|                        |'filter_response.py'|
+| Filter response from poles and zeros              | `pole_zero_demo.ipynb` |
+| Filter response from coefficients $b$ and $a$     | `iir_filter_demo.ipynb` |
+| Simple FIR bandpass filter demo |                 | `simple_bandpass_fir_demo.ipynb` |
+| Calculate filter response|                        | `filter_response.py` |
 | **Matlab** | |
 | Illustration of convolution                       | `convolution_demo.mlapp` |
 | Running-average FIR-filter                        | `running_average_demo.mlapp` |

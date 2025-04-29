@@ -78,11 +78,13 @@ Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClella
 
 | Description  | Function Name | 
 | -- | -- |
-| **Jupyter Notebook widgets** | | 
+| **Jupyter Notebook widgets (Python)** | | 
 | FIR-filter as convolution                         | `convolution_demo.ipynb` |
-| Filter responses and pole-zero diagram            |'iir_filter_demo.ipynb'|
-| Simple FIR bandpass filter demo |                 |'simple_bandpass_fir_demo.ipynb'|
-| Calculate filter response|                        |'filter_response.py'|
+| Simple FIR bandpass filter demo                   | `simple_bandpass_fir_demo.ipynb` |
+| Filter response from coefficients $b$ and $a$     | `iir_filter_demo.ipynb` |
+| Filter response from poles and zeros              | `pole_zero_demo.ipynb` |
+| **Python Functions** | | 
+| Calculate filter response                         | `filter_response.py` |
 | **Matlab** | |
 | Illustration of convolution                       | `convolution_demo.mlapp` |
 | Running-average FIR-filter                        | `running_average_demo.mlapp` |
@@ -95,5 +97,5 @@ Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClella
 | 3D illustration of pole-zero plot in the z-plane  |  `polezero3d.m` |
 | Scale x- and y-axes in units of &pi;              | `piaxis.m` |
 | **LabVIEW - Not maintained** | | 
-| FIR and IIR filter for noiose removal           | `FIR and IIR Filter.vi`|
+| FIR and IIR filter for noise removal           | `FIR and IIR Filter.vi`|
 

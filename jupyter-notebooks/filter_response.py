@@ -58,7 +58,14 @@ class FilterResponse:
         return H
 
     def pz(self, accuracy=4):
-        """Find poles and zeros."""
+        """Find poles and zeros.
+
+        Parameters
+        ----------
+        accuracy : float, optional
+            No. of decimals, results are considered identical if distance
+            is smaller than this
+        """
         n_max = max(len(self.b), len(self.a))
         z = self._find_roots(self.b, n_max, accuracy)
         p = self._find_roots(self.a, n_max, accuracy)

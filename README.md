@@ -3,9 +3,9 @@
 ## Ultrasound and Signal Processing
 
 This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
-The programs were written over several years using different tools, to the courses presently called  'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
+The programs were written over several years using different tools for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-New developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained. The LabVIEW files are no longer maintained but are still available .
+New developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained, the LabVIEW files are no longer maintained but still available .
 
 The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
  Matlab-apps (.mlapp)  and LabVIEW VIs (.vi) are stand-alone programs with a graphical user interface.
@@ -80,6 +80,9 @@ Programs written to illustrate phenomena in chapters 5, 6, 9, and 10 in McClella
 | -- | -- |
 | **Jupyter Notebook widgets** | | 
 | FIR-filter as convolution                         | `convolution_demo.ipynb` |
+| Filter responses and pole-zero diagram            |'iir_filter_demo.ipynb'|
+| Simple FIR bandpass filter demo |                 |'simple_bandpass_fir_demo.ipynb'|
+| Calculate filter response|                        |'filter_response.py'|
 | **Matlab** | |
 | Illustration of convolution                       | `convolution_demo.mlapp` |
 | Running-average FIR-filter                        | `running_average_demo.mlapp` |

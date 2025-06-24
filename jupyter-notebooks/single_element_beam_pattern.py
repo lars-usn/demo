@@ -5,12 +5,12 @@ import numpy as np
 import scipy.special as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.image as mpimg
 from matplotlib.ticker import MultipleLocator
 import ipywidgets as widgets
 
+
 # Mathematical functions
-
-
 def jinc(x):
     """jinc-function, Bessel-version of sinc, 2J(x)/x."""
     x[abs(x) < 1e-8] = 1e-8
@@ -39,11 +39,11 @@ def find_width(x, y, y_lim):
     return d_x
 
 
-# Main object
-class SingleElement:
+# Calculate and display lateral bem profile
+class SingleElement():
     """Define, calculate, and display transducer beam profile."""
 
-    def __init__(self):
+    def __init__(self, create_graphs=False, create_widgets=False):
         self.circular = False    # Circular or rectangular element
         self.width = 100e-3      # m   Element width (azimuth, x) or diameter
         self.height = 100e-3     # m   Element height (elevation, y)
@@ -60,7 +60,10 @@ class SingleElement:
         self.element_background = 'lightgray'
         self.text_face = 'whitesmoke'
 
-        self.ax, self.fig = self._initialise_graphs()
+        if create_graphs:
+            self.ax, self.fig = self._initialise_graphs()
+        if create_widgets:
+            self.widget_layout, self.widget = self._create_widgets()
 
     def x_max(self):
         """Max. scale on intensity plot."""
@@ -140,48 +143,48 @@ class SingleElement:
 
         # -6 dB limits
         px_lim = 0.5*max(p_x)
-        d_theta = find_width(self.theta(), p_x, px_lim)
-        d_theta = np.degrees(d_theta)
+        self.d_theta = find_width(self.theta(), p_x, px_lim)
 
         if not (self.circular):
             py_lim = 0.5*max(p_y)
-            d_phi = find_width(self.phi(), p_y, py_lim)
-            d_phi = np.degrees(d_phi)
+            self.d_phi = find_width(self.phi(), p_y, py_lim)
 
         # Text box with results
-        resulttext_1 = (fr'Frequency $f$: {self.frequency/1e3:.0f} kHz'
-                        '\n'
-                        fr'Wavelength $\lambda$: {self.wavelength()*1e3:.0f} mm'
-                        '\n\n')
+        self._show_resulttext()
 
-        if self.circular:
-            resulttext_2 = ('Circular element\n'
-                            fr'Diameter: {self.width*1e3:.1f} mm = {self.w_lambda():.1f} $\lambda$'
-                            '\n'
-                            fr'Opening angle (-6 dB): {d_theta:.1f}$^\circ$')
-        else:
-            resulttext_2 = (
-                'Rectangular element\n'
-                fr'Width (azimuth, x): {self.width*1e3:.1f} mm = {self.w_lambda():.1f} $\lambda$'
-                '\n'
-                fr'Heigth (azimuth, y): {self.height*1e3:.1f} mm = {self.h_lambda():.1f} $\lambda$'
-                '\n'
-                f'Opening angles (-6 dB)\n'
-                fr'    Azimuth (x): {d_theta:.1f}$^\circ$'
-                '\n'
-                fr'    Elevation (y): {d_phi:.1f}$^\circ$')
+        return
 
-        self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.2, 0.1, resulttext_1 + resulttext_2,
-                      fontsize='medium',
-                      bbox={'facecolor': self.text_face,
-                            'boxstyle': 'Round',
-                            'pad': 2})
+    def display_interactively(self,
+                              circular=None, frequency=None,
+                              width=None, height=None):
+        """Scale inputs and  display results."""
+        if circular is not None:
+            self.circular = circular
+        if frequency is not None:
+            self.frequency = 1e3*frequency
+        if width is not None:
+            self.width = 1e-3*width
+        if height is not None:
+            self.height = 1e-3*height
+
+        self.display_result()
 
         return
 
     ###################################################################
     # Non-public methods
+
+    def _add_logo(self, fig):
+        """Add USN logo to plots."""
+        try:
+            img = mpimg.imread('usn-logo-purple.png')
+            ax_logo = fig.add_axes([0.05, 0.05, 0.2, 0.2], anchor='SW')
+            ax_logo.imshow(img)
+            ax_logo.axis('off')
+        except Exception:
+            pass
+
+        return
 
     def _remove_artists(self, ax):
         """Clear axis of all old atrists."""
@@ -196,10 +199,10 @@ class SingleElement:
 
         try:
             self.cbar.remove()
-        except:
+        except Exception:
             pass
 
-        return 0
+        return
 
     def _remove_fig_text(self, fig):
         for art in list(self.fig.texts):
@@ -230,9 +233,11 @@ class SingleElement:
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 
-        ax = {'element':  fig.add_subplot(2, 3, 1),
+        self._add_logo(fig)
+
+        ax = {'element': fig.add_subplot(2, 3, 1),
               'intensity': fig.add_subplot(2, 3, 2),
-              'azimuth':  fig.add_subplot(2, 3, 3),
+              'azimuth': fig.add_subplot(2, 3, 3),
               'elevation': fig.add_subplot(2, 3, 6),
               }
 
@@ -279,6 +284,65 @@ class SingleElement:
 
         return ax, fig
 
+    def _create_widgets(self):
+        """Create widgets for interactive operation."""
+        widget_style = {'description_width': 'initial'}
+
+        title = 'Lateral Beam-profile from Single Element Transducer'
+        title_widget = widgets.Label(title,
+                                     style=dict(font_weight='bold'))
+
+        shape_widget = widgets.Dropdown(options=[('Rectangular', False),
+                                                 ('Circular', True)],
+                                        value=False,
+                                        description='Shape',
+                                        layout=widgets.Layout(width='50%'),
+                                        style=widget_style)
+
+        label = ['Frequency', 'Width / Diameter', 'Height']
+        label_widget = [widgets.Label(labeltext,
+                                      layout=widgets.Layout(width='20%'),
+                                      style=widget_style)
+                        for labeltext in label]
+
+        layout_settings = {'continuous_update': True,
+                           'layout': widgets.Layout(width='80%'),
+                           'style': widget_style}
+
+        frequency_widget = widgets.FloatSlider(min=1, max=400,
+                                               value=100, step=1,
+                                               readout_format='.0f',
+                                               description='[kHz]',
+                                               **layout_settings)
+
+        size_widget = [widgets.FloatSlider(min=1, max=400,
+                                           value=100, step=1,
+                                           readout_format='.0f',
+                                           description='[mm]',
+                                           **layout_settings)
+                       for k in range(2)]
+
+        parameter_widget = [frequency_widget] + size_widget
+        parameter_line = [widgets.HBox([label_widget[k], parameter_widget[k]])
+                          for k in range(len(label))]
+
+        col = [widgets.VBox([shape_widget],
+                            layout=widgets.Layout(width='30%')),
+               widgets.VBox(parameter_line,
+                            layout=widgets.Layout(width='50%'))]
+
+        grid = widgets.HBox(col, layout=widgets.Layout(width='90%'))
+        widget_layout = widgets.VBox([title_widget, grid],
+                                     layout=widgets.Layout(width='90%'))
+
+        widget = {'circular': shape_widget,
+                  'frequency': frequency_widget,
+                  'width': size_widget[0],
+                  'height': size_widget[1]
+                  }
+
+        return widget_layout, widget
+
     def _p_circ(self, theta):
         """Calculate pressure field from circular element, 1D or 2D."""
         p = jinc(self.w_lambda() * np.sin(theta))
@@ -290,3 +354,44 @@ class SingleElement:
             * np.sinc(self.h_lambda() * np.sin(phi))
 
         return p
+
+    def _show_resulttext(self):
+        """Create text box and fill with results."""
+        resulttext_1 = (fr'Frequency $f$: {self.frequency/1e3:.0f} kHz'
+                        '\n'
+                        r'Wavelength $\lambda$:'
+                        f'{self.wavelength()*1e3:.0f} mm'
+                        '\n\n')
+
+        if self.circular:
+            resulttext_2 = ('Circular element\n'
+                            f'  Diameter: {self.width*1e3:.1f} mm = '
+                            fr'{self.w_lambda():.1f} $\lambda$'
+                            '\n'
+                            '  Opening angle (-6 dB): '
+                            fr'{np.degrees(self.d_theta):.1f}$^\circ$')
+        else:
+            resulttext_2 = ('Rectangular element\n'
+                            '  Width (azimuth, x): '
+                            fr'{self.width*1e3:.1f} mm = '
+                            fr'{self.w_lambda():.1f} $\lambda$'
+                            '\n'
+                            '  Heigth (elevation, y): '
+                            fr'{self.height*1e3:.1f} mm = '
+                            fr'{self.h_lambda():.1f} $\lambda$'
+                            '\n'
+                            f'Opening angles (-6 dB)\n'
+                            fr'  Azimuth: '
+                            fr'{np.degrees(self.d_theta):.1f}$^\circ$'
+                            '\n'
+                            fr'  Elevation: '
+                            fr'{np.degrees(self.d_phi):.1f}$^\circ$')
+
+        self._remove_fig_text(self.fig.texts)
+        self.fig.text(0.35, 0.10, resulttext_1 + resulttext_2,
+                      fontsize='medium',
+                      bbox={'facecolor': self.text_face,
+                            'boxstyle': 'Round',
+                            'pad': 1})
+
+        return

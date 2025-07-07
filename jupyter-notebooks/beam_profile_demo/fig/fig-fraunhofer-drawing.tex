@@ -3,108 +3,90 @@
 \usepackage{tikz}
 
 \begin{document}
+	
+% Dimensions
+\def\xmin{-0.8}		% x-axis minimum
+\def\xmax{0.8}		% x-axis maximum
+\def\xa{0.5}        % Aperture x-limit
+\def\za{0.06}       % Aperture thickness
+\def\x1{0.4}		% Source coordinate
+
+\def\zmin{-0.4}		% z-axis minimum
+\def\zmax{3.5}		% z-axis maximum
+
+\def\r{3.0}			% r-vector length
+\def\angle{12}		% r-vector angle (theta)
+
+\def\xoff{-2.5}		% Offset between figures
+
+\def\ztext{0.2}		% z-position for text
+	
+% Colours
+\colorlet{aperturecolor}{red!80!black}		% Aperture, vibrating surface
+\colorlet{pathcolor}{blue!90!black}			% Sound paths (vectors)
+
+% Styles  
+\tikzstyle{axisline}=[black, ->, thick] 
+\tikzstyle{Rline} = [pathcolor, ->, thick]
+\tikzstyle{rline} = [pathcolor, ->, thick, dotted]
+\tikzstyle{wall} = [color= blue!60!white, opacity=0.1]
+
+% Background drawing, comman for all
+\newcommand{\radiatingsurface}[3]{
+	% Wall
+	\fill[wall] (\zmin, \xmin+#1) rectangle  (0.0, \xmax+#1);
+	\fill[fill=aperturecolor, opacity=0.5] (-\za, -\xa+#1) rectangle (0.0, \xa+#1);
+
+	% Axes
+	\draw[axisline] (\zmin, +#1) -- (\zmax, +#1)  node(zaxis)[below]{$z$};
+	\draw[axisline] (0, \xmin+#1) -- (0, \xmax+#1)  node(xaxis)[right]{$x$};
+	
+	% Sound paths
+	\draw[rline] (0, +#1) -- ++(\angle:\r)  
+		node[midway, anchor=north]{$\vec{r}$}
+		coordinate (xf);
+	
+	\draw[pathcolor] (0.5, +#1)  arc(0:\angle:0.5) 
+		node[midway, right, pathcolor] {$\theta$};
+
+	\draw[pathcolor, ->, thick] (0, +#1) -- (0, \x1+#1)
+		node[near end, anchor=south east]{$\vec{r_1}$};		
+
+	% Annotations
+	\node[anchor=south west] at (\zmin, \xmax +0.2 +#1) {\textbf{#2}};
+
+	\node[anchor=south west] at (xf)  {$(x,y,z)$};
+	\draw[dotted] (xf) -- (xf |- zaxis);
+
+	\draw(0, \x1+#1) -- ++(0.20, 0.20) 
+		node [anchor=south west] {$(x_1,y_1,0)$};	
+
+	\draw[aperturecolor](0, -\x1+#1) -- ++(0.05, -0.05)
+		node[aperturecolor, anchor=west] {$S_1$};
+		
+	\node[anchor=south west] at (\ztext, \xmin+#1) {#3};		
+	}
+
 
 \begin{tikzpicture}[scale=3]%[>=stealth]
 
-	\def\ymin{-0.8}
-	\def\ymax{0.8}
-	\def\zmin{-0.4}
-	\def\zmax{4.2}
-	
-	\def\r{4.0}
-	\def\ztext{0.5}
-	
-	\def\y1{0.4}
-	\def\ya{0.5}
-	\def\za{0.03}
+% Real situation
+\radiatingsurface{0}
+	{Real situation}
+	{$\sin \theta =\frac{x}{r} \quad,\qquad R= |\vec{r}-\vec{r_1}| = \sqrt{(x-x_1)^2 + (y-y_1)^2 +z^2}$}
 
-    \def\angle{12}
-	
-	\def\yoff{-2.5}	
-	
-	% Colours
-	\colorlet{wallcolor}{blue!60!white}
-	\colorlet{aperturecolor}{red!70!white}
-	\colorlet{pathcolor}{blue!90!black}
-	
-	% Styles  
-	\tikzstyle{axisline}=[->, thick] 
-	\tikzstyle{Rline} = [pathcolor, ->, thick]
-	\tikzstyle{rline} = [pathcolor, ->, thick, dotted] 
-	
-	
-	%== Real situation =======================================================
-	\node[anchor=south west] at (\zmin, \ymax+0.2) {\textbf{Real situation}};
+\draw[Rline] (0, \x1) -- (xf)
+		node[near end, anchor=south east]{$\vec{R} = \vec{r} - \vec{r_1}$};
 
-	\node[anchor=south west] at (\ztext, -0.4) 
-			{$\sin \theta =\frac{x}{r} \quad,\qquad R= |\vec{r}-\vec{r_1}| = \sqrt{(x-x_1)^2 + (y-y_1)^2 +z^2}$}
-			coordinate (textpos);
+% Far-field approximation	
+\radiatingsurface{\xoff}
+	{Far-field approximation}
+	{$R \approx r - x_1 \sin \theta$};
+
+\draw[Rline] (0, \x1+\xoff) -- ++(\angle:\r)  
+	node[near end, anchor=south east]{$\vec{R} = \vec{r} - \vec{r_1}$};
 	
-	\draw[aperturecolor](0, -\y1) -- ++(0.10, -0.05)
-		node[aperturecolor, anchor=west] {$S_1$};
-
-	% Axes
-	\draw[axisline] (\zmin, 0) -- (\zmax, 0)  node(zaxis)[below]{$z$};
-	\draw[axisline] (0, \ymin) -- (0, \ymax)  node(yaxis)[right]{$y$};
-	
-	% Wall
-	\fill[fill=wallcolor, opacity=0.1] (\zmin, \ymin) rectangle  (0.0, \ymax);
-	\fill[fill=aperturecolor, opacity=0.8] (-\za, -\ya) rectangle (0.0, \ya);
-	
-	% Sound paths
-	\draw[rline] (0, 0) -- ++(\angle:\r)  
-				node[midway, anchor=north]{$\vec{r}$}
-				coordinate (xf);
-
-	\draw[Rline] (0, \y1) -- (xf)
-				node[near end, anchor=south east]{$\vec{R} = \vec{r} - \vec{r_1}$};
-
-	\draw[pathcolor, ->, thick] (0, 0) -- (0, \y1) 
-				node[near end, anchor=south east]{$\vec{r_1}$};
-				
-	\draw[pathcolor] (0.5, 0.0)  arc(0:\angle:0.5) node[midway, right, pathcolor] {$\theta$};
-
-	\draw[dotted] (xf) -- (xf |- zaxis);
-	\node[anchor=south west] at (xf)  {$(x,y,z)$};
-	\draw(0, \y1) -- ++(0.10, 0.20) node [anchor=south west] {$(x_1,y_1,0)$};
-	
-	%== Far-field aproximation ===================================================
-	\node[anchor=south west] at (\zmin, \ymax+0.2+\yoff) {\textbf{Far-field approximation}};
-
-	\node[anchor=south west] at (\ztext, -0.4+\yoff) 
-		{$R \approx r - x_1 \sin \theta$};
-	
-	\draw[aperturecolor](0, -\y1+\yoff) -- ++(0.10, -0.05)
-		node[aperturecolor, anchor=west] {$S_1$};
-
-	% Axes
-	\draw[axisline] (\zmin, \yoff) -- (\zmax, \yoff)  node(zaxis)[below]{$z$};
-	\draw[axisline] (0, \ymin+\yoff) -- (0, \ymax+\yoff)  node(yaxis)[right]{$y$};
-	
-	% Wall
-	\fill[fill=wallcolor, opacity=0.1] (\zmin, \ymin+\yoff) rectangle  (0.0, \ymax+\yoff);
-	\fill[fill=aperturecolor, opacity=0.8] (-\za, -\ya+\yoff) rectangle (0.0, \ya+\yoff);
-	
-	% Sound paths
-	\draw[rline] (0, \yoff) -- ++(\angle:\r)  
-				node(rline)[midway, anchor=north]{$\vec{r}$}
-				coordinate (xf);
-				
-	\draw[Rline] (0, \y1+\yoff) -- ++(\angle:\r)  
-				node[near end, anchor=south east]{$\vec{R} = \vec{r} - \vec{r_1}$};
-
-	\draw[pathcolor] (0.5, +\yoff)  arc(0:\angle:0.5) node[midway, right, pathcolor] {$\theta$};
-
-	\draw[pathcolor, ->, thick] (0, \yoff) -- (0, \y1+\yoff) coordinate (r1)
-			node[near end, anchor=south east]{$\vec{r_1}$};
-			
-	\draw[color=black, -] (r1) -- ++(-90+\angle:\y1);
-
-	\draw[dotted] (xf) -- (xf |- zaxis);
-	\node[anchor=south west] at (xf)  {$(x,y,z)$};
-	
-	\draw(0, \y1+\yoff) -- ++(0.10, 0.20) node [anchor=south west] {$(x_1,y_1,0)$};
-
+\draw[black, -] (0, \x1+\xoff) -- ++(-90+\angle:\x1);	
 
 \end{tikzpicture}
 

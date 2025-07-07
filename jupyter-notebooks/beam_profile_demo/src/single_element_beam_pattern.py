@@ -356,7 +356,7 @@ class SingleElement():
                                                  ('Circular', True)],
                                         value=False,
                                         description='Shape',
-                                        layout=widgets.Layout(width='50%'))
+                                        layout=widgets.Layout(width='80%'))
 
         label = ['Frequency', 'Width / Diameter', 'Height']
         label_widget = [widgets.Label(labeltext,

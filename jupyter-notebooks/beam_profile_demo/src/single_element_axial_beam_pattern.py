@@ -73,12 +73,17 @@ def find_width(x, y, y_lim):
     """Find width of function y(x) where y>y_lim.
 
     Assumes y(x) has a unique peak.
-    Primitive version, no interpolation yet.
+    Linear interpolation to impo
     """
     k = np.flatnonzero(y > y_lim)
-    d_x = x[k[-1]] - x[k[0]]
+    kh = [k[-1], k[-1]+1]
+    kl = [k[0], k[0]-1]
 
-    return d_x
+    xl = [x[k[0]] + (y_lim - y[k[0]])
+          * (x[k[1]] - x[k[0]]) / (y[k[1]] - y[k[0]])
+          for k in [kl, kh]]
+
+    return xl
 
 
 # Calculate and display lateral bem profile
@@ -111,7 +116,12 @@ class SingleElement():
 
     def d_theta(self):
         """Calculate opening angle from theory, two-sided, -6 dB."""
-        return 2*np.asin(0.603 * self.wavelength()/self.width)
+        if self.circular:
+            x_6 = 0.705   # 6 dB limit, circular aperture
+        else:
+            x_6 = 0.603   # 6 dB limit, line (rectangular) aperture
+
+        return 2*np.asin(x_6 * self.wavelength()/self.width)
 
     def z_r(self):
         """Rayleigh distance, far-field limit."""
@@ -119,11 +129,11 @@ class SingleElement():
 
     def x(self):
         """Lateral points (azimuth, x)."""
-        return self._p()[1]
+        return self._points()[1]
 
     def z(self):
         """Axial points (z)."""
-        return self._p()[0]
+        return self._points()[0]
 
     def r(self):
         """Distance from aperture centre to point (z,x)."""
@@ -151,6 +161,7 @@ class SingleElement():
             self._remove_artists(ax)
 
         marker_color = 'white'
+        element_color = 'maroon'
 
         # Intensity image
         x = self.x()[:, 0]
@@ -163,6 +174,16 @@ class SingleElement():
                                      color=marker_color,
                                      linestyle='dotted')
 
+        self.ax['intensity'].plot([0.0, 0.0], self.width/2*np.array([-1, 1]),
+                                  color=element_color,
+                                  linewidth=4)
+
+        for w in [-self.width, self.width]:
+            self.ax['intensity'].plot([0.0, self.z_r()],
+                                      w/2*np.array([1, 1]),
+                                      color=element_color,
+                                      linestyle='dotted')
+
         self.cbar = self.fig.colorbar(im, ax=self.ax['intensity'])
         db_colorbar(self.cbar, db_sep=6)
 
@@ -174,27 +195,27 @@ class SingleElement():
 
         # Lateral beam profile
         k_ref = np.argmin(abs(z-self.z_ref))
-
         p_db = db(self.p()[:, k_ref], p_ref=self.p().max())
         self.ax['azimuth'].plot(x, p_db, color='C0')
-        self.ax['azimuth'].axhline(y=p_db.max()-6,
-                                   color='C1',
-                                   linestyle='solid')
 
-        self.d_x = find_width(x, p_db, p_db.max()-6)
+        indicator_line = {'color': 'red',
+                          'linestyle': 'dotted'}
 
-        x_lim = self.z_ref * np.tan(self.d_theta()/2)
-        for x in [-x_lim, x_lim]:
-            self.ax['azimuth'].axvline(x=x,
-                                       color='C1',
-                                       linestyle='solid')
+        self.ax['azimuth'].axhline(y=p_db.max()-6, **indicator_line)
+
+        self.xl = find_width(x, p_db, p_db.max()-6)
+        self.dx = self.xl[1] - self.xl[0]
+
+        for x in self.xl:
+            self.ax['azimuth'].axvline(x=x, **indicator_line)
 
         # Text box with results
         self._show_resulttext()
 
         return
 
-    def display_interactively(self, frequency=100, width=100, z_ref=1.0):
+    def display_interactively(self, circular=True, frequency=100,
+                              width=100, z_ref=1.0):
         """Scale inputs and  display results.
 
         For interactive operation with  dimensions in mm and frequency in kHz.
@@ -202,6 +223,8 @@ class SingleElement():
 
         Parameters
         ----------
+        circular: boolean
+            Circular aperture or 1D line transducer
         frequency: float
             Frequency in kHz
         widh: float
@@ -209,7 +232,7 @@ class SingleElement():
         z_ref: float
             Reference distance for beam profile graph in m
         """
-        print(frequency)
+        self.circular = circular
         self.frequency = 1e3*frequency
         self.width = 1e-3*width
         self.z_ref = z_ref
@@ -221,7 +244,7 @@ class SingleElement():
     ###################################################################
     # Non-public methods
 
-    def _p(self):
+    def _points(self):
         """Mesh of points (z,x)."""
         return np.meshgrid(np.linspace(self.z_r(), self.z_max, 500),
                            np.linspace(-self.x_max, self.x_max, 301))
@@ -263,26 +286,10 @@ class SingleElement():
 
         return 0
 
-    def _draw_element(self, ax):
-        """Draw image of aperture in specified axis."""
-        w_mm = self.width*1e3
-        h_mm = self.height*1e3
-        if self.circular:
-            illustration = patches.Circle((0, 0), w_mm/2,
-                                          fill=True,
-                                          color=self.elementcolor)
-        else:
-            illustration = patches.Rectangle((-w_mm/2, -h_mm/2), w_mm, h_mm,
-                                             fill=True,
-                                             color=self.elementcolor)
-        ax.add_patch(illustration)
-
-        return 0
-
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close('all')
-        fig = plt.figure(figsize=[12, 6],
+        fig = plt.figure(figsize=[14, 6],
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 
@@ -314,7 +321,6 @@ class SingleElement():
 
     def _show_resulttext(self):
         """Create text box and fill with results."""
-
         if self.circular:
             headertext = 'Cicular aperture'
         else:
@@ -332,13 +338,13 @@ class SingleElement():
                       fr'{self.z_r():.1f} m'
                       '\n'
                       fr'Beam width (-6 dB) at distance {self.z_ref:.2} m: '
-                      fr'{1e3*self.d_x:.0f} mm'
+                      fr'{1e3*self.dx:.0f} mm'
                       '\n'
                       'Opening angle : '
                       fr'{np.degrees(self.d_theta()):.1f}$^\circ$')
 
         self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.10, 0.30, headertext + '\n' + resulttext,
+        self.fig.text(0.07, 0.25, headertext + '\n' + resulttext,
                       fontsize='medium',
                       bbox={'facecolor': self.text_face,
                             'boxstyle': 'Round',
@@ -353,13 +359,19 @@ class SingleElement():
         title = 'Axial Beam-profile from Single Element Transducer'
         title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
+        shape_widget = widgets.Dropdown(options=[('Line transducer (1D)', False),
+                                                 ('Circular aperture', True)],
+                                        value=True,
+                                        description='Shape',
+                                        layout=widgets.Layout(width='80%'))
+
         label = ['Frequency', 'Width', 'Ref. distance']
         label_widget = [widgets.Label(labeltext,
-                                      layout=widgets.Layout(width='15%'))
+                                      layout=widgets.Layout(width='12%'))
                         for labeltext in label]
 
         layout_settings = {'continuous_update': True,
-                           'layout': widgets.Layout(width='90%'),
+                           'layout': widgets.Layout(width='80%'),
                            'style': widget_style}
 
         frequency_widget = widgets.FloatSlider(min=1, max=400,
@@ -384,13 +396,18 @@ class SingleElement():
         parameter_line = [widgets.HBox([label_widget[k], parameter_widget[k]])
                           for k in range(len(label))]
 
-        widget_layout = widgets.VBox([title_widget,
-                                      parameter_line[0],
-                                      parameter_line[1],
-                                      parameter_line[2]],
-                                     layout=widgets.Layout(width='50%'))
+        col = [widgets.VBox([shape_widget],
+                            layout=widgets.Layout(width='25%')),
+               widgets.VBox(parameter_line,
+                            layout=widgets.Layout(width='70%'))]
 
-        widget = {'frequency': frequency_widget,
+        grid = widgets.HBox(col, layout=widgets.Layout(width='90%'))
+
+        widget_layout = widgets.VBox([title_widget, grid],
+                                     layout=widgets.Layout(width='90%'))
+
+        widget = {'circular': shape_widget,
+                  'frequency': frequency_widget,
                   'width': size_widget,
                   'distance': distance_widget
                   }

@@ -2,7 +2,6 @@
 
 # Libraries
 import numpy as np
-import scipy.special as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.image as mpimg
@@ -10,63 +9,7 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
 
-
-# Mathematical functions
-def jinc(x):
-    """jinc-function, Bessel-version of sinc, 2J(x)/x."""
-    x[abs(x) < 1e-8] = 1e-8
-    j = 2 * sp.jn(1, np.pi*x)/(np.pi * x)
-    j[abs(x) < 1e-8] = 1.0
-    return j
-
-
-def db(p, p_ref=1e-6):
-    """Decibel from pressure."""
-    if p_ref == 0:
-        p_ref = np.max(p)
-
-    return 20 * np.log10(abs(p/p_ref))
-
-
-def db_axis(ax, db_min=-40, db_max=0, db_sep=6):
-    """Configure dB-scaled axis.
-
-    Parameters
-    ----------
-    ax: axis object
-        Axis to configure
-    db_min: float
-        Minimum on dB-axis
-    db_max: float
-        Maximum on dB-axis
-    db_sep: float
-        Separation between major ticks
-    """
-    ax.set_ylim(db_min, db_max)
-
-    ax.yaxis.set_major_locator(MultipleLocator(db_sep))
-    ax.yaxis.set_minor_locator(MultipleLocator(1))
-    ax.grid(visible=True, which='major', axis='y')
-
-    return
-
-
-def db_colorbar(cbar, db_sep=6):
-    """Configure dB-scaled colorbar.
-
-    Parameters
-    ----------
-    cbar: Colorbar object
-        Colorbar to configure
-    db_sep: float
-        Separation between major ticks
-    """
-    tick_min = (cbar.vmin // db_sep) * db_sep
-    db_ticks = np.arange(tick_min, cbar.vmax+db_sep, db_sep)
-    cbar.set_ticks(db_ticks)
-    cbar.minorticks_off()
-
-    return
+import curve_analysis as ca
 
 
 def find_width(x, y, y_lim):
@@ -128,25 +71,25 @@ class SingleElement():
         return self.width**2/(2*self.wavelength())
 
     def x(self):
-        """Lateral points (azimuth, x)."""
+        """Lateral points(azimuth, x)."""
         return self._points()[1]
 
     def z(self):
-        """Axial points (z)."""
+        """Axial points(z)."""
         return self._points()[0]
 
     def r(self):
-        """Distance from aperture centre to point (z,x)."""
+        """Distance from aperture centre to point(z, x)."""
         return np.sqrt(self.z()**2 + self.x()**2)
 
     def theta(self):
-        """Azimuth (x) angle to point (z,x)."""
+        """Azimuth(x) angle to point(z, x)."""
         return np.atan2(self.x(), self.z())
 
     def p(self):
         """Calculate pressure field."""
         if self.circular:
-            p = 1/self.r() * jinc(self.w_lambda() * np.sin(self.theta()))
+            p = 1/self.r() * ca.jinc(self.w_lambda() * np.sin(self.theta()))
         else:
             p = 1/self.r() * np.sinc(self.w_lambda() * np.sin(self.theta()))
         return p
@@ -166,7 +109,7 @@ class SingleElement():
         # Intensity image
         x = self.x()[:, 0]
         z = self.z()[0, :]
-        im = self.ax['intensity'].pcolormesh(z, x, db(self.p(), p_ref=0),
+        im = self.ax['intensity'].pcolormesh(z, x, ca.db(self.p(), p_ref=0),
                                              vmin=self.db_min,
                                              cmap='magma')
 
@@ -185,7 +128,7 @@ class SingleElement():
                                       linestyle='dotted')
 
         self.cbar = self.fig.colorbar(im, ax=self.ax['intensity'])
-        db_colorbar(self.cbar, db_sep=6)
+        ca.db_colorbar(self.cbar, db_sep=6)
 
         x_line = np.array([0, self.z_max])
         y_line = np.array([0, self.z_max*np.tan(self.d_theta()/2)])
@@ -195,7 +138,8 @@ class SingleElement():
 
         # Lateral beam profile
         k_ref = np.argmin(abs(z-self.z_ref))
-        p_db = db(self.p()[:, k_ref], p_ref=self.p().max())
+        p = self.p()[:, k_ref]
+        p_db = ca.db(p, p_ref=self.p().max())
         self.ax['azimuth'].plot(x, p_db, color='C0')
 
         indicator_line = {'color': 'red',
@@ -203,10 +147,15 @@ class SingleElement():
 
         self.ax['azimuth'].axhline(y=p_db.max()-6, **indicator_line)
 
-        self.xl = find_width(x, p_db, p_db.max()-6)
-        self.dx = self.xl[1] - self.xl[0]
+        # Find reference values
+        ref = ca.Refpoints(x=x, y=p)
+        xl, _ = ref.ref_values(y_rel=0.5)   # -6dB limits
+        self.dx = xl[1] - xl[0]
 
-        for x in self.xl:
+        self.x_sidelobe, self.y_sidelobe = ref.sidelobe()   # Highest sidelobe
+        self.db_sidelobe = ca.db(self.y_sidelobe, p_ref=p.max())
+
+        for x in xl:
             self.ax['azimuth'].axvline(x=x, **indicator_line)
 
         # Text box with results
@@ -216,9 +165,9 @@ class SingleElement():
 
     def display_interactively(self, circular=True, frequency=100,
                               width=100, z_ref=1.0):
-        """Scale inputs and  display results.
+        """Scale inputs and display results.
 
-        For interactive operation with  dimensions in mm and frequency in kHz.
+        For interactive operation with dimensions in mm and frequency in kHz.
         Existing values are used if a parameter is omitted.
 
         Parameters
@@ -228,7 +177,7 @@ class SingleElement():
         frequency: float
             Frequency in kHz
         widh: float
-            Element width (azimuth, x) in mm
+            Element width(azimuth, x) in mm
         z_ref: float
             Reference distance for beam profile graph in m
         """
@@ -245,7 +194,7 @@ class SingleElement():
     # Non-public methods
 
     def _points(self):
-        """Mesh of points (z,x)."""
+        """Mesh of points(z, x)."""
         return np.meshgrid(np.linspace(self.z_r(), self.z_max, 500),
                            np.linspace(-self.x_max, self.x_max, 301))
 
@@ -313,7 +262,7 @@ class SingleElement():
                           ylabel='Power [dB re. max]',
                           xlim=self.x_max*np.array([-1, 1]))
 
-        db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
+        ca.db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
 
         ax['azimuth'].grid(visible=True, which='both', axis='x')
 
@@ -337,14 +286,26 @@ class SingleElement():
                       fr'Rayleigh distance $z_r$ = '
                       fr'{self.z_r():.1f} m'
                       '\n'
-                      fr'Beam width (-6 dB) at distance {self.z_ref:.2} m: '
-                      fr'{1e3*self.dx:.0f} mm'
+                      'Opening angle: '
+                      fr'{np.degrees(self.d_theta()):.1f}$^\circ$'
+                      '\n\n'
+                      fr'Reference distance {self.z_ref:.2} m'
                       '\n'
-                      'Opening angle : '
-                      fr'{np.degrees(self.d_theta()):.1f}$^\circ$')
+                      fr'    Beam width (-6 dB): '
+                      fr'{1e3*self.dx:.0f} mm'
+                      )
+
+        if np.isnan(self.x_sidelobe):
+            sidelobetext = ''
+        else:
+            sidelobetext = ('    Highest sidelobe: '
+                            fr'$x$ = {self.x_sidelobe:.2f} m, '
+                            fr'{self.db_sidelobe:.1f} dB'
+                            )
 
         self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.07, 0.25, headertext + '\n' + resulttext,
+        self.fig.text(0.07, 0.20,
+                      headertext + '\n' + resulttext + '\n' + sidelobetext,
                       fontsize='medium',
                       bbox={'facecolor': self.text_face,
                             'boxstyle': 'Round',
@@ -359,11 +320,12 @@ class SingleElement():
         title = 'Axial Beam-profile from Single Element Transducer'
         title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
-        shape_widget = widgets.Dropdown(options=[('Line transducer (1D)', False),
-                                                 ('Circular aperture', True)],
-                                        value=True,
-                                        description='Shape',
-                                        layout=widgets.Layout(width='80%'))
+        shape_widget = widgets.Dropdown(options=[
+            ('Line transducer (1D)', False),
+            ('Circular aperture', True)],
+            value=True,
+            description='Shape',
+            layout=widgets.Layout(width='80%'))
 
         label = ['Frequency', 'Width', 'Ref. distance']
         label_widget = [widgets.Label(labeltext,

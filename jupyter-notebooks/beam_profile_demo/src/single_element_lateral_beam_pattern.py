@@ -30,7 +30,7 @@ class Transducer():
         self.z_ref = 1        # m    Reference distance for lateral profile
         self.db_min = -30     # dB   Min. on dB-scales
 
-        self.y_lim = 0.5      # Limit for marker
+        self.y_lim = 0.5      # Relativelimit for markers
         self.lim_text = '-6 dB'
 
         self.elementcolor = 'navy'

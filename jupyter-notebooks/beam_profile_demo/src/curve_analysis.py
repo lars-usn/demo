@@ -47,10 +47,6 @@ def db_axis(ax, db_min=-40, db_max=0, db_sep=6):
     """
     ax.set_ylim(db_min, db_max)
 
-    ref = [-6, -3]
-    for v in ref:
-        ax.axhline(y=v, xmin=0.4, xmax=0.6, color='grey', linestyle='solid')
-
     ax.yaxis.set_major_locator(MultipleLocator(db_sep))
     ax.yaxis.set_minor_locator(MultipleLocator(1))
     ax.xaxis.set_major_locator(MultipleLocator(0.5))
@@ -161,23 +157,20 @@ class Refpoints():
 
         return x, y
 
-    # Zero crossings
     def ref_values(self, y_rel=0.5):
         """Find positions of reference values.
 
         Arguments
         ---------
         y_rel: float
-            Reference values relative max
+            Reference value relative max
 
         Returns
         -------
         x: array of float
             Positions of reference values
-        y: array of float
-            Values of reference values
-        name: array of strings
-            Names of reference points
+        y_lim: float
+            Reference value
         """
         k_max = self.k_max()
         x_max, y_max = self.main_peak()
@@ -210,3 +203,23 @@ class Refpoints():
             x[k] = np.interp(y_lim, ym[k], xm[k])
 
         return x, y_lim
+
+    def lobe_width(self, y_rel=0.5):
+        """Find width between reference values.
+
+        Arguments
+        ---------
+        y_rel: float
+            Reference value relative max
+
+        Returns
+        -------
+        dx: float
+            Width between reference values
+        y_lim: float
+            Reference value
+        """
+        x_lim, y_lim = self.ref_values(y_rel)
+        dx = x_lim[1] - x_lim[0]
+
+        return dx, y_lim

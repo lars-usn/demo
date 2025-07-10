@@ -2,72 +2,19 @@
 
 # Libraries
 import numpy as np
-import scipy.special as sp
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.image as mpimg
 from matplotlib.ticker import MultipleLocator
+from matplotlib import transforms
+
 import ipywidgets as widgets
+
+import curve_analysis as ca
 
 
 # Mathematical functions
-def jinc(x):
-    """jinc-function, Bessel-version of sinc, 2J(x)/x."""
-    x[abs(x) < 1e-8] = 1e-8
-    j = 2 * sp.jn(1, np.pi*x)/(np.pi * x)
-    j[abs(x) < 1e-8] = 1.0
-    return j
-
-
-def db(p, p_ref=1e-6):
-    """Decibel from pressure."""
-    if p_ref == 0:
-        p_ref = np.max(p)
-
-    return 20 * np.log10(abs(p/p_ref))
-
-
-def db_axis(ax, db_min=-40, db_max=0, db_sep=6):
-    """Configure dB-scaled axis.
-
-    Parameters
-    ----------
-    ax: axis object
-        Axis to configure
-    db_min: float
-        Minimum on dB-axis
-    db_max: float
-        Maximum on dB-axis
-    db_sep: float
-        Separation between major ticks
-    """
-    ax.set_ylim(db_min, db_max)
-
-    ax.yaxis.set_major_locator(MultipleLocator(db_sep))
-    ax.yaxis.set_minor_locator(MultipleLocator(1))
-    ax.grid(visible=True, which='major', axis='y')
-
-    return
-
-
-def db_colorbar(cbar, db_sep=6):
-    """Configure dB-scaled colorbar.
-
-    Parameters
-    ----------
-    cbar: Colorbar object
-        Colorbar to configure
-    db_sep: float
-        Separation between major ticks
-    """
-    tick_min = (cbar.vmin // db_sep) * db_sep
-    db_ticks = np.arange(tick_min, cbar.vmax+db_sep, db_sep)
-    cbar.set_ticks(db_ticks)
-    cbar.minorticks_off()
-
-    return
-
-
 def find_width(x, y, y_lim):
     """Find width of function y(x) where y>y_lim.
 
@@ -81,7 +28,7 @@ def find_width(x, y, y_lim):
 
 
 # Calculate and display lateral bem profile
-class SingleElement():
+class Transducer():
     """Define, calculate, and display transducer beam profile."""
 
     def __init__(self, create_graphs=False, create_widgets=False):
@@ -170,36 +117,42 @@ class SingleElement():
             p_y = self._p_rect(theta=0, phi=self.phi())
             p_xy = self._p_rect(theta=self.theta_xy(), phi=self.phi_xy())
 
-        self.ax['azimuth'].plot(np.degrees(self.theta()),
-                                db(p_x, p_ref=0), color='C0')
-        self.ax['azimuth'].axhline(y=db_marker, color=marker_color)
+        self._plot_beamprofile(self.ax['azimuth'],
+                               np.degrees(self.theta()),
+                               ca.db(p_x, p_ref=0),
+                               y_marker=db_marker)
 
         if not (p_y is None):
-            self.ax['elevation'].plot(np.degrees(self.phi()),
-                                      db(p_y, p_ref=0), color='C0')
-            self.ax['elevation'].axhline(y=db_marker, color=marker_color)
+            self._plot_beamprofile(self.ax['elevation'],
+                                   np.degrees(self.phi()),
+                                   ca.db(p_y, p_ref=0),
+                                   y_marker=db_marker)
 
         # Lateral plane
         x_mm = self.xy()[0][0, :]*1e3
         y_mm = self.xy()[1][:, 0]*1e3
-        im = self.ax['intensity'].pcolormesh(x_mm, y_mm, db(p_xy, p_ref=0),
+        im = self.ax['intensity'].pcolormesh(x_mm, y_mm,
+                                             ca.db(p_xy, p_ref=0),
                                              vmin=self.db_min,
                                              cmap='magma')
 
-        self.ax['intensity'].contour(x_mm, y_mm, db(p_xy, p_ref=0),
+        self.ax['intensity'].contour(x_mm, y_mm,
+                                     ca.db(p_xy, p_ref=0),
                                      levels=[db_marker],
                                      colors=marker_color,
                                      linestyles='solid',
                                      alpha=0.9)
 
         self.cbar = self.fig.colorbar(im, ax=self.ax['intensity'])
-        db_colorbar(self.cbar, db_sep=6)
+        ca.db_colorbar(self.cbar, db_sep=6)
 
         # -6 dB limits
-        self.d_theta = find_width(self.theta(), p_x, 0.5*max(p_x))
+        ref = ca.Refpoints(x=self.theta(), y=p_x)
+        self.d_theta, _ = ref.lobe_width(y_rel=0.5)
 
         if not (self.circular):
-            self.d_phi = find_width(self.phi(), p_y, 0.5*max(p_y))
+            ref = ca.Refpoints(x=self.theta(), y=p_y)
+            self.d_phi, _ = ref.lobe_width(y_rel=0.5)
 
         # Text box with results
         self._show_resulttext()
@@ -215,13 +168,13 @@ class SingleElement():
 
         Parameters
         ----------
-        circular: boolean
+        circular: boolean, optional
             Circular (True) or rectangular (False) aperture
-        frequency: float
+        frequency: float, optional
             Frequency in kHz
-        widh: float
+        widh: float, optional
             Element width (azimuth, x) in mm
-        height: float
+        height: float, optional
             Element height (elevation, y) in mm
         """
         if circular is not None:
@@ -243,7 +196,7 @@ class SingleElement():
     # Calculations, internal
     def _p_circ(self, theta):
         """Calculate pressure field from circular element, 1D or 2D."""
-        p = jinc(self.w_lambda() * np.sin(theta))
+        p = ca.jinc(self.w_lambda() * np.sin(theta))
         return p
 
     def _p_rect(self, theta=0, phi=0):
@@ -258,7 +211,7 @@ class SingleElement():
         """Add logo image to result figure."""
         try:
             img = mpimg.imread('usn-logo-purple.png')
-            ax_logo = fig.add_axes([0.00, 0.00, 0.2, 0.2], anchor='SW')
+            ax_logo = fig.add_axes([0.02, 0.02, 0.2, 0.2], anchor='SW')
             ax_logo.imshow(img)
             ax_logo.axis('off')
         except Exception:
@@ -292,6 +245,15 @@ class SingleElement():
 
         return 0
 
+    def _plot_beamprofile(self, ax, angle, y, y_marker=None,
+                          line_color='C0', marker_color="C1"):
+        """Plot beam profile graph."""
+        ax.plot(angle, y, color=line_color)
+        if not (y_marker is None):
+            ax.axhline(y=y_marker, color=marker_color)
+
+        return 0
+
     def _draw_element(self, ax):
         """Draw image of aperture in specified axis."""
         w_mm = self.width*1e3
@@ -310,38 +272,40 @@ class SingleElement():
 
     def _show_resulttext(self):
         """Create text box and fill with results."""
-        resulttext_1 = (fr'Frequency $f$: {self.frequency/1e3:.0f} kHz'
+        resulttext_1 = (fr'Frequency  $f$= '
+                        fr'{self.frequency/1e3:.0f} kHz'
                         '\n'
-                        r'Wavelength $\lambda$:'
+                        r'Wavelength  $\lambda$='
                         f'{self.wavelength()*1e3:.0f} mm'
                         '\n\n')
 
         if self.circular:
             resulttext_2 = ('Circular element\n'
-                            f'  Diameter: {self.width*1e3:.1f} mm = '
+                            f'  Diameter  D= '
+                            f'{self.width*1e3:.1f} mm = '
                             fr'{self.w_lambda():.1f} $\lambda$'
                             '\n'
-                            '  Opening angle (-6 dB): '
+                            fr'  Opening angle (-6 dB)  $\theta_0$= '
                             fr'{np.degrees(self.d_theta):.1f}$^\circ$')
         else:
             resulttext_2 = ('Rectangular element\n'
-                            '  Width (azimuth, x): '
+                            '  Width (azimuth, x) $w$= '
                             fr'{self.width*1e3:.1f} mm = '
                             fr'{self.w_lambda():.1f} $\lambda$'
                             '\n'
-                            '  Heigth (elevation, y): '
+                            '  Heigth (elevation, y) $h$= '
                             fr'{self.height*1e3:.1f} mm = '
                             fr'{self.h_lambda():.1f} $\lambda$'
                             '\n'
                             f'Opening angles (-6 dB)\n'
-                            fr'  Azimuth: '
+                            fr'  Azimuth $\theta_0$= '
                             fr'{np.degrees(self.d_theta):.1f}$^\circ$'
                             '\n'
-                            fr'  Elevation: '
+                            fr'  Elevation $\phi_0$= '
                             fr'{np.degrees(self.d_phi):.1f}$^\circ$')
 
         self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.35, 0.10, resulttext_1 + resulttext_2,
+        self.fig.text(0.20, 0.15, resulttext_1 + resulttext_2,
                       fontsize='medium',
                       bbox={'facecolor': self.text_face,
                             'boxstyle': 'Round',
@@ -386,11 +350,12 @@ class SingleElement():
         # Directivity graphs
         angle_lim = self.theta_max * np.array([-1, 1])
         for a in [ax['azimuth'], ax['elevation']]:
-            a.set(xlim=angle_lim,
+            a.set(box_aspect=1,
+                  xlim=angle_lim,
                   xlabel='Angle [Deg]',
                   ylabel='Power [dB re. max]')
 
-            db_axis(a, db_min=self.db_min, db_max=0, db_sep=6)
+            ca.db_axis(a, db_min=self.db_min, db_max=0, db_sep=6)
 
             a.xaxis.set_major_locator(MultipleLocator(30))
             a.xaxis.set_minor_locator(MultipleLocator(10))
@@ -415,7 +380,7 @@ class SingleElement():
                                         description='Shape',
                                         layout=widgets.Layout(width='80%'))
 
-        label = ['Frequency', 'Width / Diameter', 'Height']
+        label = ['Frequency', 'Width (Diameter)', 'Height']
         label_widget = [widgets.Label(labeltext,
                                       layout=widgets.Layout(width='20%'))
                         for labeltext in label]
@@ -444,7 +409,7 @@ class SingleElement():
         col = [widgets.VBox([shape_widget],
                             layout=widgets.Layout(width='30%')),
                widgets.VBox(parameter_line,
-                            layout=widgets.Layout(width='50%'))]
+                            layout=widgets.Layout(width='70%'))]
 
         grid = widgets.HBox(col, layout=widgets.Layout(width='90%'))
         widget_layout = widgets.VBox([title_widget, grid],

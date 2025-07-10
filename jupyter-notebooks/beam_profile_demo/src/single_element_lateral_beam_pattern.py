@@ -5,26 +5,12 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import matplotlib.image as mpimg
 from matplotlib.ticker import MultipleLocator
-from matplotlib import transforms
+from matplotlib.gridspec import GridSpec
 
 import ipywidgets as widgets
 
 import curve_analysis as ca
-
-
-# Mathematical functions
-def find_width(x, y, y_lim):
-    """Find width of function y(x) where y>y_lim.
-
-    Assumes y(x) has a unique peak.
-    Primitive version, no interpolation yet.
-    """
-    k = np.flatnonzero(y > y_lim)
-    d_x = x[k[-1]] - x[k[0]]
-
-    return d_x
 
 
 # Calculate and display lateral bem profile
@@ -44,9 +30,11 @@ class Transducer():
         self.z_ref = 1        # m    Reference distance for lateral profile
         self.db_min = -30     # dB   Min. on dB-scales
 
+        self.y_lim = 0.5      # Limit for marker
+        self.lim_text = '-6 dB'
+
         self.elementcolor = 'navy'
         self.element_background = 'lightgray'
-        self.text_face = 'whitesmoke'
 
         if create_graphs:
             self.ax, self.fig = self._initialise_graphs()
@@ -99,13 +87,17 @@ class Transducer():
     def display_result(self):
         """Display result in graphs."""
         for ax in self.ax.values():
-            self._remove_artists(ax)
+            ca.remove_artists(ax)
+
+        try:
+            self.cbar.remove()
+        except Exception:
+            pass
 
         # Element image
         self._draw_element(self.ax["element"])
 
-        db_marker = -6
-        marker_color = 'red'
+        db_marker = ca.db(self.y_lim, p_ref=1)
 
         # Beam profiles
         if self.circular:
@@ -122,13 +114,17 @@ class Transducer():
                                ca.db(p_x, p_ref=0),
                                y_marker=db_marker)
 
-        if not (p_y is None):
+        if not self.circular:
             self._plot_beamprofile(self.ax['elevation'],
                                    np.degrees(self.phi()),
                                    ca.db(p_y, p_ref=0),
                                    y_marker=db_marker)
 
         # Lateral plane
+        contour_format = {'colors': 'white',
+                          'linestyles': 'dotted',
+                          'alpha': 0.9}
+
         x_mm = self.xy()[0][0, :]*1e3
         y_mm = self.xy()[1][:, 0]*1e3
         im = self.ax['intensity'].pcolormesh(x_mm, y_mm,
@@ -139,20 +135,18 @@ class Transducer():
         self.ax['intensity'].contour(x_mm, y_mm,
                                      ca.db(p_xy, p_ref=0),
                                      levels=[db_marker],
-                                     colors=marker_color,
-                                     linestyles='solid',
-                                     alpha=0.9)
+                                     **contour_format)
 
         self.cbar = self.fig.colorbar(im, ax=self.ax['intensity'])
         ca.db_colorbar(self.cbar, db_sep=6)
 
-        # -6 dB limits
+        # Find -6 dB limits
         ref = ca.Refpoints(x=self.theta(), y=p_x)
-        self.d_theta, _ = ref.lobe_width(y_rel=0.5)
+        self.d_theta, _ = ref.lobe_width(y_rel=self.y_lim)
 
         if not (self.circular):
             ref = ca.Refpoints(x=self.theta(), y=p_y)
-            self.d_phi, _ = ref.lobe_width(y_rel=0.5)
+            self.d_phi, _ = ref.lobe_width(y_rel=self.y_lim)
 
         # Text box with results
         self._show_resulttext()
@@ -206,48 +200,26 @@ class Transducer():
 
         return p
 
-    # Layout
-    def _add_logo(self, fig):
-        """Add logo image to result figure."""
-        try:
-            img = mpimg.imread('usn-logo-purple.png')
-            ax_logo = fig.add_axes([0.02, 0.02, 0.2, 0.2], anchor='SW')
-            ax_logo.imshow(img)
-            ax_logo.axis('off')
-        except Exception:
-            pass
-
-        return
-
     # Graphs and results
-    def _remove_artists(self, ax):
-        """Clear axis of all old artists."""
-        for art in list(ax.lines):
-            art.remove()
-        for art in list(ax.collections):
-            art.remove()
-        for art in list(ax.patches):
-            art.remove()
-        for art in list(ax.texts):
-            art.remove()
-
-        try:
-            self.cbar.remove()
-        except Exception:
-            pass
-
-        return
-
-    def _remove_fig_text(self, fig):
-        """Remove all existing text from figure."""
-        for art in list(self.fig.texts):
-            art.remove()
-
-        return 0
-
     def _plot_beamprofile(self, ax, angle, y, y_marker=None,
                           line_color='C0', marker_color="C1"):
-        """Plot beam profile graph."""
+        """Plot beam profile graph.
+
+        Parameters
+        ----------
+        ax: axis object
+            Axis to plot into
+        angle: array of float
+            Angle vector (x-axis)
+        y: array of float
+            Result vector (y-axis)
+        y_marker: float, optional
+            Position of marker line
+        line_color: color string
+            Graph color
+        marker_color: color string
+            Marker line color
+        """
         ax.plot(angle, y, color=line_color)
         if not (y_marker is None):
             ax.axhline(y=y_marker, color=marker_color)
@@ -282,50 +254,48 @@ class Transducer():
         if self.circular:
             resulttext_2 = ('Circular element\n'
                             f'  Diameter  D= '
-                            f'{self.width*1e3:.1f} mm = '
+                            f'{self.width*1e3:.0f} mm = '
                             fr'{self.w_lambda():.1f} $\lambda$'
                             '\n'
-                            fr'  Opening angle (-6 dB)  $\theta_0$= '
+                            fr'  Opening angle ({self.lim_text})'
+                            fr'  $\theta_0$ = '
                             fr'{np.degrees(self.d_theta):.1f}$^\circ$')
         else:
             resulttext_2 = ('Rectangular element\n'
-                            '  Width (azimuth, x) $w$= '
-                            fr'{self.width*1e3:.1f} mm = '
+                            '  Width $w$ = '
+                            fr'{self.width*1e3:.0f} mm = '
                             fr'{self.w_lambda():.1f} $\lambda$'
                             '\n'
-                            '  Heigth (elevation, y) $h$= '
-                            fr'{self.height*1e3:.1f} mm = '
+                            '  Heigth $h$ = '
+                            fr'{self.height*1e3:.0f} mm = '
                             fr'{self.h_lambda():.1f} $\lambda$'
                             '\n'
-                            f'Opening angles (-6 dB)\n'
-                            fr'  Azimuth $\theta_0$= '
+                            f'Opening angles ({self.lim_text})\n'
+                            fr'  Azimuth $\theta_0$ = '
                             fr'{np.degrees(self.d_theta):.1f}$^\circ$'
                             '\n'
-                            fr'  Elevation $\phi_0$= '
+                            fr'  Elevation $\phi_0$ = '
                             fr'{np.degrees(self.d_phi):.1f}$^\circ$')
 
-        self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.20, 0.15, resulttext_1 + resulttext_2,
-                      fontsize='medium',
-                      bbox={'facecolor': self.text_face,
-                            'boxstyle': 'Round',
-                            'pad': 1})
+        ca.set_fig_text(self.fig, resulttext_1 + resulttext_2,
+                        xpos=0.05, ypos=0.20)
 
         return
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close('all')
-        fig = plt.figure(figsize=[12, 6],
+        fig = plt.figure(figsize=[14, 6],
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 
-        self._add_logo(fig)
+        ca.add_logo(fig)
 
-        ax = {'element': fig.add_subplot(2, 3, 1),
-              'intensity': fig.add_subplot(2, 3, 2),
-              'azimuth': fig.add_subplot(2, 3, 3),
-              'elevation': fig.add_subplot(2, 3, 6),
+        gs = GridSpec(2, 4, figure=fig)
+        ax = {'element': fig.add_subplot(gs[0, 0]),
+              'intensity': fig.add_subplot(gs[0:2, 1:3]),
+              'azimuth': fig.add_subplot(gs[0, 3]),
+              'elevation': fig.add_subplot(gs[1, 3]),
               }
 
         # Lateral figures: Element drawing and intensity plot
@@ -350,8 +320,7 @@ class Transducer():
         # Directivity graphs
         angle_lim = self.theta_max * np.array([-1, 1])
         for a in [ax['azimuth'], ax['elevation']]:
-            a.set(box_aspect=1,
-                  xlim=angle_lim,
+            a.set(xlim=angle_lim,
                   xlabel='Angle [Deg]',
                   ylabel='Power [dB re. max]')
 

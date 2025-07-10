@@ -3,9 +3,6 @@
 # Libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.image as mpimg
-from matplotlib.ticker import MultipleLocator
 from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
 
@@ -30,7 +27,7 @@ def find_width(x, y, y_lim):
 
 
 # Calculate and display lateral bem profile
-class SingleElement():
+class Transducer():
     """Define, calculate, and display transducer beam profile."""
 
     def __init__(self, create_graphs=False, create_widgets=False):
@@ -44,6 +41,9 @@ class SingleElement():
 
         self.z_ref = 4.0      # m    Reference distance for lateral profile
         self.db_min = -60     # dB   Min. on dB-scales
+
+        self.y_lim = 0.5      # Ralative limit for markers
+        self.lim_text = '-6 dB'
 
         self.element_background = 'lightgray'
         self.text_face = 'whitesmoke'
@@ -101,10 +101,15 @@ class SingleElement():
     def display_result(self):
         """Display result in graphs."""
         for ax in self.ax.values():
-            self._remove_artists(ax)
+            ca.remove_artists(ax)
+
+        try:
+            self.cbar.remove()
+        except Exception:
+            pass
 
         marker_color = 'white'
-        element_color = 'maroon'
+        element_color = 'navy'
 
         # Intensity image
         x = self.x()[:, 0]
@@ -117,9 +122,9 @@ class SingleElement():
                                      color=marker_color,
                                      linestyle='dotted')
 
-        self.ax['intensity'].plot([0.0, 0.0], self.width/2*np.array([-1, 1]),
-                                  color=element_color,
-                                  linewidth=4)
+        y_element = self.width/2
+        self.ax['intensity'].axhspan(-y_element, y_element, xmax=0.01,
+                                     color=element_color)
 
         for w in [-self.width, self.width]:
             self.ax['intensity'].plot([0.0, self.z_r()],
@@ -142,14 +147,15 @@ class SingleElement():
         p_db = ca.db(p, p_ref=self.p().max())
         self.ax['azimuth'].plot(x, p_db, color='C0')
 
-        indicator_line = {'color': 'red',
-                          'linestyle': 'dotted'}
+        indicator_line = {'color': 'C1',
+                          'linestyle': 'solid'}
 
-        self.ax['azimuth'].axhline(y=p_db.max()-6, **indicator_line)
+        self.ax['azimuth'].axhline(y=p_db.max()+ca.db(self.y_lim, p_ref=1),
+                                   **indicator_line)
 
         # Find reference values
         ref = ca.Refpoints(x=x, y=p)
-        xl, _ = ref.ref_values(y_rel=0.5)   # -6dB limits
+        xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
         self.dx = xl[1] - xl[0]
 
         self.x_sidelobe, self.y_sidelobe = ref.sidelobe()   # Highest sidelobe
@@ -198,43 +204,6 @@ class SingleElement():
         return np.meshgrid(np.linspace(self.z_r(), self.z_max, 500),
                            np.linspace(-self.x_max, self.x_max, 301))
 
-    def _add_logo(self, fig):
-        """Add logo image to result figure."""
-        try:
-            img = mpimg.imread('usn-logo-purple.png')
-            ax_logo = fig.add_axes([0.05, 0.05, 0.2, 0.2], anchor='SW')
-            ax_logo.imshow(img)
-            ax_logo.axis('off')
-        except Exception:
-            pass
-
-        return
-
-    def _remove_artists(self, ax):
-        """Clear axis of all old artists."""
-        for art in list(ax.lines):
-            art.remove()
-        for art in list(ax.collections):
-            art.remove()
-        for art in list(ax.patches):
-            art.remove()
-        for art in list(ax.texts):
-            art.remove()
-
-        try:
-            self.cbar.remove()
-        except Exception:
-            pass
-
-        return
-
-    def _remove_fig_text(self, fig):
-        """Remove all existing text from figure."""
-        for art in list(self.fig.texts):
-            art.remove()
-
-        return 0
-
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close('all')
@@ -242,7 +211,7 @@ class SingleElement():
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 
-        self._add_logo(fig)
+        ca.add_logo(fig)
 
         gs = GridSpec(2, 2, figure=fig)
         ax = {'intensity': fig.add_subplot(gs[0, :]),
@@ -291,7 +260,7 @@ class SingleElement():
                       '\n\n'
                       fr'Reference distance {self.z_ref:.2} m'
                       '\n'
-                      fr'    Beam width (-6 dB): '
+                      fr'    Beam width ({self.lim_text}): '
                       fr'{1e3*self.dx:.0f} mm'
                       )
 
@@ -303,13 +272,9 @@ class SingleElement():
                             fr'{self.db_sidelobe:.1f} dB'
                             )
 
-        self._remove_fig_text(self.fig.texts)
-        self.fig.text(0.07, 0.20,
-                      headertext + '\n' + resulttext + '\n' + sidelobetext,
-                      fontsize='medium',
-                      bbox={'facecolor': self.text_face,
-                            'boxstyle': 'Round',
-                            'pad': 1})
+        ca.set_fig_text(self.fig,
+                        headertext + '\n' + resulttext + '\n' + sidelobetext,
+                        xpos=0.07, ypos=0.17)
 
         return
 

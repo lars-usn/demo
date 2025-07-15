@@ -267,8 +267,6 @@ def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
     background_color: color string, optional
         Bckground color of text-box
     """
-    remove_fig_text(fig)
-
     fig.text(xpos, ypos, text,
              fontsize='medium',
              bbox={'facecolor': background_color,

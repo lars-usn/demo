@@ -357,8 +357,8 @@ class Transducer():
     # Calculations, internal
     def _xz_points(self):
         """Mesh of points(z, x)."""
-        return np.meshgrid(np.linspace(self.z_r(), self.z_max, 500),
-                           np.linspace(-self.x_max, self.x_max, 301))
+        return np.meshgrid(np.linspace(self.z_r(), self.z_max, 400),
+                           np.linspace(-self.x_max, self.x_max, 201))
 
     def _p_circ(self, theta):
         """Calculate pressure field from circular element, 1D or 2D.
@@ -497,8 +497,9 @@ class Transducer():
                              )
 
         result_text = header + text_1 + beamwidth_text + sidelobe_text
+        ca.remove_fig_text(self.fig)
         ca.set_fig_text(self.fig, result_text,
-                        xpos=0.05, ypos=0.15)
+                        xpos=0.01, ypos=0.15)
 
         return
 

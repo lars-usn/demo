@@ -442,24 +442,28 @@ class Transducer():
                   fr'Reference distance {self.z_ref:.2} m'
                   '\n\n')
 
+        if self.circular:
+            header += ('Circular element\n')
+        else:
+            header += ('Rectangular element\n')
+
         if self.lateral:
             theta_0 = self.d_theta  # Lateral plot finds angles from results
         elif self.axial:            # Axial plot uses theoretical values
             theta_0 = self.d_theta()
 
         if self.circular or self.axial:    # Height dimansion omitted
-            text_1 = ('Circular element\n'
-                      f'  Diameter  D= '
+            text_1 = (f'  Diameter  D= '
                       f'{self.width*1e3:.0f} mm = '
                       fr'{self.w_lambda():.1f} $\lambda$'
                       '\n'
                       fr'  Opening angle ({self.lim_text})'
                       fr'  $\theta_0$ = '
-                      fr'{np.degrees(theta_0):.1f}$^\circ$')
+                      fr'{np.degrees(theta_0):.1f}$^\circ$'
+                      )
         else:
             phi_0 = self.d_phi
-            text_1 = ('Rectangular element\n'
-                      '  Width $w$ = '
+            text_1 = ('  Width $w$ = '
                       fr'{self.width*1e3:.0f} mm = '
                       fr'{self.w_lambda():.1f} $\lambda$'
                       '\n'
@@ -472,7 +476,8 @@ class Transducer():
                       fr'{np.degrees(theta_0):.1f}$^\circ$'
                       '\n'
                       fr'  Elevation $\phi_0$ = '
-                      fr'{np.degrees(phi_0):.1f}$^\circ$')
+                      fr'{np.degrees(phi_0):.1f}$^\circ$'
+                      )
 
         if self.axial:
             beamwidth_text = ('\n\n'

@@ -76,82 +76,7 @@ def db_colorbar(cbar, db_sep=6):
     return
 
 
-def remove_artists(ax):
-    """Clear axis of all old artists."""
-    for art in list(ax.lines):
-        art.remove()
-    for art in list(ax.collections):
-        art.remove()
-    for art in list(ax.patches):
-        art.remove()
-    for art in list(ax.texts):
-        art.remove()
-
-    return
-
-
-def remove_fig_text(fig):
-    """Remove all existing text from figure."""
-    for art in list(fig.texts):
-        art.remove()
-
-    return 0
-
-
-def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
-                 background_color='whitesmoke'):
-    """Remove all existing text and add new text box.
-
-    Parameters
-    ----------
-    fig: figure
-        Figure to put text into
-    text: string
-        Text to write, multiline
-    xpos: float, optional
-        x-position of text, rel. figure
-    ypos: float, optional
-        y-position of text, rel. figure
-    background_color: color string, optional
-        Bckground color of text-box
-    """
-    for art in list(fig.texts):
-        art.remove()
-
-    fig.text(xpos, ypos, text,
-             fontsize='medium',
-             bbox={'facecolor': background_color,
-                   'boxstyle': 'Round',
-                   'pad': 1})
-
-    return 0
-
-
-def add_logo(fig,
-             logofile='usn-logo-purple.png',
-             logopos=[0.02, 0.02, 0.2, 0.2]):
-    """Add logo image to result figure.
-
-    Parameters
-    ----------
-    fig: figure
-        Figure to put text into
-    logofile: string
-        Name of image file containing logo
-    logopos: 4 element list of float
-        Position of logo in figure
-    """
-    try:
-        img = mpimg.imread(logofile)
-        ax_logo = fig.add_axes(logopos, anchor='SW')
-        ax_logo.imshow(img)
-        ax_logo.axis('off')
-    except Exception:
-        pass
-
-    return
-
-
+# Curve analysis
 def parabolic_max(y, x, kmax=None, check=False):
     """Subsample-interpolation by parabolic interpolation to find max.
 
@@ -300,3 +225,79 @@ class Refpoints():
         dx = x_lim[1] - x_lim[0]
 
         return dx, y_lim
+
+
+# Figure formatting
+def remove_artists(ax):
+    """Clear axis of all old artists."""
+    for art in list(ax.lines):
+        art.remove()
+    for art in list(ax.collections):
+        art.remove()
+    for art in list(ax.patches):
+        art.remove()
+    for art in list(ax.texts):
+        art.remove()
+
+    return
+
+
+def remove_fig_text(fig):
+    """Remove all existing text from figure."""
+    for art in list(fig.texts):
+        art.remove()
+
+    return 0
+
+
+def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
+                 background_color='whitesmoke'):
+    """Remove all existing text and add new text box.
+
+    Parameters
+    ----------
+    fig: figure
+        Figure to put text into
+    text: string
+        Text to write, multiline
+    xpos: float, optional
+        x-position of text, rel. figure
+    ypos: float, optional
+        y-position of text, rel. figure
+    background_color: color string, optional
+        Bckground color of text-box
+    """
+    remove_fig_text(fig)
+
+    fig.text(xpos, ypos, text,
+             fontsize='medium',
+             bbox={'facecolor': background_color,
+                   'boxstyle': 'Round',
+                   'pad': 1})
+
+    return 0
+
+
+def add_logo(fig,
+             logofile='usn-logo-purple.png',
+             logopos=[0.02, 0.02, 0.2, 0.2]):
+    """Add logo image to result figure.
+
+    Parameters
+    ----------
+    fig: figure
+        Figure to put text into
+    logofile: string
+        Name of image file containing logo
+    logopos: 4 element list of float
+        Position of logo in figure
+    """
+    try:
+        img = mpimg.imread(logofile)
+        ax_logo = fig.add_axes(logopos, anchor='SW')
+        ax_logo.imshow(img)
+        ax_logo.axis('off')
+    except Exception:
+        pass
+
+    return

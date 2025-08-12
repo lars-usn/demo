@@ -72,6 +72,7 @@ def db_colorbar(cbar, db_sep=6):
     db_ticks = np.arange(tick_min, cbar.vmax+db_sep, db_sep)
     cbar.set_ticks(db_ticks)
     cbar.minorticks_off()
+    cbar.ax.set_title('[db re. max]')
 
     return
 

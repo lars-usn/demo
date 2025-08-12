@@ -39,10 +39,10 @@ class Transducer():
 
         self.theta_max = 90    # deg  Max. angle to calculate
         self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 1.0       # m    Max. lateral dimension to calculate
-        self.z_max = 10.0      # m    Max. depth to calculate
+        self.x_max = 2.0       # m    Max. lateral dimension to calculate
+        self.z_max = 20.0      # m    Max. depth to calculate
 
-        self.z_ref = 1.0       # m    Reference depth
+        self.z_ref = 10.0       # m    Reference depth
         self.db_min = -30      # dB   Min. on dB-scales
 
         self.x_sidelobe = np.nan
@@ -86,7 +86,7 @@ class Transducer():
         else:
             x_6 = 0.603   # 6 dB limit, line (rectangular) aperture
 
-        return 2*np.asin(x_6 * self.wavelength()/self.width)
+        return 2*np.arcsin(x_6 * self.wavelength()/self.width)
 
     def z_r(self):
         """Rayleigh distance, far-field limit."""
@@ -106,7 +106,7 @@ class Transducer():
 
     def theta(self):
         """Azimuth(x) angle to point(z, x)."""
-        return np.atan2(self.x(), self.z())
+        return np.arctan2(self.x(), self.z())
 
     def angle(self):
         """Angle argument, used in both azimuth and elevation."""
@@ -203,14 +203,14 @@ class Transducer():
                           'linestyles': 'dotted',
                           'alpha': 0.9}
 
-        x_mm = self.xy()[0][0, :]*1e3
-        y_mm = self.xy()[1][:, 0]*1e3
-        im = ax['intensity'].pcolormesh(x_mm, y_mm,
+        x_m = self.xy()[0][0, :]
+        y_m = self.xy()[1][:, 0]
+        im = ax['intensity'].pcolormesh(x_m, y_m,
                                         ca.db(p_xy, p_ref=0),
                                         vmin=self.db_min,
                                         cmap='magma')
 
-        ax['intensity'].contour(x_mm, y_mm,
+        ax['intensity'].contour(x_m, y_m,
                                 ca.db(p_xy, p_ref=0),
                                 levels=[db_marker],
                                 **contour_format)
@@ -344,6 +344,10 @@ class Transducer():
         if db_min is not None:
             self.set_dbmin(db_min)
 
+        # Reference distance cannot be smaller than Rayleigh distance
+        self.z_ref = np.max([self.z_ref, self.z_r()])
+
+        # Display result in graphs
         if self.lateral:
             self.display_lateral()
         if self.axial:
@@ -435,39 +439,38 @@ class Transducer():
                   '\n'
                   r'Wavelength  $\lambda$ = '
                   f'{self.wavelength()*1e3:.0f} mm'
-                  '\n'
-                  fr'Rayleigh distance $z_r$ = '
-                  fr'{self.z_r():.1f} m'
-                  '\n'
-                  fr'Reference distance {self.z_ref:.2} m'
-                  '\n\n')
+                  '\n')
 
-        if self.circular:
-            header += ('Circular element\n')
-        else:
-            header += ('Rectangular element\n')
+        if not self.lateral:
+            header += (fr'Rayleigh distance $z_r$ = '
+                       fr'{self.z_r():.1f} m'
+                       '\n'
+                       fr'Reference distance {self.z_ref:.2} m'
+                       '\n')
+
+        header += '\n'
 
         if self.lateral:
             theta_0 = self.d_theta  # Lateral plot finds angles from results
         elif self.axial:            # Axial plot uses theoretical values
             theta_0 = self.d_theta()
 
-        if self.circular or self.axial:    # Height dimansion omitted
-            text_1 = (f'  Diameter  D= '
+        if self.circular or self.axial:    # Height dimension omitted
+            text_1 = (f'Diameter $D$ = '
                       f'{self.width*1e3:.0f} mm = '
                       fr'{self.w_lambda():.1f} $\lambda$'
                       '\n'
-                      fr'  Opening angle ({self.lim_text})'
-                      fr'  $\theta_0$ = '
+                      fr'Opening angle ({self.lim_text})'
+                      fr' $\theta_0$ = '
                       fr'{np.degrees(theta_0):.1f}$^\circ$'
                       )
         else:
             phi_0 = self.d_phi
-            text_1 = ('  Width $w$ = '
+            text_1 = ('Width $w$ = '
                       fr'{self.width*1e3:.0f} mm = '
                       fr'{self.w_lambda():.1f} $\lambda$'
                       '\n'
-                      '  Heigth $h$ = '
+                      'Heigth $h$ = '
                       fr'{self.height*1e3:.0f} mm = '
                       fr'{self.h_lambda():.1f} $\lambda$'
                       '\n'
@@ -499,14 +502,14 @@ class Transducer():
         result_text = header + text_1 + beamwidth_text + sidelobe_text
         ca.remove_fig_text(self.fig)
         ca.set_fig_text(self.fig, result_text,
-                        xpos=0.01, ypos=0.15)
+                        xpos=0.02, ypos=0.15)
 
         return
 
     def _initialise_lateral_graphs(self):
         """Initialise result graphs."""
         plt.close('all')
-        fig = plt.figure(figsize=[14, 6],
+        fig = plt.figure(figsize=[10, 5],
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 
@@ -514,7 +517,7 @@ class Transducer():
 
         gs = GridSpec(2, 4, figure=fig)
         ax = {'element': fig.add_subplot(gs[0, 0]),
-              'intensity': fig.add_subplot(gs[0:2, 1:3]),
+              'intensity': fig.add_subplot(gs[0:4, 1:3]),
               'azimuth': fig.add_subplot(gs[0, 3]),
               'elevation': fig.add_subplot(gs[1, 3]),
               }
@@ -531,8 +534,8 @@ class Transducer():
                           ylim=element_max,
                           facecolor=self.element_background)
 
-        intensity_max = self.x_max*1e3*np.array([-1, 1])
-        intensity_title = f'Intensity at {self.z_ref:.2f} m [dB re. max]'
+        intensity_max = self.x_max*np.array([-1, 1])
+        intensity_title = f'Intensity at {self.z_ref:.1f} m'
         ax["intensity"].set(title=intensity_title,
                             xlim=intensity_max,
                             ylim=intensity_max,
@@ -559,7 +562,7 @@ class Transducer():
     def _initialise_axial_graphs(self):
         """Initialise result graphs."""
         plt.close('all')
-        fig = plt.figure(figsize=[14, 6],
+        fig = plt.figure(figsize=[10, 5],
                          constrained_layout=True,
                          num='Single Element Beamprofile')
 

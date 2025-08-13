@@ -39,8 +39,9 @@ class Transducer():
 
         self.theta_max = 90    # deg  Max. angle to calculate
         self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 2.0       # m    Max. lateral dimension to calculate
-        self.z_max = 20.0      # m    Max. depth to calculate
+        self.x_max = 4.0       # m    Max. lateral dimension to calculate
+        self.x_sep = 1.0       # m    Tick separation on x-axis
+        self.z_max = 40.0      # m    Max. depth to calculate
 
         self.z_ref = 10.0       # m    Reference depth
         self.db_min = -30      # dB   Min. on dB-scales
@@ -214,6 +215,8 @@ class Transducer():
                                 ca.db(p_xy, p_ref=0),
                                 levels=[db_marker],
                                 **contour_format)
+
+        ax["intensity"].set_title(f'Intensity at {self.z_ref:.1f} m')
 
         self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
         ca.db_colorbar(self.cbar, db_sep=6)
@@ -434,21 +437,18 @@ class Transducer():
 
     def _resulttext(self):
         """Text box for lateral profile results."""
-        header = (fr'Frequency  $f$ = '
-                  fr'{self.frequency/1e3:.0f} kHz'
-                  '\n'
-                  r'Wavelength  $\lambda$ = '
-                  f'{self.wavelength()*1e3:.0f} mm'
-                  '\n')
+        header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
+                  fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.0f} mm')
 
-        if not self.lateral:
-            header += (fr'Rayleigh distance $z_r$ = '
-                       fr'{self.z_r():.1f} m'
-                       '\n'
-                       fr'Reference distance {self.z_ref:.2} m'
-                       '\n')
-
-        header += '\n'
+        if self.circular or self.axial:    # Height dimension omitted
+            size_text = (f'Diameter $D$ = {self.width*1e3:.0f} mm = '
+                         fr'{self.w_lambda():.1f} $\lambda$')
+        else:
+            size_text = (f'Width $w$ = {self.width*1e3:.0f} mm = '
+                         fr'{self.w_lambda():.1f} $\lambda$'
+                         '\n'
+                         f'Heigth $h$ = {self.height*1e3:.0f} mm = '
+                         fr'{self.h_lambda():.1f} $\lambda$')
 
         if self.lateral:
             theta_0 = self.d_theta  # Lateral plot finds angles from results
@@ -456,50 +456,40 @@ class Transducer():
             theta_0 = self.d_theta()
 
         if self.circular or self.axial:    # Height dimension omitted
-            text_1 = (f'Diameter $D$ = '
-                      f'{self.width*1e3:.0f} mm = '
-                      fr'{self.w_lambda():.1f} $\lambda$'
-                      '\n'
-                      fr'Opening angle ({self.lim_text})'
-                      fr' $\theta_0$ = '
-                      fr'{np.degrees(theta_0):.1f}$^\circ$'
-                      )
+            angle_text = (fr'Opening angle ({self.lim_text})'
+                          fr' $\theta_0$ = {np.degrees(theta_0):.1f}$^\circ$')
         else:
             phi_0 = self.d_phi
-            text_1 = ('Width $w$ = '
-                      fr'{self.width*1e3:.0f} mm = '
-                      fr'{self.w_lambda():.1f} $\lambda$'
-                      '\n'
-                      'Heigth $h$ = '
-                      fr'{self.height*1e3:.0f} mm = '
-                      fr'{self.h_lambda():.1f} $\lambda$'
-                      '\n'
-                      f'Opening angles ({self.lim_text})\n'
-                      fr'  Azimuth $\theta_0$ = '
-                      fr'{np.degrees(theta_0):.1f}$^\circ$'
-                      '\n'
-                      fr'  Elevation $\phi_0$ = '
-                      fr'{np.degrees(phi_0):.1f}$^\circ$'
-                      )
+            angle_text = (f'Opening angles ({self.lim_text})\n'
+                          r'  Azimuth $\theta_0$ = '
+                          fr'{np.degrees(theta_0):.1f}$^\circ$'
+                          '\n'
+                          r'  Elevation $\phi_0$ = '
+                          fr'{np.degrees(phi_0):.1f}$^\circ$')
 
         if self.axial:
-            beamwidth_text = ('\n\n'
-                              fr'Beam width ({self.lim_text}): '
-                              fr'{1e3*self.dx:.0f} mm'
-                              )
-        else:
-            beamwidth_text = ' '
+            distance_text = (fr'Rayleigh distance $z_R$ = '
+                             fr'{self.z_r():.1f} m'
+                             '\n'
+                             r'Reference distance $z_{ref}$ = '
+                             f'{self.z_ref:.1f} m')
+            beamwidth_text = (fr'Beam width ({self.lim_text}): '
+                              fr'{self.dx:.2f} m')
 
         if np.isnan(self.x_sidelobe):
             sidelobe_text = ''
         else:
-            sidelobe_text = ('\n'
-                             'Highest sidelobe: '
+            sidelobe_text = ('Highest sidelobe '
                              fr'$x$ = {self.x_sidelobe:.2f} m, '
-                             fr'{self.db_sidelobe:.1f} dB'
-                             )
+                             fr'{self.db_sidelobe:.1f} dB')
 
-        result_text = header + text_1 + beamwidth_text + sidelobe_text
+        if self.axial:
+            result_text = header + '\n' + size_text + '\n' + angle_text + \
+                          '\n' + distance_text + '\n' + beamwidth_text + '\n' \
+                          + sidelobe_text
+        elif self.lateral:
+            result_text = header + '\n' + size_text + '\n' + angle_text
+
         ca.remove_fig_text(self.fig)
         ca.set_fig_text(self.fig, result_text,
                         xpos=0.02, ypos=0.15)
@@ -535,9 +525,7 @@ class Transducer():
                           facecolor=self.element_background)
 
         intensity_max = self.x_max*np.array([-1, 1])
-        intensity_title = f'Intensity at {self.z_ref:.1f} m'
-        ax["intensity"].set(title=intensity_title,
-                            xlim=intensity_max,
+        ax["intensity"].set(xlim=intensity_max,
                             ylim=intensity_max,
                             facecolor=self.element_background)
 
@@ -586,9 +574,9 @@ class Transducer():
                           ylabel='Power [dB re. max]',
                           xlim=self.x_max*np.array([-1, 1]))
 
-        ca.db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
+        ax['azimuth'].grid(visible=True, which='major', axis='x')
 
-        ax['azimuth'].grid(visible=True, which='both', axis='x')
+        ca.db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
 
         return ax, fig
 
@@ -611,17 +599,19 @@ class Transducer():
                                         **layout_settings)
 
         db_widget = widgets.BoundedFloatText(
-            value=-42, min=-120, max=-6, step=6,
+            value=-60, min=-120, max=-6, step=6,
             description='Dynamic range [dB]',
             **layout_settings)
 
         # Parameter widgets
+        label = ['Frequency', 'Width (Diameter)', 'Height', 'Distance']
+
         if self.lateral:
-            label = ['Frequency', 'Width (Diameter)', 'Height']
             n_dim = 2
 
         elif self.axial:
-            label = ['Frequency', 'Width (Diameter)', 'Ref. distance']
+            # Element height does not apply for 2D axial simulation
+            label.remove("Height")
             n_dim = 1
 
         label_widget = [widgets.Label(labeltext,
@@ -638,24 +628,20 @@ class Transducer():
                                                description='[kHz]',
                                                **layout_settings)
 
-        size_widget = [widgets.FloatSlider(min=1, max=400,
-                                           value=100, step=1,
+        size_widget = [widgets.FloatSlider(min=10, max=400,
+                                           value=100, step=10,
                                            readout_format='.0f',
                                            description='[mm]',
                                            **layout_settings)
                        for k in range(n_dim)]
 
-        distance_widget = widgets.FloatSlider(min=1, max=10,
-                                              value=2.0, step=0.1,
+        distance_widget = widgets.FloatSlider(min=1.0, max=self.z_max,
+                                              value=10.0, step=0.5,
                                               readout_format='.1f',
                                               description='[m]',
                                               **layout_settings)
 
-        if self.lateral:
-            parameter_widget = [frequency_widget] + size_widget
-        elif self.axial:
-            parameter_widget = [frequency_widget] + \
-                size_widget + [distance_widget]
+        parameter_widget = [frequency_widget] + size_widget + [distance_widget]
 
         parameter_line = [widgets.HBox([label_widget[k], parameter_widget[k]])
                           for k in range(len(label))]
@@ -675,6 +661,7 @@ class Transducer():
                       'frequency': frequency_widget,
                       'width': size_widget[0],
                       'height': size_widget[1],
+                      'distance': distance_widget,
                       }
 
         elif self.axial:
@@ -684,6 +671,10 @@ class Transducer():
                       'width': size_widget[0],
                       'distance': distance_widget,
                       }
+
+        # Modify initial values
+        if self.lateral:
+            widget['db_min'].value = -42
 
         w = WidgetLayout(widget_layout, widget)
 

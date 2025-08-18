@@ -93,6 +93,10 @@ class Transducer():
         """Rayleigh distance, far-field limit."""
         return self.width**2/(2*self.wavelength())
 
+    def z_c(self):
+        """Limit reference distance to outside far-field limit."""
+        return np.max([self.z_ref, self.z_r()])
+
     def x(self):
         """Lateral dimension for axial plot (azimuth, x)."""
         return self._xz_points()[1]
@@ -121,15 +125,16 @@ class Transducer():
 
     def theta_xy(self):
         """Azimuth angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[0], self.z_ref)
+        return np.arctan2(self.xy()[0], self.z_c())
 
     def phi_xy(self):
         """Elevation angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[1], self.z_ref)
+        return np.arctan2(self.xy()[1], self.z_c())
 
     def theta_r(self):
         """Angle with z-axis for (xyz)-positions."""
-        return np.arctan2(np.sqrt(self.xy()[0]**2+self.xy()[1]**2), self.z_ref)
+        r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
+        return np.arctan2(r, self.z_c())
 
     def w_lambda(self):
         """Aperture width relative to wavelength."""
@@ -216,7 +221,7 @@ class Transducer():
                                 levels=[db_marker],
                                 **contour_format)
 
-        ax["intensity"].set_title(f'Intensity at {self.z_ref:.1f} m')
+        ax["intensity"].set_title(f'Intensity at {self.z_c():.1f} m')
 
         self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
         ca.db_colorbar(self.cbar, db_sep=6)
@@ -236,13 +241,7 @@ class Transducer():
 
     def display_axial(self):
         """Display axial beam pattern in graphs."""
-        for ax in self.axes.values():
-            ca.remove_artists(ax)
-
-        try:
-            self.cbar.remove()
-        except Exception:
-            pass
+        self._remove_old_artists()
 
         marker_color = 'white'
 
@@ -255,10 +254,14 @@ class Transducer():
                                         vmin=self.db_min,
                                         cmap='magma')
 
-        ax['intensity'].axvline(x=self.z_ref,
+        ax['intensity'].axvline(x=self.z_c(),
                                 color=marker_color,
                                 linestyle='dotted')
 
+        self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
+        ca.db_colorbar(self.cbar, db_sep=6)
+
+        # Element with lines extending to Rayleigh distance
         y_element = self.width/2
         ax['intensity'].axhspan(-y_element, y_element, xmax=0.01,
                                 color=self.element_color)
@@ -269,17 +272,15 @@ class Transducer():
                                  color=self.element_color,
                                  linestyle='dotted')
 
-        self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
-        ca.db_colorbar(self.cbar, db_sep=6)
-
+        # Lines showing opening angle
         x_line = np.array([0, self.z_max])
         y_line = np.array([0, self.z_max*np.tan(self.d_theta()/2)])
         ax['intensity'].plot(x_line, y_line, x_line, -y_line,
                              color=marker_color,
                              linestyle='dotted')
 
-        # Lateral beam profile
-        k_ref = np.argmin(abs(z-self.z_ref))
+        # Lateral beam profile at reference distance
+        k_ref = np.argmin(abs(z-self.z_c()))
         p = self.p_axial()[:, k_ref]    # Find pressure at reference distance
         p_db = ca.db(p, p_ref=self.p_axial().max())
         ax['azimuth'].plot(x, p_db, color='C0')
@@ -346,9 +347,6 @@ class Transducer():
             self.z_ref = float(z_ref)
         if db_min is not None:
             self.set_dbmin(db_min)
-
-        # Reference distance cannot be smaller than Rayleigh distance
-        self.z_ref = np.max([self.z_ref, self.z_r()])
 
         # Display result in graphs
         if self.lateral:
@@ -438,7 +436,7 @@ class Transducer():
     def _resulttext(self):
         """Text box for lateral profile results."""
         header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
-                  fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.0f} mm')
+                  fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.1f} mm')
 
         if self.circular or self.axial:    # Height dimension omitted
             size_text = (f'Diameter $D$ = {self.width*1e3:.0f} mm = '
@@ -469,10 +467,10 @@ class Transducer():
 
         if self.axial:
             distance_text = (fr'Rayleigh distance $z_R$ = '
-                             fr'{self.z_r():.1f} m'
+                             fr'{self.z_r():.2f} m'
                              '\n'
                              r'Reference distance $z_{ref}$ = '
-                             f'{self.z_ref:.1f} m')
+                             f'{self.z_c():.2f} m')
             beamwidth_text = (fr'Beam width ({self.lim_text}): '
                               fr'{self.dx:.2f} m')
 
@@ -579,6 +577,17 @@ class Transducer():
         ca.db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
 
         return ax, fig
+
+    def _remove_old_artists(self):
+        for ax in self.axes.values():
+            ca.remove_artists(ax)
+
+        try:
+            self.cbar.remove()
+        except Exception:
+            pass
+
+        return 0
 
     # Interactive widgets
     def _create_widgets(self):

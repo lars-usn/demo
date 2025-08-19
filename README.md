@@ -13,18 +13,19 @@ The Matlab functions (.m) are called from the Matlab console or from antoher Mat
 The Matlab and LabVIEW programs will need access to all files in their folders to function.
 
 
-#  Ultrasound
+#  Ultrasound / acoustics
 These demo program are written for courses in acoustics  ultrasound technology at at USN. They are presently used in courses at MSc and PhD-level, such as the course *SPE5950 Specialisation Topic - Acoustics and Ultrasound Technology*.
 
-| Description  | Function Name | 
-| -- | -- |
-| **Jupyter Notebook widgets** | | 
-| Radiated field from a single-element transducer             |  `radiated-field-single-element-transducer.ipynb` |
-| Simple illustration of pulse length and bandwidth           | `pulse-length-and-bandwidth.ipynb` |
-|  **Matlab** | |
-| Beam profile from a single-element ultrasound transducer    | `element_beamprofile.mlapp` |
-| Beam profile from an ultrasound transducer array            | `array_beamprofile.mlapp`  |
-| Simple example files to start simulations in Field II       |  Folder `field-ii-examples`   |
+| Description  | | File Name | 
+| -- | -- | -- |
+| **Jupyter Notebook widgets and Python** | | |
+| Radiated field from a single-element transducer    | Notebook with interactive demo  |  `single_element_demo.ipynb` |
+| Radiated field from a single-element transducer    | Python code           | `single_element_beam_pattern.py`     |
+| Simple illustration of pulse length and bandwidth  | Notebook with interactive demo  | `pulse-length-and-bandwidth.ipynb` |
+|  **Matlab** | | |
+| Beam profile from a single-element ultrasound transducer | Matlab app  | `element_beamprofile.mlapp` |
+| Beam profile from an ultrasound transducer array         | Matlab app  | `array_beamprofile.mlapp`  |
+| Simple example files to start simulations in Field II    | Folder with m-files  |  `field-ii-examples`   |
   
 # Signal Processing
 These demo program are written for use in introductory courses in signal processing at USN. They are presently used in the course [*TSE2280 Måleteknikk og signalbehandling*](https://www.usn.no/studier/studie-og-emneplaner/#/emne/TSE2280_1_2024_V%C3%85R) using the textbook  McClellan et al., "DSP First", 2nd ed., Pearson Education Limited, 2016.

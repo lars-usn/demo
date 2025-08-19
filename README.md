@@ -13,7 +13,7 @@ The Matlab functions (.m) are called from the Matlab console or from antoher Mat
 The Matlab and LabVIEW programs will need access to all files in their folders to function.
 
 
-#  Ultrasound / acoustics
+#  Ultrasound / Acoustics
 These demo program are written for courses in acoustics  ultrasound technology at at USN. They are presently used in courses at MSc and PhD-level, such as the course *SPE5950 Specialisation Topic - Acoustics and Ultrasound Technology*.
 
 | Description  | | File Name | 

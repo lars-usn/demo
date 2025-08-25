@@ -2,12 +2,9 @@
 
 # Libraries
 import numpy as np
-
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.ticker import MultipleLocator
 from matplotlib.gridspec import GridSpec
-
 import ipywidgets as widgets
 
 import curve_analysis as ca
@@ -21,50 +18,50 @@ class WidgetLayout():
         self.widget = widget
 
 
-# Calculate and display lateral bem profile
 class Transducer():
     """Define, calculate, and display transducer beam profile."""
 
-    def __init__(self, axial=True, create_widgets=False):
+    def __init__(self, create_widgets=False):
 
         # Transducer definition
         self.circular = False   # Circular or rectangular element
-        self.width = 200e-3     # m   Element width (azimuth, x) or diameter
+        self.width = 100e-3     # m   Element width (azimuth, x) or diameter
         self.height = 200e-3    # m   Element height (elevation, y)
         self.frequency = 100e3  # Hz  Ultrasound frequency
         self.c = 1500           # m/s Speed of soundin load medium
 
         # Calculation settings
-        self.axial = axial
-
-        self.z_ref = 10.0       # m    Reference depth
-
+        self.z_ref = 10.0        # m    Reference depth
         self.y_lim = 0.5         # Relative limit for beamwidth
         self.lim_text = '-6 dB'  # Text for markers
+        self.x_sidelobe = np.nan
 
-        self.axial = axial
+        self.azimuth = True    # Show azimuth (x) or elevation (y) profile
 
         # Display settings
         self.theta_max = 90    # deg  Max. angle to calculate
         self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 4.0       # m    Max. lateral dimension to calculate
+        self.x_max = 6.0       # m    Max. lateral dimension to calculate
         self.z_max = 40.0      # m    Max. depth to calculate
-
-        self.db_min = -30      # dB   Min. on dB-scales
-
-        self.x_sidelobe = np.nan
+        self.db_min = -42      # dB   Min. on dB-scales
 
         # Colors and markers
         self.element_color = 'crimson'
-        self.element_background = 'whitesmoke'
+        self.element_background = 'silver'
         self.text_face = 'whitesmoke'
 
-        self.contour_format = {'colors': 'white',
-                               'linestyles': 'dotted',
-                               'alpha': 1.0}
+        contour_color = 'white'
+        self.contour_line = {'colors': contour_color,
+                             'linestyles': 'dotted',
+                             'alpha': 0.7}
 
-        self.marker_format = {'color': 'white',
-                              'linestyle': 'dotted'}
+        self.angle_line = {'color': contour_color,
+                           'linestyle': 'dotted',
+                           'alpha': 0.7}
+
+        self.orientation_line = {'color': 'C0',
+                                 'linestyle': 'dotted',
+                                 'alpha': 1.0}
 
         self.indicator_line = {'color': 'C1',
                                'linestyle': 'solid'}
@@ -79,13 +76,23 @@ class Transducer():
         ax, fig = self._initialise_graphs()
         self.axes = ax
         self.fig = fig
+        self.scale_axes()
 
         if create_widgets:
             self.widget = self._create_widgets()
 
+    # === Calculated parameters ===========================
     def wavelength(self):
         """Calculate acoustic wavelenght."""
         return self.c/self.frequency
+
+    def w_lambda(self):
+        """Aperture width relative to wavelength."""
+        return self.width / self.wavelength()
+
+    def h_lambda(self):
+        """Aperture height relative to wavelength."""
+        return self.height / self.wavelength()
 
     def theta_0(self):
         """Calculate opening angle from theory, two-sided, -6 dB."""
@@ -94,37 +101,65 @@ class Transducer():
         else:
             x_6 = 0.603   # 6 dB limit, line (rectangular) aperture
 
-        return 2*np.arcsin(x_6 * self.wavelength()/self.width)
+        if self.azimuth or self.circular:
+            d = self.width
+        else:
+            d = self.height
+
+        return 2*np.arcsin(x_6 * self.wavelength()/d)
 
     def z_r(self):
         """Rayleigh distance, far-field limit."""
-        return self.width**2/(2*self.wavelength())
+        if self.circular:
+            d = self.width
+        else:
+            d = np.max([self.width, self.height])
+
+        return d**2/(2*self.wavelength())
 
     def z_c(self):
         """Limit reference distance to outside far-field limit."""
         return np.max([self.z_ref, self.z_r()])
 
+    # === Axial plane ===================
     def x(self):
-        """Lateral dimension for axial plot (azimuth, x)."""
-        return self._xz_points()[1]
+        """Lateral dimension for axial plot (x or y)."""
+        return np.linspace(-self.x_max, self.x_max, 201)
 
     def z(self):
         """Axial dimension (depth) for axial plot (z)."""
-        return self._xz_points()[0]
+        return np.linspace(self.z_r(), self.z_max, 400)
+
+    def zx(self):
+        """Axial plane (zx or zy) to plot."""
+        pts = np.meshgrid(self.z(), self.x())
+        return pts
 
     def r(self):
         """Distance from aperture centre for axial plot."""
-        return np.sqrt(self.z()**2 + self.x()**2)
+        return np.sqrt(self.zx()[0]**2 + self.zx()[1]**2)
 
     def theta(self):
         """Azimuth(x) angle to point(z, x)."""
-        return np.arctan2(self.x(), self.z())
+        return np.arctan2(self.zx()[1], self.zx()[0])
 
-    def angle(self):
-        """Angle argument, used in both azimuth and elevation."""
-        theta_m = np.radians(self.theta_max)
-        return np.linspace(-theta_m, theta_m, 301)
+    def p_azimuth(self):
+        """Calculate axial pressure field in the azimuth plane (zx)."""
+        if self.circular:
+            p = 1/self.r() * ca.jinc(self.w_lambda() * np.sin(self.theta()))
+        else:
+            p = 1/self.r() * np.sinc(self.w_lambda() * np.sin(self.theta()))
+        return p
 
+    def p_elevation(self):
+        """Calculate axial pressure field in the lateral plane (zy)."""
+        if self.circular:
+            p = self.p_azimuth()
+        else:
+            p = 1/self.r() * np.sinc(self.h_lambda() * np.sin(self.theta()))
+        return p
+
+    # === Lateral plane ===================
     def xy(self):
         """Lateral region to plot, plane at fixed axial distance."""
         pts = np.linspace(-self.x_max, self.x_max, 201)
@@ -143,157 +178,151 @@ class Transducer():
         r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
         return np.arctan2(r, self.z_c())
 
-    def w_lambda(self):
-        """Aperture width relative to wavelength."""
-        return self.width / self.wavelength()
+    def r_xy(self):
+        """Radial distances at lateral plane."""
+        r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
+        return np.sqrt(r**2 + self.z_c()**2)
 
-    def h_lambda(self):
-        """Aperture height relative to wavelength."""
-        return self.height / self.wavelength()
-
-    def p_axial(self):
-        """Calculate axial pressure field (zx)."""
+    def p_lateral(self):
+        """Calculate lateral intensity at reference distance."""
         if self.circular:
-            p = 1/self.r() * ca.jinc(self.w_lambda() * np.sin(self.theta()))
+            p = 1/self.r_xy() \
+                * ca.jinc(self.w_lambda() * np.sin(self.theta_r()))
         else:
-            p = 1/self.r() * np.sinc(self.w_lambda() * np.sin(self.theta()))
+            p = 1/self.r_xy()  \
+                * np.sinc(self.w_lambda() * np.sin(self.theta_xy())) \
+                * np.sinc(self.h_lambda() * np.sin(self.phi_xy()))
+
         return p
 
-    def set_dbmin(self, dbmin):
-        """Set minimum on db-axes."""
-        self.db_min = dbmin
-
-        if self.axial:
-            self.axes['azimuth'].set_ylim(ymin=dbmin)
-            self.display_axial()
-
-        if self.lateral:
-            self.axes['azimuth'].set_ylim(ymin=dbmin)
-            self.axes['elevation'].set_ylim(ymin=dbmin)
-            self.display_lateral()
-
-        return
-
+    # === Commands =============================
     def display(self):
         """Display beam pattern in graphs."""
         self._remove_old_artists()
         ax = self.axes
 
-        if self.axial:
-            # Intensity image
-            x = self.x()[:, 0]
-            z = self.z()[0, :]
-            im = ax['intensity'].pcolormesh(z, x,
-                                            ca.db(self.p_axial(), p_ref=0),
-                                            vmin=self.db_min,
-                                            cmap=self.colormap)
+        # Element image
+        self._draw_element(ax["element"])
+        self._draw_orientationline(ax["element"])
 
-            ax['intensity'].axvline(x=self.z_c(), **self.marker_format)
+        # Axial intensity
+        x = self.x()
+        z = self.z()
+        p_max = np.max([np.max(abs(self.p_azimuth())),
+                        np.max(abs(self.p_elevation()))])
 
-            self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
-            ca.db_colorbar(self.cbar, db_sep=6)
+        if self.azimuth:
+            p_axial = self.p_azimuth()
+        else:
+            p_axial = self.p_elevation()
 
-            # Element with lines extending to Rayleigh distance
-            y_element = self.width/2
-            ax['intensity'].axhspan(-y_element, y_element, xmax=0.005,
-                                    color=self.element_color)
+        p_db = ca.db(p_axial, p_ref=p_max)
 
-            for w in [-self.width, self.width]:
-                ax['intensity'].plot([0.0, self.z_r()],
-                                     w/2*np.array([1, 1]),
-                                     color=self.element_color,
-                                     linestyle='dotted')
+        im = ax['axial'].pcolormesh(z, x, p_db,
+                                    vmin=self.db_min, cmap=self.colormap)
+        if self.azimuth:
+            ax['axial'].set(ylabel='Azimuth (x) [m]',
+                            title='Beam intensity, azimuth plane (zx)')
+        else:
+            ax['axial'].set(ylabel='Elevation (y) [m]',
+                            title='Beam intensity, elevation plane (zx)')
 
-            illustration = patches.Rectangle((0, -y_element),
-                                             self.z_r(), self.width,
-                                             fill=True,
-                                             color=self.element_color,
-                                             alpha=0.7)
+        ax['axial'].axvline(x=self.z_c(), **self.orientation_line)
 
-            ax['intensity'].add_patch(illustration)
+        self.cbar = self.fig.colorbar(im, ax=ax['axial'])
+        ca.db_colorbar(self.cbar, db_sep=6)
 
-            # Lines showing opening angle
-            x_line = np.array([0, self.z_max])
-            y_line = np.array([0, self.z_max*np.tan(self.theta_0()/2)])
-            ax['intensity'].plot(x_line, y_line, x_line, -y_line,
-                                 **self.marker_format)
+        # Element with lines extending to Rayleigh distance
+        y_element = self.width/2
+        ax['axial'].axhspan(-y_element, y_element, xmax=0.005,
+                            color=self.element_color)
 
-            # Lateral beam profile at reference distance
-            k_ref = np.argmin(abs(z-self.z_c()))
-            p = self.p_axial()[:, k_ref]    # Pressure at reference distance
-            p_db = ca.db(p, p_ref=self.p_axial().max())
+        for w in [-self.width, self.width]:
+            ax['axial'].plot([0.0, self.z_r()],
+                             w/2*np.array([1, 1]),
+                             color=self.element_color,
+                             linestyle='dotted')
 
-            ax['azimuth'].plot(x, p_db, **self.main_line)
-            ax['azimuth'].axhline(y=p_db.max()+ca.db(self.y_lim, p_ref=1),
+        illustration = patches.Rectangle((0, -y_element),
+                                         self.z_r(), self.width,
+                                         fill=True,
+                                         color=self.element_color,
+                                         alpha=0.7)
+
+        ax['axial'].add_patch(illustration)
+
+        # Lines showing opening angle
+        x_line = np.array([0, self.z_max])
+        y_line = np.array([0, self.z_max*np.tan(self.theta_0()/2)])
+        ax['axial'].plot(x_line, y_line, x_line, -y_line,
+                         **self.angle_line)
+
+        # Lateral intensity at reference distance
+        x_m = self.xy()[0][0, :]
+        y_m = self.xy()[1][:, 0]
+        p_db = ca.db(self.p_lateral(), p_ref=p_max)
+        im = ax['lateral'].pcolormesh(x_m, y_m, p_db,
+                                      vmin=self.db_min,
+                                      vmax=0,
+                                      cmap=self.colormap)
+
+        db_marker = ca.db(self.y_lim, p_ref=1) + np.max(p_db)
+        ax['lateral'].contour(x_m, y_m, p_db,
+                              levels=[db_marker],
+                              **self.contour_line)
+
+        self._draw_orientationline(ax["lateral"])
+
+        ax["lateral"].set_title(f'Intensity at {self.z_c():.1f} m')
+
+        # Lateral beam profile at reference distance
+        k_ref = np.argmin(abs(z-self.z_c()))
+        p = p_axial[:, k_ref]
+        p_db = ca.db(p, p_ref=p_max)
+
+        ax['beamprofile'].plot(x, p_db, **self.main_line)
+        ax['beamprofile'].axhline(y=p_db.max()+ca.db(self.y_lim, p_ref=1),
                                   **self.indicator_line)
 
-            # Find reference values
-            ref = ca.Refpoints(x=x, y=p)
-            xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
-            self.dx = xl[1] - xl[0]
+        # Find reference values
+        ref = ca.Refpoints(x=x, y=p)
+        xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
+        self.dx = xl[1] - xl[0]
 
-            self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
-            self.db_sidelobe = ca.db(self.y_sidelobe, p_ref=p.max())
+        self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
+        self.db_sidelobe = ca.db(self.y_sidelobe, p_ref=p.max())
 
-            for x in xl:
-                ax['azimuth'].axvline(x=x, **self.indicator_line)
+        for x in xl:
+            ax['beamprofile'].axvline(x=x, **self.indicator_line)
 
-        else:
-            # Element image
-            self._draw_element(ax["element"])
-
-            db_marker = ca.db(self.y_lim, p_ref=1)
-
-            # Beam profiles
-            if self.circular:
-                p_x = self._p_circ(theta=self.angle())
-                p_y = None
-                p_xy = self._p_circ(theta=self.theta_r())
-            else:
-                p_x = self._p_rect(theta=self.angle(), phi=0)
-                p_y = self._p_rect(theta=0, phi=self.angle())
-                p_xy = self._p_rect(theta=self.theta_xy(), phi=self.phi_xy())
-
-            ax['azimuth'].plot(np.degrees(self.angle()),
-                               ca.db(p_x, p_ref=0), **self.main_line)
-            ax['azimuth'].axhline(y=db_marker, **self.indicator_line)
-
-            if not self.circular:
-                ax['elevation'].plot(np.degrees(self.angle()),
-                                     ca.db(p_y, p_ref=0), **self.main_line)
-                ax['elevation'].axhline(y=db_marker, **self.indicator_line)
-
-            # Lateral plane
-            x_m = self.xy()[0][0, :]
-            y_m = self.xy()[1][:, 0]
-            im = ax['intensity'].pcolormesh(x_m, y_m, ca.db(p_xy, p_ref=0),
-                                            vmin=self.db_min,
-                                            cmap=self.colormap)
-
-            ax['intensity'].contour(x_m, y_m, ca.db(p_xy, p_ref=0),
-                                    levels=[db_marker],
-                                    **self.contour_format)
-
-            ax["intensity"].set_title(f'Intensity at {self.z_c():.1f} m')
-
-            self.cbar = self.fig.colorbar(im, ax=ax['intensity'])
-            ca.db_colorbar(self.cbar, db_sep=6)
-
-            # Find -6 dB limits
-            ref = ca.Refpoints(x=self.angle(), y=p_x)
-            self.d_theta, _ = ref.lobe_width(y_rel=self.y_lim)
-
-            if not (self.circular):
-                ref = ca.Refpoints(x=self.angle(), y=p_y)
-                self.d_phi, _ = ref.lobe_width(y_rel=self.y_lim)
-
-        # Text box with results
+        self.scale_axes()
         self._resulttext()
 
         return
 
+    def scale_axes(self):
+        """Change scales of all graphs."""
+        ax = self.axes
+
+        element_max = self.d_max * 1e3 * np.array([-1, 1])
+        ax["element"].set(xlim=element_max, ylim=element_max)
+
+        ax["axial"].set(ylim=self.x_max*np.array([-1, 1]),
+                        xlim=[0, self.z_max])
+
+        lateral_max = self.x_max * np.array([-1, 1])
+        ax["lateral"].set(xlim=lateral_max, ylim=lateral_max)
+
+        ax['beamprofile'].set(xlim=self.x_max*np.array([-1, 1]))
+
+        ca.db_axis(ax['beamprofile'],
+                   db_min=self.db_min, db_max=0, db_sep=6)
+
+        return 0
+
     def interact(self,
                  circular=None,
+                 azimuth=None,
                  frequency=None,
                  width=None,
                  height=None,
@@ -322,6 +351,8 @@ class Transducer():
         """
         if circular is not None:
             self.circular = circular
+        if azimuth is not None:
+            self.azimuth = azimuth
         if frequency is not None:
             self.frequency = 1e3*frequency
         if width is not None:
@@ -331,47 +362,14 @@ class Transducer():
         if z_ref is not None:
             self.z_ref = float(z_ref)
         if db_min is not None:
-            self.set_dbmin(db_min)
+            self.db_min = db_min
 
         # Display result in graphs
         self.display()
 
         return
 
-    ###################################################################
-    # Non-public methods
-
-    # Calculations, internal
-    def _xz_points(self):
-        """Mesh of points(z, x)."""
-        return np.meshgrid(np.linspace(self.z_r(), self.z_max, 400),
-                           np.linspace(-self.x_max, self.x_max, 201))
-
-    def _p_circ(self, theta):
-        """Calculate pressure field from circular element, 1D or 2D.
-
-        Parameters
-        ----------
-        theta: array of float, 1D or 2D
-            Angles to calculate pressure at
-        """
-        p = ca.jinc(self.w_lambda() * np.sin(theta))
-        return p
-
-    def _p_rect(self, theta=0, phi=0):
-        """Calculate pressure field from rectangular element, 1D or 2D.
-
-        Parameters
-        ----------
-        theta: array of float, 1D or 2D
-            Azimuth angles
-        phi: array of float, 1D or 2D
-            Elevation angles
-        """
-        p = np.sinc(self.w_lambda() * np.sin(theta)) \
-            * np.sinc(self.h_lambda() * np.sin(phi))
-
-        return p
+    #=== Non-public methods ==========================================
 
     # Graphs and results
     def _draw_element(self, ax):
@@ -395,7 +393,7 @@ class Transducer():
         header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
                   fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.1f} mm')
 
-        if self.circular or self.axial:    # Height dimension omitted
+        if self.circular:    # Height dimension omitted
             size_text = (f'Diameter $D$ = {self.width*1e3:.0f} mm = '
                          fr'{self.w_lambda():.1f} $\lambda$')
         else:
@@ -405,31 +403,14 @@ class Transducer():
                          f'Heigth $h$ = {self.height*1e3:.0f} mm = '
                          fr'{self.h_lambda():.1f} $\lambda$')
 
-        if self.axial:            # Axial plot uses theoretical values
-            theta_0 = self.theta_0()
-        else:
-            theta_0 = self.d_theta  # Lateral plot finds angles from results
+        angle_text = (f'Opening angle ({self.lim_text})'
+                      r' $\theta_0$ = '
+                      fr'{np.degrees(self.theta_0()):.1f}$^\circ$')
 
-        if self.circular or self.axial:    # Height dimension omitted
-            angle_text = (fr'Opening angle ({self.lim_text})'
-                          fr' $\theta_0$ = {np.degrees(theta_0):.1f}$^\circ$')
-        else:  # Rectangular apeture has two lateral dimensions
-            phi_0 = self.d_phi
-            angle_text = (f'Opening angles ({self.lim_text})\n'
-                          r'  Azimuth $\theta_0$ = '
-                          fr'{np.degrees(theta_0):.1f}$^\circ$'
-                          '\n'
-                          r'  Elevation $\phi_0$ = '
-                          fr'{np.degrees(phi_0):.1f}$^\circ$')
-
-        if self.axial:
-            distance_text = (fr'Rayleigh distance $z_R$ = '
-                             fr'{self.z_r():.2f} m'
-                             '\n'
-                             r'Reference distance $z_{ref}$ = '
-                             f'{self.z_c():.2f} m')
-            beamwidth_text = (fr'Beam width ({self.lim_text}): '
-                              fr'{self.dx:.2f} m')
+        distance_text = (r'Rayleigh distance $z_R$ = '
+                         f'{self.z_r():.2f} m')
+        beamwidth_text = (f'Beam width ({self.lim_text}): '
+                          f'{self.dx:.2f} m')
 
         if np.isnan(self.x_sidelobe):
             sidelobe_text = ''
@@ -438,12 +419,9 @@ class Transducer():
                              fr'$x$ = {self.x_sidelobe:.2f} m, '
                              fr'{self.db_sidelobe:.1f} dB')
 
-        if self.axial:
-            result_text = header + '\n' + size_text + '\n' + angle_text + \
-                          '\n' + distance_text + '\n' + beamwidth_text + '\n' \
-                          + sidelobe_text
-        else:
-            result_text = header + '\n' + size_text + '\n' + angle_text
+        result_text = header + '\n' + size_text + '\n' +  \
+            '\n' + distance_text + '\n' + angle_text + '\n' + \
+            beamwidth_text + '\n' + sidelobe_text
 
         ca.remove_fig_text(self.fig)
         ca.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.15)
@@ -458,69 +436,35 @@ class Transducer():
                          num='Single Element Beamprofile')
         ca.add_logo(fig)
 
-        if self.axial:
-            gs = GridSpec(2, 2, figure=fig)
-            ax = {'intensity': fig.add_subplot(gs[0, :]),
-                  'azimuth': fig.add_subplot(gs[1, 1])}
+        gs = GridSpec(2, 6, figure=fig)
+        ax = {'element': fig.add_subplot(gs[0, 0:2]),
+              'axial': fig.add_subplot(gs[0, 2:7]),
+              'lateral': fig.add_subplot(gs[1, 2:4]),
+              'beamprofile': fig.add_subplot(gs[1, 4:7])}
 
-            # Lateral figures: Element drawing and intensity plot
-            ax['intensity'].set(aspect='equal',
-                                xlabel='Distance (z) [m]',
-                                ylabel='Azimuth (x) [m]',
-                                facecolor=self.intensity_background)
+        # Axial intensity plot
+        ax['axial'].set(aspect='equal',
+                        xlabel='Depth (z) [m]',
+                        ylabel='Azimuth (x) [m]',
+                        facecolor=self.intensity_background)
 
-            ax["intensity"].set(ylim=self.x_max*np.array([-1, 1]),
-                                xlim=[0, self.z_max])
+        # Element drawing
+        ax["element"].set(title='Transducer',
+                          facecolor=self.element_background,
+                          box_aspect=1,
+                          xlabel='Azimuth [mm]',
+                          ylabel='Elevation [mm]')
 
-            # Directivity graphs
-            ax['azimuth'].set(xlabel='Azimuth (x) [m]',
-                              ylabel='Power [dB re. max]',
-                              xlim=self.x_max*np.array([-1, 1]))
+        # Lateral intensity plot
+        ax['lateral'].set(box_aspect=1,
+                          xlabel='Azimuth [m]',
+                          ylabel='Elevation [m]')
 
-            ax['azimuth'].grid(visible=True, which='major', axis='x')
+        # Beam profile  graphs
+        ax['beamprofile'].set(xlabel='Distance [m]',
+                              ylabel='Power [dB re. max]')
 
-            ca.db_axis(ax['azimuth'], db_min=self.db_min, db_max=0, db_sep=6)
-
-        else:
-            gs = GridSpec(2, 4, figure=fig)
-            ax = {'element': fig.add_subplot(gs[0, 0]),
-                  'intensity': fig.add_subplot(gs[0:4, 1:3]),
-                  'azimuth': fig.add_subplot(gs[0, 3]),
-                  'elevation': fig.add_subplot(gs[1, 3]),
-                  }
-
-            # Element drawing and intensity plot
-            for a in [ax['element'], ax['intensity']]:
-                a.set(box_aspect=1,
-                      xlabel='Azimuth [mm]',
-                      ylabel='Elevation [mm]')
-
-            element_max = self.d_max * 1e3 * np.array([-1, 1])
-            ax["element"].set(title='Element shape',
-                              xlim=element_max,
-                              ylim=element_max,
-                              facecolor=self.element_background)
-
-            intensity_max = self.x_max*np.array([-1, 1])
-            ax["intensity"].set(xlim=intensity_max,
-                                ylim=intensity_max,
-                                facecolor=self.element_background)
-
-            # Directivity graphs
-            angle_lim = self.theta_max * np.array([-1, 1])
-            for a in [ax['azimuth'], ax['elevation']]:
-                a.set(xlim=angle_lim,
-                      xlabel='Angle [Deg]',
-                      ylabel='Power [dB re. max]')
-
-                ca.db_axis(a, db_min=self.db_min, db_max=0, db_sep=6)
-
-                a.xaxis.set_major_locator(MultipleLocator(30))  # Degrees
-                a.xaxis.set_minor_locator(MultipleLocator(10))
-                a.grid(visible=True, which='both', axis='x')
-
-            ax['azimuth'].set_title('Azimuth beam profile')
-            ax['elevation'].set_title('Elevation beam profile')
+        ax['beamprofile'].grid(visible=True, which='major', axis='x')
 
         return ax, fig
 
@@ -534,6 +478,14 @@ class Transducer():
             pass
 
         return 0
+
+    def _draw_orientationline(self, ax):
+        if self.azimuth:
+            ax.axhline(y=0, **self.orientation_line)
+        else:
+            ax.axvline(x=0, **self.orientation_line)
+
+        return
 
     # Interactive widgets
     def _create_widgets(self):
@@ -553,21 +505,21 @@ class Transducer():
                                         description='Shape',
                                         **layout_settings)
 
+        orientation_widget = widgets.Dropdown(
+            options=[('Azimuth (width)', True),
+                     ('Elevation (height)', False)],
+            value=True,
+            description='Orientation',
+            **layout_settings)
+
         db_widget = widgets.BoundedFloatText(
-            value=-42, min=-120, max=-6, step=6,
+            value=-60, min=-120, max=-6, step=6,
             description='Dynamic range [dB]',
             **layout_settings)
 
         # Parameter widgets
         label = ['Frequency', 'Width (Diameter)', 'Height', 'Distance']
-
-        if self.axial:
-            # Element height does not apply for 2D axial simulation
-            label.remove("Height")
-            n_dim = 1
-
-        else:
-            n_dim = 2
+        n_dim = 2
 
         label_widget = [widgets.Label(labeltext,
                                       layout=widgets.Layout(width='20%'))
@@ -601,7 +553,7 @@ class Transducer():
         parameter_line = [widgets.HBox([label_widget[k], parameter_widget[k]])
                           for k in range(len(label))]
 
-        col = [widgets.VBox([shape_widget, db_widget],
+        col = [widgets.VBox([shape_widget, orientation_widget, db_widget],
                             layout=widgets.Layout(width='30%')),
                widgets.VBox(parameter_line,
                             layout=widgets.Layout(width='70%'))]
@@ -610,25 +562,14 @@ class Transducer():
         widget_layout = widgets.VBox([title_widget, grid],
                                      layout=widgets.Layout(width='90%'))
 
-        if self.axial:
-            widget = {'circular': shape_widget,
-                      'db_min': db_widget,
-                      'frequency': frequency_widget,
-                      'width': size_widget[0],
-                      'distance': distance_widget,
-                      }
-        else:
-            widget = {'circular': shape_widget,
-                      'db_min': db_widget,
-                      'frequency': frequency_widget,
-                      'width': size_widget[0],
-                      'height': size_widget[1],
-                      'distance': distance_widget,
-                      }
-
-        # Modify initial values
-        if self.axial:
-            widget['db_min'].value = -60
+        widget = {'circular': shape_widget,
+                  'azimuth': orientation_widget,
+                  'db_min': db_widget,
+                  'frequency': frequency_widget,
+                  'width': size_widget[0],
+                  'height': size_widget[1],
+                  'distance': distance_widget,
+                  }
 
         w = WidgetLayout(widget_layout, widget)
 

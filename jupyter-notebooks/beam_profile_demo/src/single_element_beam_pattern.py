@@ -31,7 +31,7 @@ class Transducer():
         self.c = 1500           # m/s Speed of soundin load medium
 
         # Calculation settings
-        self.z_ref = 10.0        # m    Reference depth
+        self.z_ref = 20.0        # m    Reference depth
         self.y_lim = 0.5         # Relative limit for beamwidth
         self.lim_text = '-6 dB'  # Text for markers
         self.x_sidelobe = np.nan
@@ -41,8 +41,8 @@ class Transducer():
         # Display settings
         self.theta_max = 90    # deg  Max. angle to calculate
         self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 6.0       # m    Max. lateral dimension to calculate
-        self.z_max = 40.0      # m    Max. depth to calculate
+        self.x_max = 15.0       # m    Max. lateral dimension to calculate
+        self.z_max = 100.0      # m    Max. depth to calculate
         self.db_min = -42      # dB   Min. on dB-scales
 
         # Colors and markers
@@ -59,7 +59,7 @@ class Transducer():
                            'linestyle': 'dotted',
                            'alpha': 0.7}
 
-        self.orientation_line = {'color': 'C0',
+        self.orientation_line = {'color': 'cyan',
                                  'linestyle': 'dotted',
                                  'alpha': 1.0}
 
@@ -69,7 +69,7 @@ class Transducer():
         self.main_line = {'color': 'C0',
                           'linestyle': 'solid'}
 
-        self.colormap = 'magma'
+        self.colormap = 'inferno'
         self.intensity_background = 'black'
 
         # Initialisation
@@ -225,7 +225,7 @@ class Transducer():
                             title='Beam intensity, azimuth plane (zx)')
         else:
             ax['axial'].set(ylabel='Elevation (y) [m]',
-                            title='Beam intensity, elevation plane (zx)')
+                            title='Beam intensity, elevation plane (zy)')
 
         ax['axial'].axvline(x=self.z_c(), **self.orientation_line)
 
@@ -501,7 +501,7 @@ class Transducer():
 
         shape_widget = widgets.Dropdown(options=[('Rectangular', False),
                                                  ('Circular', True)],
-                                        value=False,
+                                        value=True,
                                         description='Shape',
                                         **layout_settings)
 
@@ -543,7 +543,7 @@ class Transducer():
                        for k in range(n_dim)]
 
         distance_widget = widgets.FloatSlider(min=1.0, max=self.z_max,
-                                              value=10.0, step=0.5,
+                                              value=20.0, step=1.0,
                                               readout_format='.1f',
                                               description='[m]',
                                               **layout_settings)

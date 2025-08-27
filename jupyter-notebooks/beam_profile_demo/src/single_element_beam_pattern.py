@@ -41,13 +41,14 @@ class Transducer():
         # Display settings
         self.theta_max = 90    # deg  Max. angle to calculate
         self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 15.0       # m    Max. lateral dimension to calculate
-        self.z_max = 100.0      # m    Max. depth to calculate
-        self.db_min = -42      # dB   Min. on dB-scales
+        self.x_max = 15.0      # m    Max. lateral dimension to calculate
+        self.z_max = 100.0     # m    Max. depth to calculate
+        self.db_range = 60     # dB   Dynamic gange on dB-scales
+        self.db_gain = 6       # dB   Max. on dB-scales
 
         # Colors and markers
         self.element_color = 'crimson'
-        self.element_background = 'silver'
+        self.element_background = 'whitesmoke'
         self.text_face = 'whitesmoke'
 
         contour_color = 'white'
@@ -59,7 +60,7 @@ class Transducer():
                            'linestyle': 'dotted',
                            'alpha': 0.7}
 
-        self.orientation_line = {'color': 'cyan',
+        self.orientation_line = {'color': 'cornflowerblue',
                                  'linestyle': 'dotted',
                                  'alpha': 1.0}
 
@@ -219,13 +220,13 @@ class Transducer():
         p_db = ca.db(p_axial, p_ref=p_max)
 
         im = ax['axial'].pcolormesh(z, x, p_db,
-                                    vmin=self.db_min, cmap=self.colormap)
+                                    clim=self._db_scale(), cmap=self.colormap)
         if self.azimuth:
             ax['axial'].set(ylabel='Azimuth (x) [m]',
-                            title='Beam intensity, azimuth plane (zx)')
+                            title='Azimuth plane (zx)')
         else:
             ax['axial'].set(ylabel='Elevation (y) [m]',
-                            title='Beam intensity, elevation plane (zy)')
+                            title='Elevation plane (zy)')
 
         ax['axial'].axvline(x=self.z_c(), **self.orientation_line)
 
@@ -262,8 +263,7 @@ class Transducer():
         y_m = self.xy()[1][:, 0]
         p_db = ca.db(self.p_lateral(), p_ref=p_max)
         im = ax['lateral'].pcolormesh(x_m, y_m, p_db,
-                                      vmin=self.db_min,
-                                      vmax=0,
+                                      clim=self._db_scale(),
                                       cmap=self.colormap)
 
         db_marker = ca.db(self.y_lim, p_ref=1) + np.max(p_db)
@@ -273,7 +273,7 @@ class Transducer():
 
         self._draw_orientationline(ax["lateral"])
 
-        ax["lateral"].set_title(f'Intensity at {self.z_c():.1f} m')
+        ax["lateral"].set_title(f'Lateral plane (xy) at {self.z_c():.1f} m')
 
         # Lateral beam profile at reference distance
         k_ref = np.argmin(abs(z-self.z_c()))
@@ -315,8 +315,7 @@ class Transducer():
 
         ax['beamprofile'].set(xlim=self.x_max*np.array([-1, 1]))
 
-        ca.db_axis(ax['beamprofile'],
-                   db_min=self.db_min, db_max=0, db_sep=6)
+        ca.db_axis(ax['beamprofile'], db_scale=self._db_scale(), db_sep=6)
 
         return 0
 
@@ -327,7 +326,8 @@ class Transducer():
                  width=None,
                  height=None,
                  z_ref=None,
-                 db_min=None
+                 db_range=None,
+                 db_gain=None
                  ):
         """Scale inputs and  display results.
 
@@ -346,8 +346,10 @@ class Transducer():
             Element height (elevation, y) in mm
         z_ref: float, optional
             Reference depth in m
-        db_min: float
-            Minimum on dB-axes
+        db_range: float
+            Rangeon dB-axes
+        db_gain: float
+            Maximum on dB-axes
         """
         if circular is not None:
             self.circular = circular
@@ -361,17 +363,24 @@ class Transducer():
             self.height = 1e-3*height
         if z_ref is not None:
             self.z_ref = float(z_ref)
-        if db_min is not None:
-            self.db_min = db_min
+        if db_range is not None:
+            self.db_range = db_range
+        if db_gain is not None:
+            self.db_gain = db_gain
 
         # Display result in graphs
         self.display()
 
         return
 
-    #=== Non-public methods ==========================================
+    # === Non-public methods ==========================================
 
     # Graphs and results
+
+    def _db_scale(self):
+        db_lim = np.array([-self.db_range, 0]) - self.db_gain
+        return db_lim
+
     def _draw_element(self, ax):
         """Draw image of aperture in specified axis."""
         w_mm = self.width*1e3
@@ -490,84 +499,93 @@ class Transducer():
     # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
-        widget_style = {'description_width': 'initial'}
-
         title = 'Beam-profile from Single Element Transducer'
         title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
-        layout_settings = {'continuous_update': True,
-                           'layout': widgets.Layout(width='80%'),
-                           'style': widget_style}
+        left_layout = {'continuous_update': True,
+                       'layout': widgets.Layout(width='95%'),
+                       'style': {'description_width': '50%'}}
 
+        right_layout = {'continuous_update': True,
+                        'layout': widgets.Layout(width='95%'),
+                        'style': {'description_width': '30%'}}
+
+        left_width = '25%'
+        right_width = '75%'
+
+        # Left column widgets (Dropboxes, number boxes)
         shape_widget = widgets.Dropdown(options=[('Rectangular', False),
                                                  ('Circular', True)],
                                         value=True,
                                         description='Shape',
-                                        **layout_settings)
+                                        **left_layout)
 
         orientation_widget = widgets.Dropdown(
             options=[('Azimuth (width)', True),
                      ('Elevation (height)', False)],
             value=True,
             description='Orientation',
-            **layout_settings)
+            **left_layout)
 
-        db_widget = widgets.BoundedFloatText(
-            value=-60, min=-120, max=-6, step=6,
-            description='Dynamic range [dB]',
-            **layout_settings)
+        db_range_widget = widgets.BoundedFloatText(
+            value=60, min=6, max=120, step=6,
+            description='Range [dB]',
+            **left_layout)
 
-        # Parameter widgets
-        label = ['Frequency', 'Width (Diameter)', 'Height', 'Distance']
-        n_dim = 2
+        db_gain_widget = widgets.BoundedFloatText(
+            value=12, min=-120, max=120, step=6,
+            description='Gain [dB]',
+            **left_layout)
 
-        label_widget = [widgets.Label(labeltext,
-                                      layout=widgets.Layout(width='20%'))
-                        for labeltext in label]
+        left_col = widgets.VBox([shape_widget,
+                                 orientation_widget,
+                                 db_range_widget,
+                                 db_gain_widget],
+                                layout=widgets.Layout(width=left_width))
 
-        layout_settings = {'continuous_update': True,
-                           'layout': widgets.Layout(width='80%'),
-                           'style': widget_style}
-
+        # Right column widgets (Sliders)
         frequency_widget = widgets.FloatSlider(min=1, max=400,
                                                value=100, step=1,
                                                readout_format='.0f',
-                                               description='[kHz]',
-                                               **layout_settings)
+                                               description='Frequency [kHz]',
+                                               **right_layout)
 
-        size_widget = [widgets.FloatSlider(min=10, max=400,
+        width_widget = widgets.FloatSlider(min=10, max=400,
                                            value=100, step=10,
                                            readout_format='.0f',
-                                           description='[mm]',
-                                           **layout_settings)
-                       for k in range(n_dim)]
+                                           description='Width (Diameter) [mm]',
+                                           **right_layout)
+
+        height_widget = widgets.FloatSlider(min=10, max=400,
+                                            value=150, step=10,
+                                            readout_format='.0f',
+                                            description='Height [mm]',
+                                            **right_layout)
 
         distance_widget = widgets.FloatSlider(min=1.0, max=self.z_max,
                                               value=20.0, step=1.0,
-                                              readout_format='.1f',
-                                              description='[m]',
-                                              **layout_settings)
+                                              readout_format='.0f',
+                                              description='Distance [m]',
+                                              **right_layout)
 
-        parameter_widget = [frequency_widget] + size_widget + [distance_widget]
+        right_col = widgets.VBox([frequency_widget,
+                                  width_widget,
+                                  height_widget,
+                                  distance_widget],
+                                 layout=widgets.Layout(width=right_width))
 
-        parameter_line = [widgets.HBox([label_widget[k], parameter_widget[k]])
-                          for k in range(len(label))]
+        widget_layout = widgets.HBox([left_col, right_col],
+                                     layout=widgets.Layout(width='80%'))
 
-        col = [widgets.VBox([shape_widget, orientation_widget, db_widget],
-                            layout=widgets.Layout(width='30%')),
-               widgets.VBox(parameter_line,
-                            layout=widgets.Layout(width='70%'))]
-
-        grid = widgets.HBox(col, layout=widgets.Layout(width='90%'))
-        widget_layout = widgets.VBox([title_widget, grid],
-                                     layout=widgets.Layout(width='90%'))
+        widget_layout = widgets.VBox([title_widget, widget_layout])
 
         widget = {'circular': shape_widget,
                   'azimuth': orientation_widget,
-                  'db_min': db_widget,
+                  'db_range': db_range_widget,
+                  'db_gain': db_gain_widget,
                   'frequency': frequency_widget,
-                  'width': size_widget[0],
-                  'height': size_widget[1],
+                  'width': width_widget,
+                  'height': height_widget,
                   'distance': distance_widget,
                   }
 

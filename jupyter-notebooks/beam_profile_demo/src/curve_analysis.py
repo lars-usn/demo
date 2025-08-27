@@ -32,7 +32,7 @@ def db(p, p_ref=1e-6):
     return 20 * np.log10(abs(p/p_ref))
 
 
-def db_axis(ax, db_min=-40, db_max=0, db_sep=6):
+def db_axis(ax, db_scale=(-42, 0), db_sep=6):
     """Configure dB-scaled axis.
 
     Parameters
@@ -46,7 +46,7 @@ def db_axis(ax, db_min=-40, db_max=0, db_sep=6):
     db_sep: float
         Separation between major ticks
     """
-    ax.set_ylim(db_min, db_max)
+    ax.set_ylim(db_scale)
 
     ax.yaxis.set_major_locator(MultipleLocator(db_sep))
     ax.yaxis.set_minor_locator(MultipleLocator(1))

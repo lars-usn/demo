@@ -74,6 +74,16 @@ def db_colorbar(cbar, db_sep=6):
     return
 
 
+# Angle scaling
+def angle_axis(ax, angle_max=90, d_major=30, d_minor=10):
+    """Scale axis for angle display in degrees."""
+    ax.set(xlim=(angle_max * np.array([-1, 1])))
+    ax.xaxis.set_major_locator(MultipleLocator(d_major))
+    ax.xaxis.set_minor_locator(MultipleLocator(d_minor))
+
+    return
+
+
 # Curve analysis
 def parabolic_max(y, x, kmax=None, check=False):
     """Subsample-interpolation by parabolic interpolation to find max.
@@ -123,7 +133,7 @@ def parabolic_max(y, x, kmax=None, check=False):
 
 
 class Refpoints():
-    """Find reference points for y(x).
+    """Find reference points for function y(x).
 
     Main lobe, -3dB and -6dB limits, zero-crossings, and largest side lobe
     """
@@ -249,7 +259,7 @@ def remove_fig_text(fig):
 
 
 def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
-                 background_color='whitesmoke'):
+                 background_color='whitesmoke', remove=True):
     """Remove all existing text and add new text box.
 
     Parameters
@@ -265,6 +275,9 @@ def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
     background_color: color string, optional
         Bckground color of text-box
     """
+    if remove:
+        remove_fig_text(fig)
+
     fig.text(xpos, ypos, text,
              fontsize='medium',
              bbox={'facecolor': background_color,

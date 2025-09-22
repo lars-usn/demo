@@ -2,6 +2,7 @@
 
 The array consists of N elements described either as points or rectangular
 elements.
+Results are calculated in the far-field, using the Fraunhofer-Approximation
 """
 
 # Python libraries
@@ -9,11 +10,10 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from matplotlib.ticker import MultipleLocator
 import ipywidgets as widgets
 
 # Internal libraries
-import curve_analysis as ca
+import beamplot_utilities as bpu
 
 
 # Class definitions
@@ -162,18 +162,18 @@ class Array():
         self._remove_old_artists()
         ax = self.axes
 
-        # Axial intensity
+        # Intensity, azimuth plane
         p_ref = self.n_elements * self.width() / self.z_r()
-        p_db = ca.db(self.p_axial(), p_ref=p_ref)
+        p_db = bpu.db(self.p_axial(), p_ref=p_ref)
 
         im = ax['axial'].pcolormesh(self.x(), self.z(),  p_db.transpose(),
                                     clim=self._db_scale(),
                                     cmap=self.colormap)
 
         self.cbar = self.fig.colorbar(im, ax=ax['axial'])
-        ca.db_colorbar(self.cbar, db_sep=6)
+        bpu.db_colorbar(self.cbar, db_sep=6)
 
-        # Element with lines extending to Rayleigh distance
+        # Draw element with lines extending to Rayleigh distance
         x_aperture = self.d_aperture() / 2
         ax['axial'].axhspan(-x_aperture, x_aperture, xmax=0.005,
                             color=self.element_color)
@@ -196,12 +196,15 @@ class Array():
         p_points = self.directivity_array_points(np.radians(theta))
         p_array = p_element * p_points
 
-        ax['beamprofile'].plot(theta, ca.db(p_element, p_ref=1),
+        # Element beamprofile
+        ax['beamprofile'].plot(theta, bpu.db(p_element, p_ref=1),
                                color='C0', linestyle='dashed')
-        ax['beamprofile'].plot(theta, ca.db(p_array, p_ref=1),
+        # Array beamprofile
+        ax['beamprofile'].plot(theta, bpu.db(p_array, p_ref=1),
                                color='C0', linestyle='solid')
 
         ax['beamprofile'].axvline(x=0, color='gray')
+
         return
 
     def scale_axes(self):
@@ -215,11 +218,8 @@ class Array():
         ax['delay'].set(xlim=(1, self.n_elements),
                         ylim=(0, 1e6 * delay_max))
 
-        ax['beamprofile'].set(xlim=(90 * np.array([-1, 1])))
-        ax['beamprofile'].xaxis.set_minor_locator(MultipleLocator(10))
-        ax['beamprofile'].xaxis.set_major_locator(MultipleLocator(30))
-
-        ca.db_axis(ax['beamprofile'], db_scale=(-42, 0), db_sep=6)
+        bpu.angle_axis(ax['beamprofile'])
+        bpu.db_axis(ax['beamprofile'], db_scale=(-42, 0), db_sep=6)
 
         return 0
 
@@ -302,8 +302,7 @@ class Array():
         result_text = header + '\n' + array_text + '\n' + angle_text + \
             '\n' + distance_text
 
-        ca.remove_fig_text(self.fig)
-        ca.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
+        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
 
         return
 
@@ -313,7 +312,7 @@ class Array():
         fig = plt.figure(figsize=[15, 5],
                          constrained_layout=True,
                          num='Array Beamprofile')
-        ca.add_logo(fig)
+        bpu.add_logo(fig)
 
         gs = GridSpec(2, 4, figure=fig)
         ax = {'axial': fig.add_subplot(gs[0:, 2:]),
@@ -343,7 +342,7 @@ class Array():
 
     def _remove_old_artists(self):
         for ax in self.axes.values():
-            ca.remove_artists(ax)
+            bpu.remove_artists(ax)
 
         try:
             self.cbar.remove()

@@ -7,7 +7,8 @@ import matplotlib.patches as patches
 from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
 
-import curve_analysis as ca
+# Internal libraries
+import beamplot_utilities as bpu
 
 
 class WidgetLayout():
@@ -147,7 +148,7 @@ class Transducer():
     def p_azimuth(self):
         """Calculate axial pressure field in the azimuth plane (zx)."""
         if self.circular:
-            p = 1/self.r() * ca.jinc(self.w_lambda() * np.sin(self.theta()))
+            p = 1/self.r() * bpu.jinc(self.w_lambda() * np.sin(self.theta()))
         else:
             p = 1/self.r() * np.sinc(self.w_lambda() * np.sin(self.theta()))
         return p
@@ -188,7 +189,7 @@ class Transducer():
         """Calculate lateral intensity at reference distance."""
         if self.circular:
             p = 1/self.r_xy() \
-                * ca.jinc(self.w_lambda() * np.sin(self.theta_r()))
+                * bpu.jinc(self.w_lambda() * np.sin(self.theta_r()))
         else:
             p = 1/self.r_xy()  \
                 * np.sinc(self.w_lambda() * np.sin(self.theta_xy())) \
@@ -217,7 +218,7 @@ class Transducer():
         else:
             p_axial = self.p_elevation()
 
-        p_db = ca.db(p_axial, p_ref=p_max)
+        p_db = bpu.db(p_axial, p_ref=p_max)
 
         im = ax['axial'].pcolormesh(z, x, p_db,
                                     clim=self._db_scale(), cmap=self.colormap)
@@ -231,7 +232,7 @@ class Transducer():
         ax['axial'].axvline(x=self.z_c(), **self.orientation_line)
 
         self.cbar = self.fig.colorbar(im, ax=ax['axial'])
-        ca.db_colorbar(self.cbar, db_sep=6)
+        bpu.db_colorbar(self.cbar, db_sep=6)
 
         # Element with lines extending to Rayleigh distance
         y_element = self.width/2
@@ -261,12 +262,12 @@ class Transducer():
         # Lateral intensity at reference distance
         x_m = self.xy()[0][0, :]
         y_m = self.xy()[1][:, 0]
-        p_db = ca.db(self.p_lateral(), p_ref=p_max)
+        p_db = bpu.db(self.p_lateral(), p_ref=p_max)
         im = ax['lateral'].pcolormesh(x_m, y_m, p_db,
                                       clim=self._db_scale(),
                                       cmap=self.colormap)
 
-        db_marker = ca.db(self.y_lim, p_ref=1) + np.max(p_db)
+        db_marker = bpu.db(self.y_lim, p_ref=1) + np.max(p_db)
         ax['lateral'].contour(x_m, y_m, p_db,
                               levels=[db_marker],
                               **self.contour_line)
@@ -278,19 +279,19 @@ class Transducer():
         # Lateral beam profile at reference distance
         k_ref = np.argmin(abs(z-self.z_c()))
         p = p_axial[:, k_ref]
-        p_db = ca.db(p, p_ref=p_max)
+        p_db = bpu.db(p, p_ref=p_max)
 
         ax['beamprofile'].plot(x, p_db, **self.main_line)
-        ax['beamprofile'].axhline(y=p_db.max()+ca.db(self.y_lim, p_ref=1),
+        ax['beamprofile'].axhline(y=p_db.max()+bpu.db(self.y_lim, p_ref=1),
                                   **self.indicator_line)
 
         # Find reference values
-        ref = ca.Refpoints(x=x, y=p)
+        ref = bpu.Refpoints(x=x, y=p)
         xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
         self.dx = xl[1] - xl[0]
 
         self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
-        self.db_sidelobe = ca.db(self.y_sidelobe, p_ref=p.max())
+        self.db_sidelobe = bpu.db(self.y_sidelobe, p_ref=p.max())
 
         for x in xl:
             ax['beamprofile'].axvline(x=x, **self.indicator_line)
@@ -315,7 +316,7 @@ class Transducer():
 
         ax['beamprofile'].set(xlim=self.x_max*np.array([-1, 1]))
 
-        ca.db_axis(ax['beamprofile'], db_scale=self._db_scale(), db_sep=6)
+        bpu.db_axis(ax['beamprofile'], db_scale=self._db_scale(), db_sep=6)
 
         return 0
 
@@ -432,8 +433,7 @@ class Transducer():
             '\n' + distance_text + '\n' + angle_text + '\n' + \
             beamwidth_text + '\n' + sidelobe_text
 
-        ca.remove_fig_text(self.fig)
-        ca.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.15)
+        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.15)
 
         return
 
@@ -443,7 +443,7 @@ class Transducer():
         fig = plt.figure(figsize=[10, 5],
                          constrained_layout=True,
                          num='Single Element Beamprofile')
-        ca.add_logo(fig)
+        bpu.add_logo(fig)
 
         gs = GridSpec(2, 6, figure=fig)
         ax = {'element': fig.add_subplot(gs[0, 0:2]),
@@ -479,7 +479,7 @@ class Transducer():
 
     def _remove_old_artists(self):
         for ax in self.axes.values():
-            ca.remove_artists(ax)
+            bpu.remove_artists(ax)
 
         try:
             self.cbar.remove()

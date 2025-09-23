@@ -173,16 +173,11 @@ class Array():
         self.cbar = self.fig.colorbar(im, ax=ax['axial'])
         bpu.db_colorbar(self.cbar, db_sep=6)
 
-        # Draw element with lines extending to Rayleigh distance
-        x_aperture = self.d_aperture() / 2
-        ax['axial'].axhspan(-x_aperture, x_aperture, xmax=0.005,
-                            color=self.element_color)
-
-        for w in [-x_aperture, x_aperture]:
-            ax['axial'].plot([0.0, self.z_r()],
-                             w/2*np.array([1, 1]),
-                             color=self.element_color,
-                             linestyle='dotted')
+        # Illustrate aray
+        ax['axial'].fill(self.d_aperture()*np.array([-1, 1, 1, -1])/2,
+                         self.z_r()*np.array([0, 0, 1, 1]),
+                         color=self.element_color,
+                         alpha=0.7)
 
         # Delay profile over array
         tau, n = self.delay_array()

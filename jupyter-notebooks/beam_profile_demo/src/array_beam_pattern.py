@@ -2,7 +2,10 @@
 
 The array consists of N elements described either as points or rectangular
 elements.
-Results are calculated in the far-field, using the Fraunhofer-Approximation
+Results are calculated in the far-field of the array, using the 
+Fraunhofer-Approximation.
+
+An interactive version can be run from the Jupyter Notebook 'array_demo.ipynb'
 """
 
 # Python libraries
@@ -44,8 +47,10 @@ class Array():
 
         # Display settings
         self.theta_max = 90    # deg  Max. angle to calculate
-        self.x_max = 50.0      # m    Max. lateral dimension to calculate
-        self.z_max = 100.0     # m    Max. depth to calculate
+        self.x_max = 70.0      # m    Max. lateral dimension to calculate
+        self.z_max = 140.0     # m    Max. depth to calculate
+        self.n_x = 301         #      No. of points in the x-direction (azimuth)
+        self.n_z = 400         #      No. of points in the z-direction (depth)
         self.db_range = 60     # dB   Dynamic gange on dB-scales
         self.db_gain = 6       # dB   Max. on dB-scales
 
@@ -67,7 +72,7 @@ class Array():
 
     # === Calculated parameters ===========================
     def theta_s(self):
-        """Steerning angle in radians.."""
+        """Steering angle in radians.."""
         return np.radians(self.angle_s)
 
     def delay(self):
@@ -116,11 +121,11 @@ class Array():
     # === Axial plane ===================
     def x(self):
         """Lateral dimension for axial plot (x or y)."""
-        return np.linspace(-self.x_max, self.x_max, 401)
+        return np.linspace(-self.x_max, self.x_max, self.n_x)
 
     def z(self):
         """Axial dimension (depth) for axial plot (z)."""
-        return np.linspace(self.z_r(), self.z_max, 600)
+        return np.linspace(self.z_r(), self.z_max, self.n_z)
 
     def zx(self):
         """Axial plane (zx or zy) to plot."""
@@ -185,7 +190,7 @@ class Array():
         self.scale_axes()
         self._resulttext()
 
-        # Beam profile, directivury function
+        # Beam profile, directivity function
         theta = np.linspace(-90, 90, 501)
         p_element = self.directivity_element(np.radians(theta))
         p_points = self.directivity_array_points(np.radians(theta))
@@ -286,6 +291,10 @@ class Array():
                       f'Pitch $d$ = {self.pitch*1e3:.2f} mm'
                       f' = {self.p_lambda():.2f}'
                       r' $\lambda$'
+                      '\n'
+                      f'Array width $D$ = {self.d_aperture()*1e3:.0f} mm'
+                      f' = {self.d_lambda():.1f}'
+                      r' $\lambda$'
                       )
 
         angle_text = (r'Steering angle $\theta_s$ = '
@@ -356,7 +365,7 @@ class Array():
                        'layout': widgets.Layout(width='95%'),
                        'style': {'description_width': '50%'}}
 
-        slider_layout = {'continuous_update': False,
+        slider_layout = {'continuous_update': True,
                          'layout': widgets.Layout(width='95%'),
                          'style': {'description_width': '30%'}}
 

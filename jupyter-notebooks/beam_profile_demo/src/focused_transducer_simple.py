@@ -337,7 +337,7 @@ class Transducer():
 
         # Right column widgets (Sliders)
         diameter_widget = widgets.FloatSlider(
-            min=1, max=100, value=20, step=1,
+            min=1, max=50, value=20, step=1,
             readout_format='.0f',
             description='Diameter [mm]',
             **right_layout)

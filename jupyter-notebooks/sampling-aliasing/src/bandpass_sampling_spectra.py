@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
 
 
@@ -27,7 +28,7 @@ class SampledSpectra():
         self.fs = 2.0
         self.m = np.arange(1, 10)
 
-        self.ax = self.initialise_graphs()
+        self.ax, self.ax_text = self.initialise_graphs()
         self.widget = self._create_widgets()
 
     def _f_vector(self):
@@ -63,9 +64,10 @@ class SampledSpectra():
 
     def fs_allowed(self):
         """List allowed sample rates."""
-        m = np.arange(1, 6)
-        fs_min = (2*self.fc+self.b)/(m+1)
-        fs_max = (2*self.fc-self.b)/m
+        m = np.arange(0, int(np.ceil(self.fc / self.b - 1/2)))
+        with np.errstate(divide='ignore'):
+            fs_min = (2*self.fc+self.b)/(m+1)
+            fs_max = (2*self.fc-self.b)/m
 
         return m, fs_min, fs_max
 
@@ -73,9 +75,10 @@ class SampledSpectra():
         """Crate text-box of allowed frequencies."""
         m, f_min, f_max = self.fs_allowed()
 
-        f_text = 'm      $(2f_c - B)/m$      $(2f_c+B)/(m+1)$ \n'
+        f_header = ['m', '$(2f_c+B)/(m+1)$', '$(2f_c-B)/m$']
+        f_text = f'{f_header[0]:3}  {f_header[1]:18}  {f_header[2]:18}  \n'
         for k, mk in enumerate(m):
-            f_text += f'{mk}  {f_min[k]:16.2f}  {f_max[k]:16.2f} \n'
+            f_text += f'{mk:3}  {f_min[k]:18.2f}  {f_max[k]:18.2f}  \n'
 
         f_text += '\n'
         f_text += f'     $f_s > 2B $= {2*self.b:.2f}'
@@ -126,7 +129,10 @@ class SampledSpectra():
                          num='Sampling - Repeated Spectra')
 
         n_subplots = 4
-        ax = fig.subplots(n_subplots, 1, sharex=True)
+        gs = GridSpec(n_subplots, 4, figure=fig)
+        ax = [fig.add_subplot(gs[k, 0:-1]) for k in range(n_subplots)]
+        ax_text = fig.add_subplot(gs[:-1, -1])
+        ax_text.set_axis_off()
 
         for axn in ax:
             axn.set(xlim=(-self.f_max, self.f_max),
@@ -139,7 +145,7 @@ class SampledSpectra():
 
         ax[n_subplots-1].set(xlabel='Frequency [$f/f_s$]')
 
-        return ax
+        return ax, ax_text
 
     def display(self):
         """Plot results."""
@@ -153,34 +159,40 @@ class SampledSpectra():
             for art in list(ax.texts):
                 art.remove()
 
-        # Mark Nyquist limit
-        nyquistcolor = 'honeydew'
-        for ax in self.ax:
-            for f_n in self.f_span():
-                ax.axvline(x=f_n, color='gray', linestyle=':')
-                ax.axvspan(-1/2*self.fs, 1/2*self.fs,
-                           color=nyquistcolor)
+        for art in list(self.ax_text.texts):
+            art.remove()
 
-        # Lines marking multiples of sampling rate
-        for axn in self.ax:
+        # Mark Nyquist limit and multiples of sample rate
+        nyquistcolor = (0.8, 1.0, 0.8, 1.0)
+        for ax in self.ax:
+            ax.axvspan(-1/2*self.fs, 1/2*self.fs,
+                       color=nyquistcolor)
             for f_n in self.f_span():
-                axn.axvline(x=f_n, color='C1', linestyle=':')
+                ax.axvline(x=f_n, color='0.7', linestyle=':')
 
         # Original continous spectrum
         self.ax[0].plot(self.f(), self.xc(), 'C0')
         self.ax[1].plot(self.f(), self.xc(), 'C0')
 
+        # Bandwidth markers
+        for xm in [-self.fc-self.b/2,
+                   -self.fc+self.b/2,
+                   self.fc-self.b/2,
+                   self.fc+self.b/2]:
+            self.ax[0].axvline(x=xm, color='C0', linestyle='dotted')
+
         # Mark span
         x = self.fc + np.array([-self.b/2, self.b/2])
-        y = [1.1, 1.6]
+        y = [1.0, 1.5]
 
         for k in range(len(x)):
             self.ax[0].plot([-x[k], x[k]], [y[k], y[k]],
                             color='C0', linestyle='dotted', marker='|')
 
         span_marker = {'color': 'C0',
-                       'va': 'center',
-                       'backgroundcolor': nyquistcolor}
+                       'verticalalignment': 'bottom',
+                       'horizontalalignment': 'center',
+                       'backgroundcolor': (0.5, 0.5, 0.5, 0.0)}
 
         self.ann = self.ax[0].annotate(f'$2f_c - B$={2*x[0]:.2f}',
                                        (0, y[0]),
@@ -190,28 +202,18 @@ class SampledSpectra():
                                        (0, y[1]),
                                        **span_marker)
 
-        # Bandwidth markers
-        for xm in [-self.fc-self.b/2,
-                   -self.fc+self.b/2,
-                   self.fc-self.b/2,
-                   self.fc+self.b/2]:
-            self.ax[0].axvline(x=xm, color='C0', linestyle='dotted')
-
+        # Mark sample rate and centre frequency
         text_par = {'verticalalignment': 'top',
                     'horizontalalignment': 'center',
-                    'textcoords': 'offset points',
-                    'color': 'C1'}
+                    'backgroundcolor': '1',
+                    'textcoords': 'offset points'}
 
         self.ax[0].plot(-self.fc, 0, '|')
         self.ax[0].plot(self.fc, 0, '|')
-        self.ax[0].annotate(f'$-f_c=-{self.fc:.2f}$', (-self.fc, 0),
-                            (0, -5), **text_par)
-        self.ax[0].annotate(f'$f_c={self.fc:.2f}$', (self.fc, 0),
-                            (0, -5), **text_par)
-        self.ax[1].annotate(f'$f_s={-self.fs:.2f}$', (-self.fs, 0),
-                            (0, -5), **text_par)
-        self.ax[1].annotate(f'$f_s={self.fs:.2f}$', (self.fs, 0),
-                            (0, -5), **text_par)
+        self.ax[0].annotate('$-f_c$', (-self.fc, 0), (0, -5), **text_par)
+        self.ax[0].annotate('$f_c$', (self.fc, 0), (0, -5), **text_par)
+        self.ax[1].annotate('$-f_s$', (-self.fs, 1), (0, 0), **text_par)
+        self.ax[1].annotate('$f_s$', (self.fs, 1), (0, 0), **text_par)
 
         # Replicated spectra
         for x in self.xr():
@@ -222,11 +224,10 @@ class SampledSpectra():
 
         self.ax[2].plot(self.f(), self.xs(), 'C1')
         self.ax[2].plot(self.f()[ni], self.xs()[ni], 'C0')
-
         self.ax[3].plot(self.f()[ni], self.xs()[ni], 'C0')
 
-        self.ax[0].text(self.f_max, 0.0, self.textbox_allowed(),
-                        backgroundcolor='linen')
+        self.ax_text.text(0.1, 0.0, self.textbox_allowed(),
+                          backgroundcolor=(0.95, 0.95, 0.95, 1.0))
 
         return 0
 
@@ -237,13 +238,17 @@ class SampledSpectra():
                  fs=None):
         """Scale inputs and  display results.
 
-        For interactive operation with dimensions in mm and frequency in kHz.
+        For interactive operation.
         Existing values are used if a parameter is omitted.
 
         Parameters
         ----------
+        fc: float, optional
+            Carrier frequency
         b: float, optional
-            Bandwidth as maximum frequency relative to sample rate
+            Bandwidth
+        fs: float, optional
+            Sample rate
         """
         if fc is not None:
             self.fc = fc

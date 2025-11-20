@@ -34,26 +34,22 @@ class Array():
     def __init__(self, create_widgets=False):
 
         # Transducer array definition
-        self.n_elements = 64  # Number of elements in array
+        self.n_elements = 32    # Number of elements in array
         self.kerf = 100e-6      # m   Kerf between elements
         self.pitch = 7.5e-3     # m   Pitch between elements
         self.frequency = 100e3  # Hz  Ultrasound frequency
         self.angle_s = 20       # deg Steering angle
         self.c = 1500           # m/s Speed of soundin load medium
 
-        # Calculation settings
-        self.z_ref = 20.0        # m    Reference depth
-        self.y_lim = 0.5         # Relative limit for beamwidth
-
         # Display settings
         self.theta_max = 90    # deg  Max. angle to calculate
         self.x_max = 70.0      # m    Max. lateral dimension to calculate
         self.z_max = 140.0     # m    Max. depth to calculate
-        self.n_x = 301  # No. of points in the x-direction (azimuth)
-        self.n_z = 400  # No. of points in the z-direction (depth)
+        self.n_x = 300         # No. of points in the x-direction (azimuth)
+        self.n_z = 400         # No. of points in the z-direction (depth)
         self.db_range = 60     # dB   Dynamic gange on dB-scales
         self.db_gain = 6       # dB   Max. on dB-scales
-        self.db_polar = 24     # dB   Dynamic range on polar plot
+        self.db_polar = 30     # dB   Dynamic range on polar plot
 
         # Colors and markers
         self.text_face = 'whitesmoke'
@@ -63,9 +59,7 @@ class Array():
         self.intensity_background = 'black'
 
         # Initialisation
-        ax, fig = self._initialise_graphs()
-        self.axes = ax
-        self.fig = fig
+        self.axes, self.fig = self._initialise_graphs()
         self.scale_axes()
 
         if create_widgets:
@@ -187,49 +181,53 @@ class Array():
                          color=self.element_color,
                          alpha=0.7)
 
-        # Delay profile over array
+        # Delay profile
         tau, n = self.delay_array()
         ax['delay'].stem(n, tau*1e6, 'C0')
 
-        # Beam profile, directivity function
-        theta = np.linspace(-pi/2, pi/2, 701)
+        # Directivity plot, polar
+        theta = np.linspace(-pi/2, pi/2, 500)
         p_element = self.directivity_element(theta)
         p_points = self.directivity_array_points(theta)
         p_array = p_element * p_points
 
-        # Element beamprofile
         ax['beamprofile'].plot(theta, bpu.db(p_element, p_ref=1),
                                color='C0', linestyle='dashed')
 
         ax['beamprofile'].plot(theta, bpu.db(p_array, p_ref=1),
                                color='C0', linestyle='solid')
 
+        # Scaling, text box
         self.scale_axes()
         self._resulttext()
+
         return
 
     def scale_axes(self):
         """Change scales of all graphs."""
         ax = self.axes
 
+        # Axial beam profile, intensity plot
         ax["axial"].set(xlim=self.x_max*np.array([-1, 1]),
                         ylim=(self.z_max, 0))
 
+        # Delay profile
         delay_max = 1e6 * 1/2 * self.n_elements * self.pitch / self.c
         ax['delay'].set(xlim=(1, self.n_elements),
                         ylim=(-delay_max, delay_max))
         bin_log = np.floor(np.log2(self.n_elements))
-        dn = 2**(bin_log-2)
+        dn = 2**(bin_log-2)  # 4 power-of-2 scaled ticks
 
         ax['delay'].set_xticks(np.arange(1, self.n_elements), minor=True)
         ax['delay'].set_xticks(np.arange(0, self.n_elements+1, dn))
 
+        # Directivity plot, polar
         ax['beamprofile'].set(thetamin=-90,
                               thetamax=+90,
                               theta_zero_location='S',
                               rmin=-self.db_polar,
                               rmax=0.0,
-                              rticks=np.flip(np.arange(0, -self.db_polar, -6)))
+                              rticks=[-20, -6, 0]) #np.flip(np.arange(0, -self.db_polar, -6)))
 
         ax['beamprofile'].set_title('Radiation Diagram [dB re. max]', y=0)
 

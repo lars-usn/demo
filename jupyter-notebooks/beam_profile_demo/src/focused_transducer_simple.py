@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
 
-import curve_analysis as ca
+# Internal libraries
+import beamplot_utilities as bpu
 
 
 class WidgetLayout():
@@ -70,11 +71,11 @@ class Transducer():
         return self.diameter/2
 
     def wavelength(self):
-        """Calculate acoustic wavelenght."""
+        """Calculate acoustic wavelength."""
         return self.c/self.frequency
 
     def d_lambda(self):
-        """Aperture width relative to wavelength."""
+        """Calculate aperture width relative to wavelength."""
         return self.diameter / self.wavelength()
 
     def theta_0(self):
@@ -86,27 +87,25 @@ class Transducer():
         return self.focal_length/self.diameter
 
     def z_r(self):
-        """Rayleigh distance, far-field limit."""
+        """Calculate Rayleigh distance, far-field limit."""
         return self.diameter**2/(2*self.wavelength())
 
     def beamwidth(self):
-        """Beam width from estimate."""
+        """Estimate beam width."""
         return self.theta_0()*self.focal_length
 
     def focalzone(self):
         """Find limits of the focal zone."""
-        # z1 = self.a() / (self.a()/self.focal_length + self.theta_0()/2)
         z1 = self.focal_length / (1 + self.theta_0()*self.f_number())
         x1 = z1*self.theta_0()/2
 
-        # z2 = self.a() / (self.a()/self.focal_length - self.theta_0()/2)
         z2 = self.focal_length / (1 - self.theta_0()*self.f_number())
         x2 = z2*self.theta_0()/2
 
         return [np.array([z1, z2]), np.array([x1, x2])]
 
     def focalzone_length(self):
-        """Calculate length of focal zone."""
+        """Fnd length of focal zone."""
         z, x = self.focalzone()
 
         return z[1]-z[0]
@@ -124,7 +123,6 @@ class Transducer():
     def aperture_curve(self):
         """Calculate position of aperture."""
         phi_max = np.arcsin(self.a()/self.focal_length)
-        # z_a = self.focal_length - np.sqrt(self.focal_length**2 - self.a()**2)
         phi = np.linspace(-phi_max, phi_max, 301)
 
         x = self.focal_length * np.sin(phi)
@@ -137,11 +135,11 @@ class Transducer():
         return self.z() * np.tan(self.theta_0()/2)
 
     def focusing_curve(self):
-        """Calculate outer beam profile from diffraction (opening angle)."""
+        """Calculate outer beam profile from focusing."""
         return self.a() * (1 - self.z() / self.focal_length)
 
     def beam_curve(self):
-        """Calculate outer beam profile from diffraction (opening angle)."""
+        """Estimate beam profile from combined opening angle and focusing."""
         return np.maximum(abs(self.diffraction_curve()),
                           abs(self.focusing_curve()))
 
@@ -151,9 +149,19 @@ class Transducer():
         self._remove_old_artists()
         ax = self.axes['beam']
 
+        # Draw aperture and baffle
         z_a, x_a = self.aperture_curve()
         ax.plot(z_a*1e3, x_a*1e3, **self.aperture_line)
 
+        xlim = ax.get_xlim()
+        ax.axvspan(xmin=xlim[0], xmax=0, **self.baffle_fill)
+        ax.fill_betweenx(y=x_a*1e3, x1=z_a*1e3, color=self.aperture_color)
+
+        # Mark focal length and Rayleigh distances
+        ax.axvline(x=self.focal_length*1e3, **self.marker_line)
+        ax.axvline(x=self.z_r()*1e3, **self.helper_line)
+
+        # Draw beam limits
         z = self.z()*1e3
         x_d = self.diffraction_curve() * 1e3
         x_f = self.focusing_curve() * 1e3
@@ -163,23 +171,11 @@ class Transducer():
         ax.plot(z, x_f, z, -x_f, **self.helper_line)
         ax.plot(z, x_b, z, -x_b, **self.beam_line)
 
-        # ax.plot(self.focal_length*np.array([1, 1]),
-        #         self.beamwidth()/2*np.array([-1, 1]),
-        #         **self.marker_line)
-
-        ax.axvline(x=self.focal_length*1e3, **self.marker_line)
-        ax.axvline(x=self.z_r()*1e3, **self.helper_line)
-
         # Mark focal zone
         z_fz, x_fz = self.focalzone()
         z_fz = np.concatenate((z_fz, np.flip(z_fz)))
         x_fz = np.concatenate((x_fz, np.flip(-x_fz)))
         ax.fill(z_fz*1e3, x_fz*1e3, **self.focalzone_fill)
-
-        # Mark aperture and baffle
-        xlim = ax.get_xlim()
-        ax.axvspan(xmin=xlim[0], xmax=0, **self.baffle_fill)
-        ax.fill_betweenx(y=x_a*1e3, x1=z_a*1e3, color=self.aperture_color)
 
         self._resulttext()
 
@@ -247,12 +243,15 @@ class Transducer():
                        r'Focal length $F$ = '
                        f'{self.focal_length*1e3:.0f} mm'
                        '\n'
+                       fr'F-number  $FN$ = '
+                       f'{self.focal_length/self.diameter:.1f}'
+                       '\n'
+                       r'Rayleigh distance $z_R$ = '
+                       f'{self.z_r()*1e3:.0f} mm'
+                       '\n\n'
                        f'Opening angle, double-sided, -12 dB  '
                        r' $\theta_{-12dB}$ = '
                        fr'{np.degrees(self.theta_0()):.1f}$^\circ$'
-                       '\n'
-                       fr'F-number  $FN$ = '
-                       f'{self.focal_length/self.diameter:.1f}'
                        '\n'
                        r'Beam width  $D_F$ = '
                        f'{self.beamwidth()*1e3:.1f} mm'
@@ -262,13 +261,10 @@ class Transducer():
                        '$z_{F2}$ = ' f'{z_f[1]*1e3:.1f} mm'
                        '\n'
                        r'Focal zone length $L_F$ = '
-                       f'{self.focalzone_length()*1e3:.1f} mm'
-                       '\n'
-                       r'Rayleigh distance $z_R$ = '
-                       f'{self.z_r()*1e3:.0f} mm')
+                       f'{self.focalzone_length()*1e3:.1f} mm')
 
-        ca.remove_fig_text(self.fig)
-        ca.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
+        bpu.remove_fig_text(self.fig)
+        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
 
         return
 
@@ -278,7 +274,7 @@ class Transducer():
         fig = plt.figure(figsize=[12, 4],
                          constrained_layout=True,
                          num='Beam-Profile')
-        ca.add_logo(fig)
+        bpu.add_logo(fig)
 
         gs = GridSpec(1, 5, figure=fig)
         ax = {'beam': fig.add_subplot(gs[0, 2:])}
@@ -293,7 +289,7 @@ class Transducer():
 
     def _remove_old_artists(self):
         for ax in self.axes.values():
-            ca.remove_artists(ax)
+            bpu.remove_artists(ax)
 
         try:
             self.cbar.remove()

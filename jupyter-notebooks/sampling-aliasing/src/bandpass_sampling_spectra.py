@@ -23,17 +23,29 @@ class SampledSpectra():
     def __init__(self):
         self.f_max = 3.2     # Max. frequency to plot
 
-        self.fc = 1.4      # Width of noise peak
+        self.fc = 1.4        # Carrier frequency
         self.b = 0.10        # Relative bandwidth
         self.fs = 2.0
         self.m = np.arange(1, 10)
+        self.n_samples = 2001
+        self.white_noise_level = 0.03
+
+        self.filter_options = {0: 'None',
+                               1: 'Anti-alias',
+                               2: 'Bandpass'}
+        self.filter = self.filter_options[0]
 
         self.ax, self.ax_text = self.initialise_graphs()
         self.widget = self._create_widgets()
 
+    def f_b(self):
+        """Return max. frequency in signal."""
+        return self.fc + self.b/2
+
     def _f_vector(self):
         """Define frequency vector with interval."""
-        return np.linspace(-self.f_max, self.f_max, 2001, retstep=True)
+        return np.linspace(-self.f_max, self.f_max,
+                           self.n_samples, retstep=True)
 
     def f(self):
         """Return frequency vector."""
@@ -69,21 +81,52 @@ class SampledSpectra():
             fs_min = (2*self.fc+self.b)/(m+1)
             fs_max = (2*self.fc-self.b)/m
 
-        return m, fs_min, fs_max
+        k = m
+        fs_14 = 4*self.fc/(2*k+1)
+
+        d_snr = 10*np.log10(m+1)
+
+        return m, [fs_min, fs_max, fs_14], d_snr
 
     def textbox_allowed(self):
         """Crate text-box of allowed frequencies."""
-        m, f_min, f_max = self.fs_allowed()
+        m, fs, d_snr = self.fs_allowed()
 
-        f_header = ['m', '$(2f_c+B)/(m+1)$', '$(2f_c-B)/m$']
-        f_text = f'{f_header[0]:3}  {f_header[1]:18}  {f_header[2]:18}  \n'
-        for k, mk in enumerate(m):
-            f_text += f'{mk:3}  {f_min[k]:18.2f}  {f_max[k]:18.2f}  \n'
+        f_header = ['m',
+                    r'$\frac{2f_c+B}{m+1}$',
+                    r'$\frac{2f_c-B}{m}$',
+                    r'$\frac{4f_c}{2m+1}$',
+                    r'$D_{SNR}$ [dB]']
+        f_text = (f'{f_header[0]:7} '
+                  f'{f_header[1]:24} '
+                  f'{f_header[2]:24} '
+                  f'{f_header[3]:24} '
+                  f'{f_header[4]:2} \n')
+        for mk, k in enumerate(m):
+            f_text += (f'{mk:3} {fs[0][k]:10.2f} {fs[1][k]:10.2f} '
+                       f'{fs[2][k]:10.2f}  {d_snr[k]:10.1f}  \n')
 
         f_text += '\n'
         f_text += f'     $f_s > 2B $= {2*self.b:.2f}'
 
         return f_text
+
+    def anti_alias(self, f):
+        """Define anti-alias filter."""
+        if np.isscalar(f):
+            f = np.array([f])
+
+        s = np.ones_like(f)
+
+        if self.filter == self.filter_options[1]:
+            n = np.where(abs(f) > self.f_b())
+            s[n] = np.zeros_like(n)
+        elif self.filter == self.filter_options[2]:
+            n = np.where((abs(f) > self.fc + self.b/2) |
+                         (abs(f) < self.fc - self.b/2))
+            s[n] = np.zeros_like(n)
+
+        return s
 
     def xc(self):
         """Spectrum of continous signal."""
@@ -96,26 +139,44 @@ class SampledSpectra():
 
         xn[2*n0-nc] = xn[nc]
 
+        if self.white_noise_level > 0:
+            xn += self.white_noise()
+
         return xn
+
+    def white_noise(self):
+        """Define white noise to add to spectrum."""
+        rng = np.random.default_rng()
+
+        m = int(np.floor(self.n_samples/2))
+        r = np.abs(rng.standard_normal(m))
+
+        x = np.zeros(self.n_samples)
+        x[:m] = r
+        x[-m:] = np.flip(r[-m:])
+
+        return self.white_noise_level * x
 
     def xr(self):
         """Repeat spectra with sample rate."""
-        x = np.zeros_like(self.f())
-        x = np.tile(x, (len(self.f_span()), 1))
+        xr = np.zeros_like(self.f())
+        xr = np.tile(xr, (len(self.f_span()), 1))
         ns = 1/self.df()  # Index of sample rate
 
         x0 = self.xc()
+        xc = x0 * self.anti_alias(self.f())
+
         n = len(x0)
         for k, f_n in enumerate(self.f_span()):
             dn = int(ns*f_n)
             if f_n > 0:
                 if dn < n and dn > 0:
-                    x[k][dn:] = x0[:-dn]
+                    xr[k][dn:] = xc[:-dn]
             elif f_n < 0:
                 if n+dn < n and n+dn > 0:
-                    x[k][:n+dn] = x0[-dn:]
+                    xr[k][:n+dn] = xc[-dn:]
 
-        return x
+        return xr, xc, x0
 
     def xs(self):
         """Sum signals."""
@@ -170,9 +231,14 @@ class SampledSpectra():
             for f_n in self.f_span():
                 ax.axvline(x=f_n, color='0.7', linestyle=':')
 
+        # Spectra
+        xr, xc, x0 = self.xr()
+
         # Original continous spectrum
-        self.ax[0].plot(self.f(), self.xc(), 'C0')
-        self.ax[1].plot(self.f(), self.xc(), 'C0')
+        self.ax[0].plot(self.f(), xc, 'C0')
+        # if self.include_anti_alias:
+        #     self.ax[0].plot(self.f(), x0, 'C0', linestyle='dotted')
+        self.ax[1].plot(self.f(), xc, 'C0')
 
         # Bandwidth markers
         for xm in [-self.fc-self.b/2,
@@ -216,15 +282,17 @@ class SampledSpectra():
         self.ax[1].annotate('$f_s$', (self.fs, 1), (0, 0), **text_par)
 
         # Replicated spectra
-        for x in self.xr():
+        for x in xr:
             self.ax[1].plot(self.f(), x, 'C1')
 
         # Sum of replicated spectra
         ni = np.where(abs(self.f()) < 1/2*self.fs)
 
-        self.ax[2].plot(self.f(), self.xs(), 'C1')
-        self.ax[2].plot(self.f()[ni], self.xs()[ni], 'C0')
-        self.ax[3].plot(self.f()[ni], self.xs()[ni], 'C0')
+        xs = np.sum(xr, axis=0) + xc
+
+        self.ax[2].plot(self.f(), xs, 'C1')
+        self.ax[2].plot(self.f()[ni], xs[ni], 'C0')
+        self.ax[3].plot(self.f()[ni], xs[ni], 'C0')
 
         self.ax_text.text(0.1, 0.0, self.textbox_allowed(),
                           backgroundcolor=(0.95, 0.95, 0.95, 1.0))
@@ -235,7 +303,9 @@ class SampledSpectra():
     def interact(self,
                  fc=None,
                  b=None,
-                 fs=None):
+                 fs=None,
+                 white_noise_level=None,
+                 anti_alias=None):
         """Scale inputs and  display results.
 
         For interactive operation.
@@ -256,6 +326,10 @@ class SampledSpectra():
             self.b = b
         if fs is not None:
             self.fs = fs
+        if white_noise_level is not None:
+            self.white_noise_level = white_noise_level
+        if anti_alias is not None:
+            self.filter = anti_alias
 
         # Display result in graphs
         self.display()
@@ -274,8 +348,12 @@ class SampledSpectra():
         # Layouts definitions
         text_layout = {
             'continuous_update': False,
-            'layout': widgets.Layout(width='20%'),
+            'layout': widgets.Layout(width='90%'),
             'style': {'description_width': '70%'}}
+
+        dropdown_layout = {
+            'layout': widgets.Layout(width='90%'),
+            'style': {'description_width': '40%'}}
 
         # checkbox_layout = {
         #     'layout': widgets.Layout(width='95%'),
@@ -305,19 +383,46 @@ class SampledSpectra():
             readout_format='.2f',
             **text_layout)
 
-        # Arrange in columns and lines
-        widget_layout = widgets.HBox([centre_frequency_widget,
-                                      bandwidth_widget,
-                                      sample_rate_widget,
-                                      ],
-                                     layout=widgets.Layout(width='80%'))
+        white_noise_widget = widgets.FloatText(
+            min=0.0, max=0.2, value=0.0, step=0.01,
+            description='White noise level',
+            readout_format='.3f',
+            **text_layout)
 
-        widget_layout = widgets.VBox([title_widget, widget_layout])
+        filter_widget = widgets.Dropdown(
+            options=[self.filter_options[0],
+                     self.filter_options[1],
+                     self.filter_options[2]],
+            value=self.filter_options[0],
+            description='Filter',
+            **dropdown_layout)
+
+        # Arrange in columns and lines
+        widget_col_1 = widgets.VBox([centre_frequency_widget,
+                                     bandwidth_widget,
+                                     ],
+                                    layout=widgets.Layout(width='90%'))
+
+        widget_col_2 = widgets.VBox([white_noise_widget,
+                                     filter_widget,
+                                     ],
+                                    layout=widgets.Layout(width='90%'))
+
+        widget_layout = widgets.HBox([widget_col_1,
+                                      sample_rate_widget,
+                                      widget_col_2],
+                                     layout=widgets.Layout(width='50%'))
+
+        widget_layout = widgets.VBox([title_widget,
+                                      widget_layout])
 
         # Export as dictionary
         widget = {'centre_frequency': centre_frequency_widget,
                   'bandwidth': bandwidth_widget,
-                  'sample_rate': sample_rate_widget}
+                  'sample_rate': sample_rate_widget,
+                  'white_noise_level': white_noise_widget,
+                  'filter': filter_widget,
+                  }
 
         w = WidgetLayout(widget_layout, widget)
 

@@ -209,8 +209,7 @@ class MultipleAliasSignal():
             **text_layout)
 
         # Arrange in columns and lines
-        left_column = widgets.VBox([phase_widget,
-                                    sample_rate_widget,
+        left_column = widgets.VBox([sample_rate_widget,
                                     alias_no_widget],
                                    layout=widgets.Layout(width='20%'))
 

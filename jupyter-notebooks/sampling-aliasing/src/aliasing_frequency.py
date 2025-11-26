@@ -33,8 +33,8 @@ class FrequencyAliasSignal():
         self.display_original = True
         self.display_reconstructed = True
 
-        self.color = {'original': 'C1',
-                      'sampled': 'C0',
+        self.color = {'original': 'C0',
+                      'sampled': 'C1',
                       'reconstructed': 'C2',
                       'aliased': 'C3',
                       'nyquist': 'C2'}

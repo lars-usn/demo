@@ -23,6 +23,7 @@ class FilterResponse:
         self.n_samples = 20    # No. of samples in impulse response
         self.n_plots = 4       # No.of plots in figure
         self.w = np.linspace(-pi, pi, 401)    # Frequency vector
+
         self.ax, self.fig = self._initialise_graphs()
 
     ###################################################################
@@ -64,7 +65,8 @@ class FilterResponse:
         ----------
         accuracy : float, optional
             No. of decimals, results are considered identical if distance
-            is smaller than this
+            is smaller than this. Avoids splitting poles/zeros by 
+            numerical error.
         """
         n_max = max(len(self.b), len(self.a))
         z = self._find_roots(self.b, n_max, accuracy)

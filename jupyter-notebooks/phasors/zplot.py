@@ -7,20 +7,12 @@ Created on Sun Oct 27 14:53:16 2024
 
 import numpy as np
 import matplotlib.pyplot as plt
-from cmath import pi, exp, sqrt     # For readability, also covered by numpy
+from cmath import pi
 
 # Colors and line widths
-COLOR_UNIT_CIRCLE = 'gray'
-COLOR_AXES = 'black'
 COLOR_PHASORS = 'C0'
 COLOR_SUM = 'C1'
-
-AXIS_WIDTH = 1
-PHASOR_WIDTH = 1
-
-axis_style = {'color': 'black', 'linewidth': 1.0}
-phasor_line = {'color': 'tab:blue', 'linewidth': 1.5}
-phasor_marker = {'color': 'tab:blue', 'marker': 'o'}
+PHASOR_WIDTH = 3
 
 
 def unitcircle(amax=1.5, ax=None):
@@ -45,7 +37,7 @@ def unitcircle(amax=1.5, ax=None):
         ax = fig.add_subplot(1, 1, 1)
 
     circ = plt.Circle((0, 0), radius=1,
-                      edgecolor=COLOR_UNIT_CIRCLE,
+                      edgecolor='gray',
                       facecolor='None')
 
     # Draw circle
@@ -53,14 +45,15 @@ def unitcircle(amax=1.5, ax=None):
     ax.add_artist(circ)
 
     # Draw and format axes
+    axis_style = {'color': 'black', 'linewidth': 1.0}
     ax.axhline(y=0, **axis_style)
     ax.axvline(x=0, **axis_style)
 
     ax.set(xlim=(-amax, amax),
            ylim=(-amax, amax),
-           xlabel="Re {z}",
-           ylabel="Im {z}",
-           title="Phasors")
+           xlabel='Re {z}',
+           ylabel='Im {z}',
+           title='Phasors')
 
     ax.grid(visible=True, which='major', axis='both')
 
@@ -69,8 +62,12 @@ def unitcircle(amax=1.5, ax=None):
 
 def __draw_phasor(z, color, linewidth, ax):
     """Draw a phasor as line with a marker."""
-    ax.plot([0, z.real], [0, z.imag], color=color, linewidth=linewidth)
-    ax.plot([z.real], [z.imag], color=color, marker='o')
+    ax.annotate('', xytext=(0, 0), xy=(z.real, z.imag),
+                arrowprops=dict(arrowstyle='-|>',
+                                edgecolor=color,
+                                facecolor=color,
+                                linewidth=linewidth,
+                                mutation_scale=15))
 
     return ax
 
@@ -125,7 +122,7 @@ def plot_phasor(zk, labels, include_sum, ax):
 
     # Draw sum
     if include_sum:
-        z_id = "  $\\Sigma z$  "
+        z_id = '  $\\Sigma z$  '
         __draw_phasor(z_sum, color=COLOR_SUM, linewidth=PHASOR_WIDTH, ax=ax)
 
         ax.text(z_sum.real, z_sum.imag, z_id, color=COLOR_SUM)
@@ -141,16 +138,16 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
     zk : complex or list of complex
         Complex numbers to show
 
-    labels=[] : List of strings, optional
+    labels : List of strings, optional
         List of labels to mark phasors
 
-    include_sum=False : Boolean, optional
+    include_sum : Boolean, optional
         Show the sum of all numbers as a phasor
 
     frequency=1 : Float, optional
         Frequency used to plot the signals
 
-    ax=None : Matplotlib axes, optional
+    ax : Matplotlib axes, optional
         Axis to plot the results. A new axis is created if not specified
 
     Returns
@@ -158,11 +155,11 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
     ax : Matplotlib axes
         Handle to axes containing the plots
     """
-    t_end = 1.5/frequency               # Time span 
+    t_end = 1.5/frequency               # Time span
     fs = 32*frequency                   # Sample rate
     t = np.arange(-t_end, t_end, 1/fs)  # Time vector
 
-    # Create time domain signals from complex exponentials 
+    # Create time domain signals from complex exponentials
     xc = np.zeros((len(t), len(zk)), dtype=np.complex128)
     for k in range(len(zk)):
         xc[:, k] = zk[k] * np.exp(2j*pi*frequency*t)
@@ -186,9 +183,9 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
         k += 1
 
     # Label axes and title
-    ax.set(xlabel="Time [s]", 
-          ylabel="Amplitude",
-          title="Signals in the time domain")
+    ax.set(xlabel='Time [s]',
+           ylabel='Amplitude',
+           title='Signals in the time domain')
 
     ax.grid(visible=True, which='major', axis='both')
 
@@ -207,16 +204,16 @@ def phasor(zk,
     zk : complex or list of complex
         Complex numbers to show
 
-    labels=[] : List of strings, optional
+    labels : List of strings, optional
         List of labels to mark phasors
 
-    include_sum=False : Boolean, optional
+    include_sum : Boolean, optional
         Show the sum of all numbers as a phasor
 
-    include_signal=False : Boolean, optional
+    include_signal : Boolean, optional
         Include a plot of signals as function of time
 
-    frequency=1 : Float, optional
+    frequency : Float, optional
         Frequency used to plot the signals
 
     Returns

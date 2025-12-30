@@ -229,6 +229,10 @@ class Signal():
                          'layout': widgets.Layout(width='60%'),
                          'style': {'description_width': '25%'}}
 
+        dropdown_layout = {
+            'layout': widgets.Layout(width='90%'),
+            'style': {'description_width': '40%'}}
+
         # Individual widgets
         m_widget = widgets.IntSlider(
             min=0, max=self.n_samples/2, value=self.m,

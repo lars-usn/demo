@@ -6,22 +6,21 @@ import matplotlib.patches as patches
 import matplotlib.colors as mcolors
 
 
-# %%
 class Beat():
-    """Demonstation of beat signal with spectrum
+    """Demonstation of aliasing in the time- and frequency domains.
 
     All calculations and plotting routines are contained in this class
     """
 
-    def __init__(self, A=[10, 10], fc=400, fd=2):
+    def __init__(self):
         """Initialise signal."""
-        self.A = A
-        self.fc = fc
-        self.fd = fd
+        self.A = [10, 10]
+        self.fc = 100
+        self.fd = 4
         self.fs = 11025			# Sample rate, 1/4 of the standard 44.1 kHz
         self.duration = 1
 
-        self.ax_time, self.ax_freq, self.ax_zoom = self.initialise_graphs()
+        self.ax_time, self.ax_freq = self.initialise_graphs()
 
     def dt(self):
         """Sample time."""
@@ -58,30 +57,23 @@ class Beat():
                          num="Aliasing Demo")
 
         n_plots = 3
-        ax_time = [fig.add_subplot(n_plots, 3, 3*k+1) for k in range(n_plots)]
-        ax_freq = [fig.add_subplot(n_plots, 3, 3*k+2) for k in range(n_plots)]
-        ax_zoom = [fig.add_subplot(n_plots, 3, 3*k+3) for k in range(n_plots)]
+        ax_time = [fig.add_subplot(n_plots, 2, 2*k+1) for k in range(n_plots)]
+        ax_freq = [fig.add_subplot(n_plots, 2, 2*k+2) for k in range(n_plots)]
 
-        f_max = 1.2*self.fc
-        f_zoom = 10*self.fd
+        f_max = 1.4*self.fc
         for k in range(n_plots):
             ax_time[k].set(xlim=(0, self.duration),
                            xlabel="Time [s]")
 
             ax_freq[k].set(xlim=(0, f_max),
                            xlabel="Frequency [Hz]")
-            ax_freq[k].grid(True)
 
-            ax_zoom[k].set(xlim=(self.fc-f_zoom, self.fc+f_zoom),
-                           xlabel="Frequency [Hz]")
-            ax_zoom[k].grid(True)
+        return ax_time, ax_freq
 
-        return ax_time, ax_freq, ax_zoom
-
-    def plot(self):
+    def display(self):
         """Plot all signals and spectra."""
         # Clear old lines
-        for ax in self.ax_time + self.ax_freq + self.ax_zoom:
+        for ax in self.ax_time + self.ax_freq:
             for art in list(ax.lines):
                 art.remove()
             for art in list(ax.collections):
@@ -91,26 +83,15 @@ class Beat():
 
         # Plot time traces
         n_plots = len(self.ax_time)
-        a_max = 1.2 * sum(self.A)
-        p_max = 0.6 * max(self.A)**2
-
         for k in range(n_plots):
             self.ax_time[k].plot(self.t(), self.beat()[k],
                                  "-",
                                  color="C0")
-            self.ax_time[k].set(ylim=[-a_max, a_max])
 
         f, pxx = self.spectrum()
         for k in range(n_plots):
             self.ax_freq[k].plot(f, pxx[k],
                                  "-",
                                  color="C0")
-            self.ax_zoom[k].plot(f, pxx[k],
-                                 "-",
-                                 color="C0")
-            self.ax_freq[k].set(ylim=[0, p_max])
-            self.ax_zoom[k].set(ylim=[0, p_max])
-
-        # Plot spectra
 
         return 0

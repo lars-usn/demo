@@ -38,24 +38,11 @@ class SampledSpectra():
         self.ax, self.ax_text = self.initialise_graphs()
         self.widget = self._create_widgets()
 
-    def f_b(self):
-        """Return max. frequency in signal."""
-        return self.fc + self.b/2
-
-    def _f_vector(self):
+    def frequency(self):
         """Define frequency vector with interval."""
-        return np.linspace(-self.f_max, self.f_max,
-                           self.n_samples, retstep=True)
-
-    def f(self):
-        """Return frequency vector."""
-        f, df = self._f_vector()
-        return f
-
-    def df(self):
-        """Return frequency vector interval."""
-        f, df = self._f_vector()
-        return df
+        f, df = np.linspace(-self.f_max, self.f_max, self.n_samples,
+                            retstep=True)
+        return f, df
 
     def f_span(self):
         """Find frequencies where to repeat spectrum."""
@@ -63,16 +50,15 @@ class SampledSpectra():
         n_int = np.arange(-n_max, n_max+1)
         return self.fs * n_int
 
-    def f_marker(self, include_all=True):
-        """Create array of equal frequencies."""
-        f = self.f_ref
-        if include_all:
-            f += self.f_span()   # Vector of equal frequencies
+    def f_marker(self, f_ref, x):
+        """Mark a selected frequency and its aliases."""
+        fa = f_ref + self.f_span()   # Vector of alias frequencies
 
-        n = np.abs(self.f()-self.f_ref).argmin()
-        x = self.xc()[n] * np.ones_like(f)  # Value at reference frequencies
+        f, df = self.frequency()
+        n = np.abs(f - f_ref).argmin()
+        x = x[n] * np.ones_like(fa)  # Value at reference frequencies
 
-        return [f, x]
+        return [fa, x]
 
     def fs_allowed(self):
         """List allowed sample rates."""
@@ -119,7 +105,7 @@ class SampledSpectra():
         s = np.ones_like(f)
 
         if self.filter == self.filter_options[1]:
-            n = np.where(abs(f) > self.f_b())
+            n = np.where(abs(f) > (self.fc + self.b/2))
             s[n] = np.zeros_like(n)
         elif self.filter == self.filter_options[2]:
             n = np.where((abs(f) > self.fc + self.b/2) |
@@ -128,13 +114,14 @@ class SampledSpectra():
 
         return s
 
-    def xc(self):
+    def x_continous(self):
         """Spectrum of continous signal."""
-        n0 = np.abs(self.f()).argmin()  # Index of f=0
-        nc = np.where(abs(self.f() - self.fc) < self.b/2)
+        f, df = self.frequency()
+        n0 = np.abs(f).argmin()  # Index of f=0
+        nc = np.where(abs(f - self.fc) < self.b/2)
 
-        xn = np.zeros_like(self.f())
-        fn = self.f()[nc] - self.fc
+        xn = np.zeros_like(f)
+        fn = f[nc] - self.fc
         xn[nc] = 0.5 + 0.25 * fn/self.b
 
         xn[2*n0-nc] = xn[nc]
@@ -157,14 +144,16 @@ class SampledSpectra():
 
         return self.white_noise_level * x
 
-    def xr(self):
+    def x_repeated(self):
         """Repeat spectra with sample rate."""
-        xr = np.zeros_like(self.f())
+        f, df = self.frequency()
+        xr = np.zeros_like(f)
         xr = np.tile(xr, (len(self.f_span()), 1))
-        ns = 1/self.df()  # Index of sample rate
+        ns = 1/df  # Index of sample rate
 
-        x0 = self.xc()
-        xc = x0 * self.anti_alias(self.f())
+        x0 = self.x_continous()
+        xc = x0 * self.anti_alias(f)
+        print(x0)
 
         n = len(x0)
         for k, f_n in enumerate(self.f_span()):
@@ -178,33 +167,32 @@ class SampledSpectra():
 
         return xr, xc, x0
 
-    def xs(self):
-        """Sum signals."""
-        return np.sum(self.xr(), axis=0) + self.xc()
-
     def initialise_graphs(self):
         """Initialise graphs for spectra."""
         # Define figure
-        fig = plt.figure(figsize=[14, 7],
+        fig = plt.figure(figsize=[12, 6],
                          constrained_layout=True,
                          num='Sampling - Repeated Spectra')
 
-        n_subplots = 4
+        # Axes for graphs
+        n_subplots = 3
         gs = GridSpec(n_subplots, 4, figure=fig)
         ax = [fig.add_subplot(gs[k, 0:-1]) for k in range(n_subplots)]
+
+        # Axis for textbox
         ax_text = fig.add_subplot(gs[:-1, -1])
         ax_text.set_axis_off()
 
-        for axn in ax:
-            axn.set(xlim=(-self.f_max, self.f_max),
-                    ylim=(0, 1.8))
+        # Scale and mark axes
+        for a in ax:
+            a.set(xlim=(-self.f_max, self.f_max),
+                  ylim=(0, 1.8))
 
-        ax[0].set_title('Original spectrum - Continous signal')
-        ax[1].set_title('Replicas of original spectrum')
-        ax[2].set_title('Spectrum after sampling')
-        ax[3].set_title('Interpretation: Spectrum inside Nyquist limits')
+        ax[0].set_title('Spectrum of Physical Continous Signal')
+        ax[1].set_title('Phyical Spectrum Replicated at Interval $f_s$')
+        ax[2].set_title('Interpretation: Spectrum Inside Nyquist Limits')
 
-        ax[n_subplots-1].set(xlabel='Frequency [$f/f_s$]')
+        ax[n_subplots-1].set(xlabel='Frequency')
 
         return ax, ax_text
 
@@ -232,13 +220,12 @@ class SampledSpectra():
                 ax.axvline(x=f_n, color='0.7', linestyle=':')
 
         # Spectra
-        xr, xc, x0 = self.xr()
+        xr, xc, x0 = self.x_repeated()
+        f, df = self.frequency()
 
         # Original continous spectrum
-        self.ax[0].plot(self.f(), xc, 'C0')
-        # if self.include_anti_alias:
-        #     self.ax[0].plot(self.f(), x0, 'C0', linestyle='dotted')
-        self.ax[1].plot(self.f(), xc, 'C0')
+        self.ax[0].plot(f, xc, 'C0')
+        self.ax[1].plot(f, xc, 'C0')
 
         # Bandwidth markers
         for xm in [-self.fc-self.b/2,
@@ -247,7 +234,7 @@ class SampledSpectra():
                    self.fc+self.b/2]:
             self.ax[0].axvline(x=xm, color='C0', linestyle='dotted')
 
-        # Mark span
+        # Annotate distence between spectra ltoMark disspan
         x = self.fc + np.array([-self.b/2, self.b/2])
         y = [1.0, 1.5]
 
@@ -283,17 +270,14 @@ class SampledSpectra():
 
         # Replicated spectra
         for x in xr:
-            self.ax[1].plot(self.f(), x, 'C1')
+            self.ax[1].plot(f, x, 'C1')
 
         # Sum of replicated spectra
-        ni = np.where(abs(self.f()) < 1/2*self.fs)
-
+        ni = np.where(abs(f) < 1/2*self.fs)
         xs = np.sum(xr, axis=0) + xc
+        self.ax[2].plot(f[ni], xs[ni], 'C0')
 
-        self.ax[2].plot(self.f(), xs, 'C1')
-        self.ax[2].plot(self.f()[ni], xs[ni], 'C0')
-        self.ax[3].plot(self.f()[ni], xs[ni], 'C0')
-
+        # Textbox
         self.ax_text.text(0.1, 0.0, self.textbox_allowed(),
                           backgroundcolor=(0.95, 0.95, 0.95, 1.0))
 
@@ -354,15 +338,6 @@ class SampledSpectra():
         dropdown_layout = {
             'layout': widgets.Layout(width='90%'),
             'style': {'description_width': '40%'}}
-
-        # checkbox_layout = {
-        #     'layout': widgets.Layout(width='95%'),
-        #     'style': {'description_width': '5%'}}
-
-        # slider_layout = {
-        #     'continuous_update': True,
-        #     'layout': widgets.Layout(width='70%'),
-        #     'style': {'description_width': '30%'}}
 
         # Individual widgets
         centre_frequency_widget = widgets.FloatText(

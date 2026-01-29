@@ -28,6 +28,7 @@ class Signal():
         self.phase = 0        # Phase [radians]
         self.k = 2.3          # Incoming frequency [rel DFT bin]
         self.m = 2            # Bin to show
+        self.show_dtft = False   # Display DTFT spectrum
 
         if initialise_graphs:
             self.ax_time, self.ax_dft = self._initialise_graphs()
@@ -41,7 +42,7 @@ class Signal():
 
     def ni(self):
         """Create time vector, interpolated between samples."""
-        return np.arange(0, self.n_samples, 1/20)
+        return np.arange(0, self.n_samples, 1/100)
 
     def x_in(self, n):
         """Create incoming signal as array."""
@@ -87,10 +88,14 @@ class Signal():
         return d
 
     def dtft(self):
-        """Discrete time Fourier transform for frequency k."""
+        """Discrete time Fourier transform for frequency k.
+
+        Using the analytical solution in the frequency domain,
+        the  Dirichlet-kernel
+        """
         m = self.ni()
         N = self.n_samples
-        kr = [self.k, -self.k]
+        kr = [self.k, -self.k]     # Include negative frequency
 
         Xi = [np.exp(-1j*pi*(N-1)/N*(m-k)) * self.dirichlet(k-m, N)
               for k in kr]
@@ -101,8 +106,8 @@ class Signal():
 
     def display(self):
         """Plot all signals and spectra."""
-        marker_color = 'C3'
         incoming_color = 'C1'
+        marker_color = 'C2'
 
         for ax in self.ax_time + self.ax_dft:
             # Clear old lines
@@ -128,7 +133,6 @@ class Signal():
 
         # Reconstructed signals from DFT
         xp = self.partial_waves(self.ni())
-
         self.ax_time[0].plot(self.ni(), np.transpose(xp), ':', color='C0')
         self.ax_time[0].plot(self.ni(), xp[self.m], '-', color=marker_color,
                              label='Selected DFT bin')
@@ -145,21 +149,23 @@ class Signal():
                                    color=marker_color)
 
         # DTFT curve as background for DFT
-        X, mi = self.dtft()
-        self.ax_dft[0].plot(mi, np.abs(X), ':',
-                            color='C0',
-                            label='DTFT, continous')
-        self.ax_dft[1].plot(mi, np.degrees(np.angle(X)), ':',
-                            color='C0')
+        if self.show_dtft:
+            X, mi = self.dtft()
+            dtft_curve = {'linestyle': '--',
+                          'color': incoming_color,
+                          'label': 'DTFT, continous'}
+
+            self.ax_dft[0].plot(mi, np.abs(X), **dtft_curve)
+            self.ax_dft[1].plot(mi, np.degrees(np.angle(X)), **dtft_curve)
+            self.ax_time[0].legend()
 
         # Legends for all plots
-        self.ax_time[0].legend()
-        self.ax_dft[0].legend()
 
+        self.ax_dft[0].legend()
         return 0
 
     # Simple interactive operation
-    def interact(self, k=None, m=None):
+    def interact(self, k=None, m=None, show_dtft=None):
         """Scale inputs and  display results.
 
         For interactive operation.
@@ -171,11 +177,15 @@ class Signal():
             Frequency of incoming wave, rel. DFT component number
         m : int, optional
             DFT component to show
+        show_dtft  : int, optional
+            Display DTFT spectrum
         """
         if k is not None:
             self.k = k
         if m is not None:
             self.m = m
+        if show_dtft is not None:
+            self.show_dtft = show_dtft
         # Display result in graphs
         self.display()
 
@@ -245,13 +255,19 @@ class Signal():
             readout_format='.1f',
             **slider_layout)
 
+        show_dtft_widget = widgets.Checkbox(
+            value=False,
+            description='Display DTFT spectrum')
+
+        widget_line = widgets.HBox([k_widget, show_dtft_widget])
         widget_layout = widgets.VBox([title_widget,
-                                      k_widget,
+                                      widget_line,
                                       m_widget])
 
         # Export as dictionary
         widget = {'m': m_widget,
-                  'k': k_widget}
+                  'k': k_widget,
+                  'show_dtft': show_dtft_widget}
 
         w = WidgetLayout(widget_layout, widget)
 

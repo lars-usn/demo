@@ -36,7 +36,7 @@ class Periodicity():
     def _initialise_graphs(self):
         """Initialise graphs for signals and spectra."""
         plt.close('all')
-        fig = plt.figure(figsize=[14, 6],
+        fig = plt.figure(figsize=[12, 5],
                          constrained_layout=True,
                          num='Periodicity Demo')
 

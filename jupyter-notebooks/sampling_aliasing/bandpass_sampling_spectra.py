@@ -170,7 +170,7 @@ class SampledSpectra():
     def initialise_graphs(self):
         """Initialise graphs for spectra."""
         # Define figure
-        fig = plt.figure(figsize=[12, 6],
+        fig = plt.figure(figsize=[12, 5],
                          constrained_layout=True,
                          num='Sampling - Repeated Spectra')
 

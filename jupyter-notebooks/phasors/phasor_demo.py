@@ -90,7 +90,7 @@ class PhasorDemo:
         """Initialise result graph."""
         plt.close('all')
         plt.rc('font', size=10)
-        fig = plt.figure(figsize=[14, 6],
+        fig = plt.figure(figsize=[12, 5],
                          constrained_layout=True,
                          num='Phasor Demo')
 

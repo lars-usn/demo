@@ -44,8 +44,7 @@ class StepResponse:
     def initialise_graphs(self):
         """Initialise result graph ."""
         plt.close('all')
-        # plt.rc('font', size=10)          # Default text sizes
-        fig = plt.figure(figsize=[14, 5],
+        fig = plt.figure(figsize=[10, 4],
                          constrained_layout=True,
                          num='First Order System - Step Response')
         ax = fig.add_subplot(1, 1, 1)
@@ -91,6 +90,7 @@ class StepResponse:
 
         self.ax.plot(self.t(), self.s(), '-', color='C0')
         self.ax.plot(t_tau, s_tau, 'o', color='C0')
+        self.ax.axvline(x=self.tau, color='C1', linestyle='--')
         self.ax.axhline(y=self.s_0, color='gray', linestyle='-')
         self.ax.axhline(y=self.s_inf, color='gray', linestyle='-')
         self.ax.grid(True)

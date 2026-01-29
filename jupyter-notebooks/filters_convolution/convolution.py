@@ -9,8 +9,8 @@ Created on Thu Dec 18 16:21:59 2025
 from math import pi
 import numpy as np
 from scipy.signal import convolve
-import matplotlib.pyplot as plt
 import ipywidgets
+import matplotlib.pyplot as plt
 
 
 class WidgetLayout():
@@ -28,12 +28,12 @@ class ConvolutionPlot():
         self.n = 0
         self.f = 0.05
         self.h_length = 5
-        noise_level = 0.2
+        noise_level = 0.4
 
         self.xspan = 80
         self.ymax = 1.5
 
-        n_samples = 500
+        n_samples = 200
         n = np.arange(n_samples)
 
         rng = np.random.default_rng()
@@ -47,7 +47,9 @@ class ConvolutionPlot():
 
 
     def h(self):
-        return 1/self.h_length * np.ones(self.h_length)
+        h0 = np.array([1, 2, 3, 4, 3, 2, 1])
+        return h0/np.sum(h0)
+        #return 1/self.h_length * np.ones(self.h_length)
 
     def initialise_colors(self):
         """Define standard colors for graphs."""
@@ -68,7 +70,8 @@ class ConvolutionPlot():
         ax : List of axis objects
             Axes where results are plotted
         """
-        fig = plt.figure(figsize=[14, 6],
+        plt.close('all')
+        fig = plt.figure(figsize=[12, 5],
                          constrained_layout=True,
                          num="Convolution Demo")
 
@@ -222,7 +225,7 @@ class ConvolutionPlot():
         # Individual widgats
         n_widget = ipywidgets.IntText(min=-self.xspan,
                                       max=self.xspan,
-                                      value=10,
+                                      value=self.n,
                                       description='Time [n]',
                                       readout_format='.1f',
                                       **text_layout)

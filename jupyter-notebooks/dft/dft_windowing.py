@@ -217,8 +217,7 @@ class Signal():
     def _initialise_graphs(self):
         """Initialise graphs for signals and spectra."""
         plt.close('all')
-        plt.rc('font', size=9)          # Default text sizes
-        fig = plt.figure(figsize=[12, 6],
+        fig = plt.figure(figsize=[10, 5],
                          layout='constrained',
                          num='DFT')
 
@@ -297,7 +296,7 @@ class Signal():
         window_widget = widgets.Dropdown(
             options=self.window_list,
             value=self.window_list[0],
-            description='Filter',
+            description='Window',
             **dropdown_layout)
 
         n_fft_widget = widgets.Dropdown(

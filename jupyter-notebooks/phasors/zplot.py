@@ -174,13 +174,11 @@ def plot_signal(zk, labels=[], include_sum=False, frequency=1, ax=None):
         ax.plot(t, xs, color=COLOR_SUM)
 
     # Add labels to signals
-    k = 0
-    for label in labels:
-        t_delay = -np.angle(zk[k])/(2*pi*frequency)
+    for k, label in enumerate(labels):
+        t_delay = (2*pi-np.angle(zk[k]))/(2*pi*frequency)
         ax.text(t_delay, abs(zk[k]), label,
                 color=COLOR_PHASORS,
                 backgroundcolor='white')
-        k += 1
 
     # Label axes and title
     ax.set(xlabel='Time [s]',

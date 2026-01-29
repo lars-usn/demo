@@ -36,7 +36,7 @@ class FrequencyResponse():
         """Initialise result graph ."""
         plt.close('all')
         plt.rc('font', size=10)          # Default text sizes
-        fig = plt.figure(figsize=[14, 7],
+        fig = plt.figure(figsize=[10, 5],
                          constrained_layout=True,
                          num='First Order System - Frequency Response')
         ax = fig.subplots(2, 1, sharex=True)
@@ -90,18 +90,34 @@ class FrequencyResponse():
 
         # Indicators
         indicator_color = 'gray'
-        for ax in self.ax:
-            ax.axvline(x=self.fc(), color=indicator_color, linestyle='-')
 
+        # Cut-off frequency
+        for ax in self.ax:
+            ax.axvline(x=self.fc(), color='C1', linestyle='--')
+        self.ax[0].text(
+            self.fc(), -20, f' $ f_c$={self.fc():.3g} Hz', color='black')
+
+        # -3 dB limits
         y_lim = [-3, 0]
         for y in y_lim:
             self.ax[0].axhline(y=y, color=indicator_color, linestyle='-')
         self.ax[0].axhspan(y_lim[0], y_lim[1], color='green', alpha=0.1)
 
-        self.ax[0].text(
-            self.fc(), -20, f' $ f_c$={self.fc():.3g} Hz', color='black')
-
+        # -45 degree phase
         self.ax[1].axhline(y=-45, color=indicator_color, linestyle='-')
+
+        # Text box with values
+        indicator_text = ('\n'
+                          r'Time constant  $\tau$='
+                          f'{self.tau:.2g} s \n'
+                          r'Cut-off frequency $f_c=\frac{1}{2 \pi \tau}$='
+                          f'{self.fc():.3g} Hz')
+
+        box_style = dict(boxstyle='round',
+                         facecolor='aliceblue',
+                         pad=1.0)
+
+        self.ax[1].text(30, -15, indicator_text, bbox=box_style, va='top')
 
         return
 

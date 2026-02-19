@@ -95,27 +95,27 @@ class Transform():
             ax[k].axvline(x=0, color='grey')
 
         # Mark regions
+        unstablecolor = ('red', 0.2)
+
+        # Nyquist limits
         for m in [-1, 1]:
             ax[0].axhline(y=m*pi, color=('green', 0.5), linestyle='dashed')
 
         ax[0].text(0, -pi, ' $-\pi$', va='top', color='green')
         ax[0].text(0, pi, ' $\pi$', va='baseline', color='green')
 
+        # Right half plane in s-plane
+        ax[0].fill_betweenx([-10, 10], x1=10, color=unstablecolor)
+        ax[0].set_aspect(1)
 
-        unstablecolor = ('red', 0.2)
         # Unit circle in z-plane
         circ = plt.Circle((0, 0), radius=1,
-                              edgecolor='gray',
-                              facecolor='white')
+                          edgecolor='gray',
+                          facecolor='white')
 
-        ax[0].set_aspect(1)
         ax[1].set_aspect(1)
         ax[1].set_facecolor(unstablecolor)
         ax[1].add_artist(circ)
-
-        # Right half plane in s-plane
-        ax[0].fill_betweenx([-10, 10], x1=10, color=unstablecolor)
-
 
         # Initialise with single point in origos
         self.marker=[]

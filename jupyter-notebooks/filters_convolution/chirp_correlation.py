@@ -44,6 +44,8 @@ class Chirp():
         self.noise_base = rng.standard_normal(self.n_pts)
         self.noise_level = 0.0
 
+        self.magnitude = False
+
         self.ax = self.initialise_graphs()
         self.scale_axes()
         self.widget = self._create_widgets()
@@ -135,14 +137,16 @@ class Chirp():
         ax[1].plot(t_us, sc, 'C1')
         ax[2].plot(t_us, scorr, 'C0')
 
-        for a in ax[0:3]:
+        for a in ax[0:4]:
             a.axhline(y=0, color='gray')
 
         # Cross-correlation, clean with noisy signal
         ac = signal.correlate(s, sn)
         n = len(s)
         tc = signal.correlation_lags(n, n) / self.fs
-        ax[3].plot(tc*1e6, np.abs(ac), color='C0')
+        if self.magnitude:
+            ac = abs(ac)
+        ax[3].plot(tc*1e6, ac, color='C0')
         ax[3].axvline(x=self.start*1e6, color='C1')
 
         return 0
@@ -163,7 +167,8 @@ class Chirp():
 
         return
 
-    def interact(self, start=None, f1=None, f2=None, noise_level=None):
+    def interact(self, start=None, f1=None, f2=None, 
+                 noise_level=None, magnitude=None):
         if start is not None:
             self.start = 1e-6*start
         if f1 is not None:
@@ -172,6 +177,8 @@ class Chirp():
             self.f2 = 1e3*f2
         if noise_level is not None:
             self.noise_level = noise_level
+        if magnitude is not None:
+            self.magnitude = magnitude
 
         self.display()
 
@@ -194,6 +201,10 @@ class Chirp():
             'continuous_update': True,
             'layout': ipywidgets.Layout(width='60%'),
             'style': {'description_width': '15%'}}
+
+        checkbox_layout = {
+            'layout': ipywidgets.Layout(width='20%'),
+            'style': {'description_width': '50%'}}
 
         # Individual widgats
         f1_widget = ipywidgets.BoundedFloatText(
@@ -230,19 +241,27 @@ class Chirp():
             readout_format='.1f',
             **slider_layout)
 
+        magnitude_widget = ipywidgets.Checkbox(
+            value=self.magnitude,
+            description='Magnitude',
+            **checkbox_layout)
+
         # Arrange in columns and lines
         widget_layout = ipywidgets.HBox([f1_widget,
                                          f2_widget,
                                          shift_widget,
-                                         noise_widget])
+                                         noise_widget,
+                                         magnitude_widget])
+        
         widget_layout = ipywidgets.VBox([title_widget, widget_layout])
 
         # Export as dictionary
         widget = {'f1_widget': f1_widget,
                   'f2_widget': f2_widget,
                   'shift_widget': shift_widget,
-                  'noise_widget': noise_widget
-                  }
+                  'noise_widget': noise_widget,
+                  'magnitude_widget': magnitude_widget
+                 }
 
         w = WidgetLayout(widget_layout, widget)
 

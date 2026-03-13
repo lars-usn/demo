@@ -8,7 +8,6 @@ Created on Thu Dec 18 16:21:59 2025
 # Illustration of the convolution operation, applied to FIR filtering
 from math import pi
 import numpy as np
-from scipy.signal import convolve
 from scipy import signal
 import ipywidgets
 import matplotlib.pyplot as plt
@@ -29,9 +28,11 @@ class Chirp():
         self.f1 = 125e3          # Start frequencvy
         self.f2 = 200e3          # End frequency
         self.fs = 10e6
-        self.chirp_dur = 100e-6  # Chirp duration
+        self.chirp_dur = 200e-6  # Chirp duration
+        self.window = 'tukey'    # Tapering window
+        self.window_par = 0.2    # Parameter to window function
 
-        self.start = -150e-6
+        self.start = -200e-6     # Start of received signal, rel. reference
 
         pad = 2
         n_chirp = int(self.chirp_dur*self.fs)  # No. of points in chirp
@@ -59,6 +60,9 @@ class Chirp():
         mu = (self.f2-self.f1) / (2 * self.chirp_dur)
         psi = 2 * pi*(mu*ts**2 + self.f1*ts)
         p = np.sin(psi)
+
+        w = signal.windows.get_window((self.window, self.window_par), len(p))
+        p = w*p
 
         return p
 
@@ -96,7 +100,7 @@ class Chirp():
 
         for a in ax[0:3]:
             a.set(ylim=(-2, 2))
-   
+
         return ax
 
     def display(self):
@@ -167,7 +171,7 @@ class Chirp():
 
         return
 
-    def interact(self, start=None, f1=None, f2=None, 
+    def interact(self, start=None, f1=None, f2=None,
                  noise_level=None, magnitude=None):
         if start is not None:
             self.start = 1e-6*start
@@ -194,8 +198,8 @@ class Chirp():
         # Layouts definitions
         text_layout = {
             'continuous_update': False,
-            'layout': ipywidgets.Layout(width='10%'),
-            'style': {'description_width': '50%'}}
+            'layout': ipywidgets.Layout(width='90%'),
+            'style': {'description_width': '60%'}}
 
         slider_layout = {
             'continuous_update': True,
@@ -204,9 +208,9 @@ class Chirp():
 
         checkbox_layout = {
             'layout': ipywidgets.Layout(width='20%'),
-            'style': {'description_width': '50%'}}
+            'style': {'description_width': '10%'}}
 
-        # Individual widgats
+        # Individual widgets
         f1_widget = ipywidgets.BoundedFloatText(
             min=10,
             max=300,
@@ -233,8 +237,8 @@ class Chirp():
             **text_layout)
 
         shift_widget = ipywidgets.FloatSlider(
-            min=-150,
-            max=150,
+            min=-250,
+            max=250,
             step=0.5,
             value=self.start*1e6,
             description='Ref. position [$\mu$s]',
@@ -247,12 +251,17 @@ class Chirp():
             **checkbox_layout)
 
         # Arrange in columns and lines
-        widget_layout = ipywidgets.HBox([f1_widget,
-                                         f2_widget,
+        widget_f_layout = ipywidgets.VBox([f1_widget,
+                                           f2_widget,
+                                           noise_widget])
+
+        widget_par_layout = ipywidgets.VBox([ noise_widget,
+                                           magnitude_widget])
+
+        widget_layout = ipywidgets.HBox([widget_f_layout,
                                          shift_widget,
-                                         noise_widget,
                                          magnitude_widget])
-        
+
         widget_layout = ipywidgets.VBox([title_widget, widget_layout])
 
         # Export as dictionary

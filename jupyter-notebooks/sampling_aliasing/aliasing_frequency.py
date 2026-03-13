@@ -191,7 +191,7 @@ class FrequencyAliasSignal():
         """Initialise graphs for signals and spectra."""
         plt.close('all')
         plt.rc('font', size=10)          # Default text sizes
-        fig = plt.figure(figsize=[14, 6],
+        fig = plt.figure(figsize=[10, 4],
                          constrained_layout=True,
                          num='Aliasing Demo')
 

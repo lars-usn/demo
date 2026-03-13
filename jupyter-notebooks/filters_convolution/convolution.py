@@ -1,17 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 18 16:21:59 2025
+# Interactive illustration of the convolution operation, applied to FIR filtering
+# Use Matplotlib backend that allows interactive operation
 
-@author: larsh
-"""
-
-# Illustration of the convolution operation, applied to FIR filtering
-from math import pi
+# from math import pi
 import numpy as np
 from scipy.signal import convolve
-import ipywidgets
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import ipywidgets
 
 class WidgetLayout():
     """Container for widgets and layout."""
@@ -24,218 +20,237 @@ class WidgetLayout():
 class ConvolutionPlot():
     """Plot all resouts of convolution."""
 
-    def __init__(self):
+    def __init__(self, initialise_graphs=True, create_widgets=False):
+
         self.n = 0
-        self.f = 0.05
-        self.h_length = 5
-        noise_level = 0.4
+        self.length = [10, 3]
+        self.amplitude = [1.0, 0.5]
+        self.decay = [1.0, 0.8]
 
-        self.xspan = 80
-        self.ymax = 1.5
+        self.color = self._initialise_colors()
 
-        n_samples = 200
-        n = np.arange(n_samples)
+        if initialise_graphs:
+            self.ax = self._initialise_graphs()
+            # self.scale_graphs()
 
-        rng = np.random.default_rng()
-        noise = noise_level * rng.standard_normal(n_samples)
+        if create_widgets:
+            self.widget = self._create_widgets()
 
-        self.s = np.cos(2*pi*self.f*n) + noise
+        return
 
-        self.ax = self.initialise_graphs()
-        self.color = self.initialise_colors()
-        self.widget = self._create_widgets()
+    def signal(self, amplitude=1, length=4, decay=1.0):
+        """Create signal or response."""
+        return amplitude * decay**np.arange(length)
 
+    def s(self):
+        return self.signal(amplitude=self.amplitude[0],
+                          length=self.length[0],
+                          decay=self.decay[0])
 
     def h(self):
-        h0 = np.array([1, 2, 3, 4, 3, 2, 1])
-        return h0/np.sum(h0)
-        #return 1/self.h_length * np.ones(self.h_length)
+        return self.signal(amplitude=self.amplitude[1],
+                           length=self.length[1],
+                           decay=self.decay[1])
 
-    def initialise_colors(self):
-        """Define standard colors for graphs."""
+    def _initialise_colors(self):
         color = {}
-        color["signal"] = "C0"
-        color["filter"] = "C3"
-        color["indicator"] = "C2"
-        color["result"] = "C1"
-        color["baseline"] = " "
+        color['signal'] = 'C0'
+        color['filter']= 'C3'
+        color['indicator'] = 'C2'
+        color['result'] = 'C1'
+        color['baseline'] = ' ' # mcolors.TABLEAU_COLORS['tab:gray']
 
         return color
 
-    def initialise_graphs(self):
+    def _initialise_graphs(self):
         """Initialise graphs for signals and spectra.
 
         Returns
-        -------
+        ------
         ax : List of axis objects
             Axes where results are plotted
         """
+
         plt.close('all')
-        fig = plt.figure(figsize=[12, 5],
+        plt.rc('font', size=8)          # Default text sizes
+        fig = plt.figure(figsize=[12, 6],
                          constrained_layout=True,
-                         num="Convolution Demo")
+                         num='Convolution Demo')
 
-        gs = fig.add_gridspec(3, 3)
-        ax = [fig.add_subplot(gs[k, :]) for k in range(3)]
+        ax = fig.subplot_mosaic([['signal', 'combined',   'combined'  ],
+                                 ['filter', 'multiplied', 'multiplied'],
+                                 ['.',     'result',     'result']])
 
-        ax[0].set_title("Input $x(n)$")
-        ax[1].set_title("Filter $h(k)$")
-        ax[2].set_title("Output $y(n) = \sum h(k) x(n-k)$")
+        ax['signal'].set_title('Input signal', loc='left')
+        ax['combined'].set_title('Signal and impulse response', loc='left')
+        ax['filter'].set_title('Filter', loc='left')
+        ax['multiplied'].set_title('Multiplied', loc='left')
+        ax['result'].set_title('Output', loc='left')
 
-        flip = [True, False, True]
-
-        x_start = -0.4 * self.xspan
-        x_end = 0.6 * self.xspan
-        for k, a in enumerate(ax):
-            if flip[k]:
-                xlim = np.array([-x_start, -x_end])
-                xticks = np.arange(-x_start, -x_end, -2)
-            else:
-                xlim = np.array([x_start, x_end])
-                xticks = np.arange(x_start, x_end, 2)
-
-            a.set(xlabel='Sample [n]',
-                  xlim=xlim,
-                  xticks=xticks)
-
-            a.axvline(x=0, color='gray')
-            a.grid(True)
-
-        ax[0].text(15,self.ymax, "Future",
-            ha='center', va='center',
-            bbox=dict(boxstyle="larrow",
-                      fc="lightblue", ec="steelblue"))
-
-        ax[0].text(-15, self.ymax, "Past",
-            ha='center', va='baseline',
-            bbox=dict(boxstyle="rarrow",
-                      fc="lightblue", ec="steelblue"))
-
-        ax[0].text(0, self.ymax, "Now",
-            ha='center', va='baseline',
-            bbox=dict(boxstyle="square",
-                      fc="lightblue", ec="steelblue"))
-
-# =============================================================================
-#         for k in [0, 2]:
-#             ax[k].xaxis.set_inverted(True)
-# =============================================================================
+        for k in ax:
+            ax[k].set_xlabel('Sample [n]')
+            ax[k].grid(True)
 
         return ax
 
     def display(self):
-        """Plot all signals and spectra.
-
-        Arguments
-        ---------
-        s : Signal object
-            Input signal
-        h : Signal object
-            Filter impulse response
-        n : int
-            Sample position to show in plot
-        """
-        # Clear old graphs, add indicators
-        for ax in self.ax:
-            for art in list(ax.lines):
-                art.remove()
-            for art in list(ax.collections):
-                art.remove()
-            for art in list(ax.patches):
-                art.remove()
-
-            ax.axvline(x=0, color='gray')
-            ax.axhline(y=0, color='gray')
+        """Plot all signals and spectra."""
 
         # Calculate result of convolution
-        n = self.n
-        s = self.s
+        s = self.s()
         h = self.h()
         y = convolve(s, h)
+        y_max = 1.2 * max(np.max(y), np.max(s), np.max(h))  # Max. y scale
+        y_min = 1.2 * min(np.min(y), np.min(s), np.min(h), 0)  # Max. y scale
+
+        # Clear old graphs
+        for k in self.ax:
+            for art in list(self.ax[k].lines):
+                art.remove()
+            for art in list(self.ax[k].collections):
+                art.remove()
+            for art in list(self.ax[k].patches):
+                art.remove()
 
         # Plot input and filter response
-        n_max = len(s)
-        n_plot = np.arange(0, n_max) - n
-        self.ax[0].stem(n_plot, s,
-                        linefmt=self.color["signal"],
-                        basefmt=self.color["baseline"])
-        self.ax[1].stem(h,
-                        linefmt=self.color["filter"],
-                        basefmt=self.color["baseline"])
+        self.ax['signal'].stem(s, linefmt=self.color['signal'], basefmt=self.color['baseline'])
+        self.ax['filter'].stem(h, linefmt=self.color['filter'], basefmt=self.color['baseline'])
 
-        y = y[0:n_max]
-        y[n+1:] = 0
-        self.ax[2].stem(n_plot, y,
-                        linefmt=self.color["result"],
-                        basefmt=self.color["baseline"])
+        # Plot signal and flipped filter in same graph
+        h_pos = self.n + np.arange(0, -len(h), -1)  # Shifted response
+        s_pos = np.arange(len(s))
+        self.ax['combined'].stem(s_pos, s, linefmt=self.color['signal'], basefmt=self.color['baseline'])
+        self.ax['combined'].stem(h_pos, h, linefmt=self.color['filter'], basefmt=self.color['baseline'])
 
-        self.ax[2].stem(n_plot[n], y[n],
-                        linefmt=self.color["indicator"],
-                        basefmt=self.color["baseline"])
+        # Plot multiplication inside filter support
+        ni = self.n + 1 + np.arange(-len(h), 0)    # Indices overlapping with h
+        ni = ni[(ni >= 0) & (ni < len(s))]
+        nh = len(ni)
 
-        # Mark filter support
-        x_lim = len(h)-1
-        for k in [0, 1]:
-            if self.ax[k].xaxis_inverted():
-                xmin = -x_lim
-                xmax = 0
-            else:
-                xmin = 0
-                xmax = x_lim
+        h_flip = np.flip(h)
+        if len(ni) > 0:
+            s_h = s[ni] * h_flip[0:nh]
+            self.ax['multiplied'].stem(ni, s_h, linefmt=self.color['indicator'], basefmt=self.color['baseline'])
 
-            self.ax[k].axvspan(xmin=xmin, xmax=xmax,
-                               facecolor=self.color["indicator"], alpha=0.20)
+        # Plot output of convolution
+        self.ax['result'].stem(y, linefmt=self.color['result'], basefmt=self.color['baseline'])
 
-         # Scale y-axes
-        for k in [0, 2]:
-            self.ax[k].set_ylim(-self.ymax, self.ymax)
+        # Show active point with indicator line
+        for k in ['combined', 'multiplied', 'result']:
+            self.ax[k].axvline(x=self.n, linestyle='-', color=self.color['indicator'] )
 
-        self.ax[1].set_ylim(0, 0.5)
+        # Mark filter support with patch
+        for k in ['combined', 'multiplied']:
+            self.ax[k].add_patch(patches.Rectangle((self.n-len(h)+1, y_min),  # (x,y)
+                                 len(h)-1,
+                                 y_max-y_min,
+                                 alpha=0.20,
+                                 color=self.color['indicator']))
 
+        # Scale axes
+        n_max = len(y) + 2
+        for k in self.ax:
+            self.ax[k].axhline(y=0, color='gray', linestyle='-')
+            self.ax[k].set_ylim(y_min, y_max)
+
+        for k in ['signal', 'filter']:
+            self.ax[k].set_xlim(-0.5, len(s))
+
+        for k in ['combined', 'multiplied', 'result']:
+            self.ax[k].set_xlim(-2, n_max)
 
         return 0
 
+    # Simple interactive operation
+    def interact(self, indicator=None,
+                 signal_length=None, signal_amplitude=None, signal_decay=None,
+                 filter_length=None, filter_amplitude=None, filter_decay=None):
+        """For interactive operation."""
 
-    def interact(self, n=None):
-        if n is not None:
-            self.n = n
+        if indicator is not None:
+            self.n = indicator
+        if signal_length is not None:
+            self.length[0] = signal_length
+        if signal_amplitude is not None:
+            self.amplitude[0] = signal_amplitude
+        if signal_decay is not None:
+            self.decay[0] = signal_decay
+
+        if filter_length is not None:
+            self.length[1] = filter_length
+        if filter_amplitude is not None:
+            self.amplitude[1] = filter_amplitude
+        if filter_decay is not None:
+            self.decay[1] = filter_decay
 
         self.display()
 
         return
 
-       # Interactive widgets
+    # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
+
         # Title
-        title = 'FIR-filter as Convolution'
+        title = ('Colvolution Demo')
         title_widget = ipywidgets.Label(title, style=dict(font_weight='bold'))
 
         # Layouts definitions
-        text_layout = {
-            'continuous_update': False,
-            'layout': ipywidgets.Layout(width='15%'),
-            'style': {'description_width': '50%'}}
+        text_layout = {'continuous_update': False,
+                       'layout': ipywidgets.Layout(width='10%'),
+                       'style': {'description_width': '60%'}}
 
-        slider_layout = {
-            'continuous_update': True,
-            'layout': ipywidgets.Layout(width='95%'),
-            'style': {'description_width': '15%'}}
+        label_layout = {'continuous_update': False,
+                               'layout': ipywidgets.Layout(width='5%')}
 
-        # Individual widgats
-        n_widget = ipywidgets.IntText(min=-self.xspan,
-                                      max=self.xspan,
-                                      value=self.n,
-                                      description='Time [n]',
-                                      readout_format='.1f',
-                                      **text_layout)
+        slider_layout = {'continuous_update': True,
+                        'layout': ipywidgets.Layout(width='70%'),
+                        'style': {'description_width': '5%'}}
 
-        # Arrange in columns and lines
-        widget_layout = ipywidgets.HBox([title_widget, n_widget])
+        # Individual widgets
+        label = ['Signal', 'Filter']
+        label_widget = [ipywidgets.Label(labeltext,
+                                         **label_layout)
+                        for labeltext in label]
 
-        # Export as dictionary
-        widget = {'n': n_widget}
+        length_widget = [ipywidgets.IntText(min=1, max=20, value=n,
+                                          description='Length',
+                                          **text_layout)
+                          for n in self.length]
 
+        amplitude_widget = [ipywidgets.FloatText(min=0.1, max=2.0, step=0.1, value=k,
+                                              description='Amplitude',
+                                              **text_layout)
+                            for k in self.amplitude]
+
+        decay_widget = [ipywidgets.FloatText(min=0.1, max=1.0, step=0.1, value=k,
+                                          description='Decay',
+                                          **text_layout)
+                        for k in self.decay]
+
+        # Create lines of parameter widgets
+        widget_line = [ipywidgets.HBox([label_widget[k],
+                                     length_widget[k],
+                                     amplitude_widget[k],
+                                     decay_widget[k]]) for k in range(2)]
+
+         # Add slider for position indicator
+        indicator_widget = ipywidgets.IntSlider(
+            min= -1, max= 20.0, value= 0,
+            description='Indicator',
+            **slider_layout)
+
+        widget_layout = ipywidgets.VBox([grid_line for grid_line in widget_line] )
+        widget_layout = ipywidgets.VBox([title_widget,
+                                         widget_layout,
+                                         indicator_widget])
+
+       # Export as dictionary
+        widget = {'indicator': indicator_widget,
+                  'length': length_widget,
+                  'amplitude': amplitude_widget,
+                  'decay': decay_widget,
+                  }
         w = WidgetLayout(widget_layout, widget)
 
         return w

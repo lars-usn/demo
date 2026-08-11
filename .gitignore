@@ -1,0 +1,11 @@
+
+*.pyc
+jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints/array_demo-checkpoint.ipynb
+jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints/focused_transducer_simple_demo-checkpoint.ipynb
+jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints/point_array_demo-checkpoint.ipynb
+jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints/single_element_beam_pattern-checkpoint.py
+jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints/single_element_demo-checkpoint.ipynb
+jupyter-notebooks/filters_convolution/.ipynb_checkpoints/chirp_correlation_demo-checkpoint.ipynb
+jupyter-notebooks/filters_convolution/.ipynb_checkpoints/convolution_demo-checkpoint.ipynb
+jupyter-notebooks/filters_convolution/.ipynb_checkpoints/fir_convolution_demo-checkpoint.ipynb
+jupyter-notebooks/filters_convolution/.ipynb_checkpoints/fir_design_demo-checkpoint.ipynb

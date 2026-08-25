@@ -10,6 +10,32 @@ import ipywidgets as widgets
 # Internal libraries
 import beamplot_utilities as bpu
 
+# Colours and lines
+COLOR = {
+    'element': 'crimson',
+    'element_background': 'whitesmoke',
+    'text_face' : 'whitesmoke',
+    'contour' : 'white',
+    'orientation_line' : 'cornflowerblue',
+    'intensity_background' : 'black',
+    }
+
+LINE = {
+    'contour' : {'colors': COLOR['contour'],
+                 'linestyles': 'dotted',
+                 'alpha': 0.7},
+    'angle' : {'color': COLOR['contour'],
+               'linestyle': 'dotted',
+               'alpha': 0.7},
+    'orientation' : {'color': COLOR['orientation_line'],
+                     'linestyle': 'dotted',
+                     'alpha': 1.0},
+    'indicator': {'color': 'C1',
+                  'linestyle': 'solid'},
+    'main' : {'color': 'C0',
+              'linestyle': 'solid'},
+    }
+
 
 class WidgetLayout():
     """Container for widgets and layout."""
@@ -47,32 +73,7 @@ class Transducer():
         self.db_range = 60     # dB   Dynamic gange on dB-scales
         self.db_gain = 6       # dB   Max. on dB-scales
 
-        # Colors and markers
-        self.element_color = 'crimson'
-        self.element_background = 'whitesmoke'
-        self.text_face = 'whitesmoke'
-
-        contour_color = 'white'
-        self.contour_line = {'colors': contour_color,
-                             'linestyles': 'dotted',
-                             'alpha': 0.7}
-
-        self.angle_line = {'color': contour_color,
-                           'linestyle': 'dotted',
-                           'alpha': 0.7}
-
-        self.orientation_line = {'color': 'cornflowerblue',
-                                 'linestyle': 'dotted',
-                                 'alpha': 1.0}
-
-        self.indicator_line = {'color': 'C1',
-                               'linestyle': 'solid'}
-
-        self.main_line = {'color': 'C0',
-                          'linestyle': 'solid'}
-
         self.colormap = 'inferno'
-        self.intensity_background = 'black'
 
         # Initialisation
         ax, fig = self._initialise_graphs()
@@ -200,11 +201,11 @@ class Transducer():
     # === Commands =============================
     def display(self):
         """Display beam pattern in graphs."""
-        self._remove_old_artists()
+        # self._remove_old_artists()
         ax = self.axes
 
         # Element image
-        self._draw_element(ax["element"])
+        self._update_element()
         self._draw_orientationline(ax["element"])
 
         # Axial intensity
@@ -229,7 +230,7 @@ class Transducer():
             ax['axial'].set(ylabel='Elevation (y) [m]',
                             title='Elevation plane (zy)')
 
-        ax['axial'].axvline(x=self.z_c(), **self.orientation_line)
+        ax['axial'].axvline(x=self.z_c(), **LINE['orientation'])
 
         self.cbar = self.fig.colorbar(im, ax=ax['axial'])
         bpu.db_colorbar(self.cbar, db_sep=6)
@@ -237,18 +238,18 @@ class Transducer():
         # Element with lines extending to Rayleigh distance
         y_element = self.width/2
         ax['axial'].axhspan(-y_element, y_element, xmax=0.005,
-                            color=self.element_color)
+                            color=COLOR['element'])
 
         for w in [-self.width, self.width]:
             ax['axial'].plot([0.0, self.z_r()],
                              w/2*np.array([1, 1]),
-                             color=self.element_color,
+                             color=COLOR['element'],
                              linestyle='dotted')
 
         illustration = patches.Rectangle((0, -y_element),
                                          self.z_r(), self.width,
                                          fill=True,
-                                         color=self.element_color,
+                                         color=COLOR['element'],
                                          alpha=0.7)
 
         ax['axial'].add_patch(illustration)
@@ -257,7 +258,7 @@ class Transducer():
         x_line = np.array([0, self.z_max])
         y_line = np.array([0, self.z_max*np.tan(self.theta_0()/2)])
         ax['axial'].plot(x_line, y_line, x_line, -y_line,
-                         **self.angle_line)
+                         **LINE['angle'])
 
         # Lateral intensity at reference distance
         x_m = self.xy()[0][0, :]
@@ -270,7 +271,7 @@ class Transducer():
         db_marker = bpu.db(self.y_lim, p_ref=1) + np.max(p_db)
         ax['lateral'].contour(x_m, y_m, p_db,
                               levels=[db_marker],
-                              **self.contour_line)
+                              **LINE['contour'])
 
         self._draw_orientationline(ax["lateral"])
 
@@ -281,9 +282,9 @@ class Transducer():
         p = p_axial[:, k_ref]
         p_db = bpu.db(p, p_ref=p_max)
 
-        ax['beamprofile'].plot(x, p_db, **self.main_line)
+        ax['beamprofile'].plot(x, p_db, **LINE['main'])
         ax['beamprofile'].axhline(y=p_db.max()+bpu.db(self.y_lim, p_ref=1),
-                                  **self.indicator_line)
+                                  **LINE['indicator'])
 
         # Find reference values
         ref = bpu.Refpoints(x=x, y=p)
@@ -294,7 +295,7 @@ class Transducer():
         self.db_sidelobe = bpu.db(self.y_sidelobe, p_ref=p.max())
 
         for x in xl:
-            ax['beamprofile'].axvline(x=x, **self.indicator_line)
+            ax['beamprofile'].axvline(x=x, **LINE['indicator'])
 
         self.scale_axes()
         self._resulttext()
@@ -320,6 +321,7 @@ class Transducer():
 
         return 0
 
+   
     def interact(self,
                  circular=None,
                  azimuth=None,
@@ -328,75 +330,117 @@ class Transducer():
                  height=None,
                  z_ref=None,
                  db_range=None,
-                 db_gain=None
+                 db_gain=None,
                  ):
         """Scale inputs and  display results.
-
+    
         For interactive operation with  dimensions in mm and frequency in kHz.
-        Existing values are used if a parameter is omitted.
-
+          Existing values are used if a parameter is omitted.
+    
         Parameters
-        ----------
-        circular: boolean, optional
-            Circular (True) or rectangular (False) aperture
-        frequency: float, optional
-            Frequency in kHz
-        widh: float, optional
-            Element width (azimuth, x) in mm
-        height: float, optional
-            Element height (elevation, y) in mm
-        z_ref: float, optional
-            Reference depth in m
-        db_range: float
-            Rangeon dB-axes
-        db_gain: float
-            Maximum on dB-axes
-        """
-        if circular is not None:
-            self.circular = circular
-        if azimuth is not None:
-            self.azimuth = azimuth
-        if frequency is not None:
-            self.frequency = 1e3*frequency
-        if width is not None:
-            self.width = 1e-3*width
-        if height is not None:
-            self.height = 1e-3*height
-        if z_ref is not None:
-            self.z_ref = float(z_ref)
-        if db_range is not None:
-            self.db_range = db_range
-        if db_gain is not None:
-            self.db_gain = db_gain
-
-        # Display result in graphs
+            ----------
+            circular: boolean, optional
+                Circular (True) or rectangular (False) aperture
+            frequency: float, optional
+                Frequency in kHz
+            width: float, optional
+                Element width (azimuth, x) in mm
+            height: float, optional
+                Element height (elevation, y) in mm
+            z_ref: float, optional
+                Reference depth in m
+            db_range: float
+                Rangeon dB-axes
+            db_gain: float
+                Maximum on dB-axes
+            """
+        updates = {
+                "circular": circular,
+                "azimuth": azimuth,
+                "frequency": None if frequency is None else 1e3 * frequency,
+                "width": None if width is None else 1e-3 * width,
+                "height": None if height is None else 1e-3 * height,
+                "z_ref": None if z_ref is None else float(z_ref),
+                "db_range": db_range,
+                "db_gain": db_gain,
+                }
+        
+        for name, value in updates.items():
+            if value is not None:
+                setattr(self, name, value)
+        
         self.display()
 
-        return
-
     # === Non-public methods ==========================================
-
     # Graphs and results
-
     def _db_scale(self):
         db_lim = np.array([-self.db_range, 0]) - self.db_gain
         return db_lim
+    
+    def _create_element(self, ax):
+        """Create aperture patch and return handle."""
 
-    def _draw_element(self, ax):
-        """Draw image of aperture in specified axis."""
-        w_mm = self.width*1e3
-        h_mm = self.height*1e3
-
-        element_layout = {'fill': True,
-                          'color': self.element_color}
+        ax.set(title='Transducer shape',
+               facecolor=COLOR['element_background'],
+               box_aspect=1,
+               xlabel='Azimuth [mm]',
+               ylabel='Elevation [mm]')
+    
         if self.circular:
-            illustration = patches.Circle((0, 0), w_mm/2, **element_layout)
+            patch = patches.Circle(
+                (0, 0),
+                radius=0,
+                fill=True,
+                color=COLOR["element"],
+            )
         else:
-            illustration = patches.Rectangle((-w_mm/2, -h_mm/2), w_mm, h_mm,
-                                             **element_layout)
-        ax.add_patch(illustration)
+            patch = patches.Rectangle(
+                (0, 0),
+                width=0,
+                height=0,
+                fill=True,
+                color=COLOR["element"],
+            )
+    
+        ax.add_patch(patch)
+        return patch
 
-        return 0
+    def _update_element(self):
+        """Update aperture patch with current dimensions."""
+        w_mm = self.width * 1e3
+        h_mm = self.height * 1e3
+    
+        patch_type = patches.Circle if self.circular else patches.Rectangle
+    
+        # Change shape if necessary
+        if not isinstance(self.element_patch, patch_type):
+            self.element_patch.remove()
+    
+            if self.circular:
+                self.element_patch = patches.Circle(
+                    (0, 0), w_mm / 2,
+                    fill=True,
+                    color=COLOR["element"]
+                )
+            else:
+                self.element_patch = patches.Rectangle(
+                    (-w_mm / 2, -h_mm / 2), w_mm, h_mm,
+                    fill=True,
+                    color=COLOR["element"]
+                )
+    
+            self.axes['element'].add_patch(self.element_patch)
+            return
+
+        # Update geometry 
+        if self.circular:
+            self.element_patch.set_radius(w_mm / 2)
+        else:
+            self.element_patch.set_xy((-w_mm / 2, -h_mm / 2))
+            self.element_patch.set_width(w_mm)
+            self.element_patch.set_height(h_mm)
+        
+
 
     def _resulttext(self):
         """Text box for lateral profile results."""
@@ -455,14 +499,12 @@ class Transducer():
         ax['axial'].set(aspect='equal',
                         xlabel='Depth (z) [m]',
                         ylabel='Azimuth (x) [m]',
-                        facecolor=self.intensity_background)
+                        facecolor=COLOR['intensity_background'])
 
-        # Element drawing
-        ax["element"].set(title='Transducer',
-                          facecolor=self.element_background,
-                          box_aspect=1,
-                          xlabel='Azimuth [mm]',
-                          ylabel='Elevation [mm]')
+        # Transducer element illustration
+        self.element_patch = self._create_element(ax["element"])
+        # self._update_element()
+        
 
         # Lateral intensity plot
         ax['lateral'].set(box_aspect=1,
@@ -490,9 +532,9 @@ class Transducer():
 
     def _draw_orientationline(self, ax):
         if self.azimuth:
-            ax.axhline(y=0, **self.orientation_line)
+            ax.axhline(y=0, **LINE['orientation'])
         else:
-            ax.axvline(x=0, **self.orientation_line)
+            ax.axvline(x=0, **LINE['orientation'])
 
         return
 

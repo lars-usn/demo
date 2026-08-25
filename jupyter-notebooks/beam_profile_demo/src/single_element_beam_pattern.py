@@ -495,16 +495,14 @@ class Transducer():
               'lateral': fig.add_subplot(gs[1, 2:4]),
               'beamprofile': fig.add_subplot(gs[1, 4:7])}
 
+        # Transducer element illustration
+        self.element_patch = self._create_element(ax["element"])
+
         # Axial intensity plot
         ax['axial'].set(aspect='equal',
                         xlabel='Depth (z) [m]',
                         ylabel='Azimuth (x) [m]',
                         facecolor=COLOR['intensity_background'])
-
-        # Transducer element illustration
-        self.element_patch = self._create_element(ax["element"])
-        # self._update_element()
-        
 
         # Lateral intensity plot
         ax['lateral'].set(box_aspect=1,

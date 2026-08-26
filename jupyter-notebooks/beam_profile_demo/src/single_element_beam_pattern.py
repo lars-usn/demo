@@ -76,9 +76,7 @@ class Transducer():
         self.colormap = 'inferno'
 
         # Initialisation
-        ax, fig = self._initialise_graphs()
-        self.axes = ax
-        self.fig = fig
+        self.fig, self.axes, self.graphs = self._initialise_graphs()
         self.scale_axes()
 
         if create_widgets:
@@ -280,9 +278,9 @@ class Transducer():
         # Lateral beam profile at reference distance
         k_ref = np.argmin(abs(z-self.z_c()))
         p = p_axial[:, k_ref]
-        p_db = bpu.db(p, p_ref=p_max)
-
-        ax['beamprofile'].plot(x, p_db, **LINE['main'])
+        p_db = bpu.db(p, p_ref=p_max)      
+        self.graphs['beamprofile'].set_data(x, p_db)
+        
         ax['beamprofile'].axhline(y=p_db.max()+bpu.db(self.y_lim, p_ref=1),
                                   **LINE['indicator'])
 
@@ -413,17 +411,17 @@ class Transducer():
         patch_type = patches.Circle if self.circular else patches.Rectangle
     
         # Change shape if necessary
-        if not isinstance(self.element_patch, patch_type):
-            self.element_patch.remove()
+        if not isinstance(self.graphs['element'], patch_type):
+            self.graphs['element'].remove()
     
             if self.circular:
-                self.element_patch = patches.Circle(
+                self.graphs['element'] = patches.Circle(
                     (0, 0), w_mm / 2,
                     fill=True,
                     color=COLOR["element"]
                 )
             else:
-                self.element_patch = patches.Rectangle(
+                self.graphs['element'] = patches.Rectangle(
                     (-w_mm / 2, -h_mm / 2), w_mm, h_mm,
                     fill=True,
                     color=COLOR["element"]
@@ -434,11 +432,11 @@ class Transducer():
 
         # Update geometry 
         if self.circular:
-            self.element_patch.set_radius(w_mm / 2)
+            self.graphs['element'].set_radius(w_mm / 2)
         else:
-            self.element_patch.set_xy((-w_mm / 2, -h_mm / 2))
-            self.element_patch.set_width(w_mm)
-            self.element_patch.set_height(h_mm)
+            self.graphs['element'].set_xy((-w_mm / 2, -h_mm / 2))
+            self.graphs['element'].set_width(w_mm)
+            self.graphs['element'].set_height(h_mm)
         
 
 
@@ -494,9 +492,11 @@ class Transducer():
               'axial': fig.add_subplot(gs[0, 2:7]),
               'lateral': fig.add_subplot(gs[1, 2:4]),
               'beamprofile': fig.add_subplot(gs[1, 4:7])}
-
+        
+        graphs = {}
+        
         # Transducer element illustration
-        self.element_patch = self._create_element(ax["element"])
+        graphs['element'] = self._create_element(ax['element'])
 
         # Axial intensity plot
         ax['axial'].set(aspect='equal',
@@ -512,10 +512,12 @@ class Transducer():
         # Beam profile  graphs
         ax['beamprofile'].set(xlabel='Distance [m]',
                               ylabel='Power [dB re. max]')
-
+        
         ax['beamprofile'].grid(visible=True, which='major', axis='x')
+        
+        graphs['beamprofile'], = ax['beamprofile'].plot([], [], **LINE['main'])
 
-        return ax, fig
+        return fig, ax, graphs
 
     def _remove_old_artists(self):
         for ax in self.axes.values():

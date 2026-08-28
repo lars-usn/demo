@@ -238,6 +238,8 @@ class Transducer():
         self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
         self.db_sidelobe = bpu.db(self.y_sidelobe, p_ref=p.max())
 
+        # Update scales and messages
+        self.update_intensity()
         self._resulttext()
 
     def scale_axes(self):
@@ -257,7 +259,10 @@ class Transducer():
 
         bpu.db_axis(ax['beamprofile'], db_scale=self._db_scale(), db_sep=6)
 
-        return 0
+    def update_intensity(self):
+        """Update intensity graph levels."""
+        for g in (self.graphs['axial'], self.graphs['lateral']):
+            g.set_clim(self._db_scale())
 
     def interact(self,
                  circular=None,
@@ -458,6 +463,9 @@ class Transducer():
 
         graphs['refline'] = axes['axial'].axvline(x=self.z_reference(),
                                                   **LINE['orientation'])
+
+        graphs['colorbar'] = fig.colorbar(graphs['axial'], ax=axes['axial'])
+        graphs['colorbar'].set_ticks(np.arange(-96, 30, 6))
 
         # Lateral intensity plot
         axes['lateral'].set(box_aspect=1,

@@ -259,17 +259,17 @@ class Transducer():
                          **LINE['angle'])
 
         # Lateral intensity at reference distance
-        x_m = self.xy()[0][0, :]
-        y_m = self.xy()[1][:, 0]
+        # x_m = self.xy()[0][0, :]
+        # y_m = self.xy()[1][:, 0]
         p_db = bpu.db(self.p_lateral(), p_ref=p_max)
-        im = ax['lateral'].pcolormesh(x_m, y_m, p_db,
-                                      clim=self._db_scale(),
-                                      cmap=self.colormap)
+        
 
-        db_marker = bpu.db(self.y_lim, p_ref=1) + np.max(p_db)
-        ax['lateral'].contour(x_m, y_m, p_db,
-                              levels=[db_marker],
-                              **LINE['contour'])
+        self.graphs['lateral'].set_array(p_db.ravel()) 
+        
+        # db_marker = bpu.db(self.y_lim, p_ref=1) + np.max(p_db)
+        # ax['lateral'].contour(x_m, y_m, p_db,
+        #                       levels=[db_marker],
+        #                       **LINE['contour'])
 
         self._draw_orientationline(ax["lateral"])
 
@@ -281,9 +281,6 @@ class Transducer():
         p_db = bpu.db(p, p_ref=p_max)      
         self.graphs['beamprofile'].set_data(x, p_db)
         
-        ax['beamprofile'].axhline(y=p_db.max()+bpu.db(self.y_lim, p_ref=1),
-                                  **LINE['indicator'])
-
         # Find reference values
         ref = bpu.Refpoints(x=x, y=p)
         xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
@@ -291,9 +288,6 @@ class Transducer():
 
         self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
         self.db_sidelobe = bpu.db(self.y_sidelobe, p_ref=p.max())
-
-        for x in xl:
-            ax['beamprofile'].axvline(x=x, **LINE['indicator'])
 
         self.scale_axes()
         self._resulttext()
@@ -508,13 +502,23 @@ class Transducer():
         ax['lateral'].set(box_aspect=1,
                           xlabel='Azimuth [m]',
                           ylabel='Elevation [m]')
+        x_coords = self.xy()[0][0, :]
+        y_coords = self.xy()[1][:, 0]
+        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
+
+        graphs['lateral'] = ax['lateral'].pcolormesh(x_coords,
+                                                     y_coords,
+                                                     dummy_data,
+                                                     clim=self._db_scale(),
+                                                     cmap=self.colormap,
+                                                     shading='auto')
+      
+
 
         # Beam profile  graphs
         ax['beamprofile'].set(xlabel='Distance [m]',
                               ylabel='Power [dB re. max]')
-        
         ax['beamprofile'].grid(visible=True, which='major', axis='x')
-        
         graphs['beamprofile'], = ax['beamprofile'].plot([], [], **LINE['main'])
 
         return fig, ax, graphs

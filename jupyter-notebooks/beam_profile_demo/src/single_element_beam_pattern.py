@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.gridspec import GridSpec
+import matplotlib.image as mpimg
 import ipywidgets as widgets
 
 # Internal libraries
@@ -499,15 +500,23 @@ class Transducer:
                          num='Single Element Beamprofile')
         bpu.add_logo(fig)
 
-        gs = GridSpec(2, 6, figure=fig)
-        axes = {'element': fig.add_subplot(gs[0, 0:2]),
-                'axial': fig.add_subplot(gs[0, 2:]),
-                'lateral': fig.add_subplot(gs[1, 2:4]),
-                'beamprofile': fig.add_subplot(gs[1, 4:])}
+        gs = GridSpec(4, 6, figure=fig)
+        axes = {'element': fig.add_subplot(gs[0:2, 0:2]),
+                'axial': fig.add_subplot(gs[0:2, 2:]),
+                'text': fig.add_subplot(gs[2:, 0:1]),
+                'logo': fig.add_subplot(gs[3:, 0:1]),
+                'lateral': fig.add_subplot(gs[2:, 2:4]),
+                'beamprofile': fig.add_subplot(gs[2:, 4:])}
         graphs = {}
 
         # Transducer element illustration
         graphs['element'] = self._create_element(axes['element'])
+
+        # Logo
+        img = mpimg.imread('../fig/usn-logo-purple.png')
+        axes['logo'].imshow(img)
+        axes['logo'].set_axis_off()
+        axes['logo'].set_aspect('equal')
 
         # Axial intensity plot
         axes['axial'].set(

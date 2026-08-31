@@ -76,19 +76,19 @@ class Transducer:
         self.fig, self.axes, self.graphs = self._initialise_graphs()
         self.update_element()
         self.update_values()
-        self.update_intensity_scale() 
+        self.update_intensity_scale()
         self.scale_axes()
 
         if create_widgets:
             self.widget = self._create_widgets()
 
     # === Calculated parameters ===========================
-    # Simple parameteres are properties
+    # Simple parameters are properties
     @property
     def wavelength(self):
         """Calculate acoustic wavelength."""
         return self.c/self.frequency
-    
+
     @property
     def width_lambda(self):
         """Aperture width relative to wavelength."""
@@ -113,7 +113,7 @@ class Transducer:
             d = self.height
 
         return 2*np.arcsin(x_6 * self.wavelength/d)
-    
+
     @property
     def rayleigh_distance(self):
         """Rayleigh distance, far-field limit."""
@@ -130,28 +130,28 @@ class Transducer:
         return max(self.distance, 1.1*self.rayleigh_distance)
 
     # === Axial plane ===================
-    def x(self):
+    def x_axis(self):
         """Lateral dimension for axial plot (x or y)."""
         return np.linspace(-self.x_max, self.x_max, 201)
 
-    def z(self):
+    def z_axis(self):
         """Axial dimension (depth) for axial plot (z)."""
         return np.linspace(self.rayleigh_distance, self.z_max, 400)
 
-    def zx(self):
+    def zx_plane(self):
         """Axial plane (zx or zy) to plot."""
-        z = self.z()
-        x = self.x()       
+        z = self.z_axis()
+        x = self.x_axis()
         return np.meshgrid(z, x)
 
     def r(self):
         """Distance from aperture centre for axial plot."""
-        z, x = self.zx()
+        z, x = self.zx_plane()
         return np.sqrt(z**2 + x**2)
 
     def axial_angle(self):
         """Azimuth(x) angle to point(z, x)."""
-        z, x = self.zx()
+        z, x = self.zx_plane()
         return np.arctan2(x, z)
 
     def p_azimuth(self):
@@ -170,35 +170,38 @@ class Transducer:
             return self.p_azimuth()
         else:
             return 1/self.r() * np.sinc(arg)
-        
+
     @property
     def db_scale(self):
         """Calculate dB-scale limits from gain and dynamic range."""
         return np.array([-self.db_range, 0]) - self.db_gain
 
-
     # === Lateral plane ===================
-    def xy(self):
+
+    def xy_plane(self):
         """Lateral region to plot, plane at fixed axial distance."""
         x = np.linspace(-self.x_max, self.x_max, 201)
         return np.meshgrid(x, x)
 
     def azimuth_angle_xy(self):
         """Azimuth angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[0], self.reference_distance)
+        x, y = self.xy_plane()
+        return np.arctan2(self.x_axis(), self.reference_distance)
 
     def elevation_angle_xy(self):
         """Elevation angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[1], self.reference_distance)
+        x, y = self.xy_plane()
+        return np.arctan2(y, self.reference_distance)
 
     def radial_angle_xy(self):
         """Angle with z-axis for (xyz)-positions."""
-        r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
+        x, y = self.xy_plane()
+        r = np.sqrt(x**2 + y**2)   # Radial distance
         return np.arctan2(r, self.reference_distance)
 
     def r_xy(self):
         """Radial distances at lateral plane."""
-        x, y = self.xy()
+        x, y = self.xy_plane()
         r = np.sqrt(x**2 + y**2)   # Radial distance
         return np.sqrt(r**2 + self.reference_distance**2)
 
@@ -210,8 +213,8 @@ class Transducer:
         else:
             arg_az = self.width_lambda * np.sin(self.azimuth_angle_xy())
             arg_el = self.height_lambda * np.sin(self.elevation_angle_xy())
-            
-            p_az = np.sinc(arg_az) 
+
+            p_az = np.sinc(arg_az)
             p_el = np.sinc(arg_el)
             p = 1/self.r_xy() * p_az * p_el
 
@@ -234,7 +237,7 @@ class Transducer:
                     (0, 0), w_mm/2,
                     fill=True,
                     color=COLOR["element"],
-                    )
+                )
             else:
                 self.graphs['element'] = patches.Rectangle(
                     (-w_mm / 2, -h_mm / 2), w_mm, h_mm,
@@ -243,7 +246,7 @@ class Transducer:
                 )
 
             self.axes['element'].add_patch(self.graphs['element'])
-            
+
         # Update dimensions
         if self.circular:
             self.graphs['element'].set_radius(w_mm / 2)
@@ -259,14 +262,15 @@ class Transducer:
             g.set_visible(not self.azimuth)
 
         return
-    
+
     def update_values(self):
         """Update graph values, no scale or other changes."""
 
         # Intensity plots
-        p_max = np.max([np.max(abs(self.p_azimuth())),
-                        np.max(abs(self.p_elevation()))
-                        ])
+        p_max = np.max([
+            np.max(np.abs(self.p_azimuth())),
+            np.max(np.abs(self.p_elevation()))
+        ])
 
         # Axial
         p_axial = self.p_azimuth() if self.azimuth else self.p_elevation()
@@ -284,8 +288,8 @@ class Transducer:
             f'Lateral plane at {self.reference_distance:.1f} m')
 
         # Lateral beam profile
-        x = self.x()
-        z = self.z()
+        x = self.x_axis()
+        z = self.z_axis()
         k_ref = np.argmin(abs(z-self.reference_distance))
         p = p_axial[:, k_ref]
         p_db = bpu.db(p, reference=p_max)
@@ -301,23 +305,21 @@ class Transducer:
 
         # Update messages
         self.update_resulttext()
-    
-       
+
     def update_intensity_scale(self):
         """Update intensity graph levels."""
-        
+
         for g in (self.graphs['axial'], self.graphs['lateral']):
             g.set_clim(self.db_scale)
-            
-        bpu.db_axis(self.axes['beamprofile'], 
-                    db_scale=self.db_scale, 
+
+        bpu.db_axis(self.axes['beamprofile'],
+                    db_scale=self.db_scale,
                     db_sep=6)
-            
 
     def scale_axes(self):
         """
         Change scales of all graphs.
-        
+
         Normally fixed at start and not changed when parameters are changed.
         """
         ax = self.axes
@@ -334,7 +336,7 @@ class Transducer:
         ax['beamprofile'].set(xlim=self.x_max*np.array([-1, 1]))
 
         bpu.db_axis(ax['beamprofile'], db_scale=self.db_scale, db_sep=6)
-        
+
     def update_resulttext(self):
         """Text box for lateral profile results."""
         header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
@@ -384,7 +386,7 @@ class Transducer:
             distance=None,
             db_range=None,
             db_gain=None,
-            ):
+    ):
         """
         Scale inputs and  display the resulting response.
 
@@ -412,36 +414,36 @@ class Transducer:
             """
         if circular is not None:
             self.circular = circular
-            
+
         if azimuth is not None:
             self.azimuth = azimuth
-            
+
         if freq_khz is not None:
             self.frequency = float(freq_khz) * 1e3
-            
+
         if width_mm is not None:
             self.width = float(width_mm) * 1e-3
-            
+
         if height_mm is not None:
             self.height = float(height_mm) * 1e-3
-            
+
         if distance is not None:
             self.distance = float(distance)
-            
+
         if db_range is not None:
             self.db_range = db_range
-            
+
         if db_gain is not None:
             self.db_gain = db_gain
-            
+
         if any(v is not None for v in (
                 circular,
                 azimuth,
                 width_mm,
                 height_mm,
-                )):
+        )):
             self.update_element()
-            
+
         if any(v is not None for v in (
                 circular,
                 azimuth,
@@ -449,15 +451,14 @@ class Transducer:
                 width_mm,
                 height_mm,
                 distance,
-                )):
+        )):
             self.update_values()
 
         if any(v is not None for v in (
-                db_range, 
+                db_range,
                 db_gain
-                )):
+        )):
             self.update_intensity_scale()
-           
 
     # === Non-public methods ==========================================
     # Graphs and results
@@ -514,10 +515,10 @@ class Transducer:
             xlabel='Depth (z) [m]',
             ylabel='Lateral position (Azimuth or Elevation) [m]',
             facecolor=COLOR['intensity_background'],
-            )
+        )
 
-        x_coords = self.z()
-        y_coords = self.x()
+        x_coords = self.z_axis()
+        y_coords = self.x_axis()
         dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
         graphs['axial'] = axes['axial'].pcolormesh(
             x_coords,
@@ -525,17 +526,17 @@ class Transducer:
             dummy_data,
             clim=self.db_scale,
             cmap=self.colormap,
-            )
+        )
 
         graphs['refline'] = axes['axial'].axvline(
             x=self.reference_distance,
             **LINE['orientation'],
-            )
+        )
 
         graphs['colorbar'] = fig.colorbar(
-            graphs['axial'], 
+            graphs['axial'],
             ax=axes['axial'],
-            )
+        )
         graphs['colorbar'].set_ticks(np.arange(-96, 30, 6))
 
         # Lateral intensity plot
@@ -543,8 +544,8 @@ class Transducer:
                             xlabel='Azimuth [m]',
                             ylabel='Elevation [m]')
 
-        x_coords = self.xy()[0][0, :]
-        y_coords = self.xy()[1][:, 0]
+        x_coords = self.xy_plane()[0][0, :]
+        y_coords = self.xy_plane()[1][:, 0]
         dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
 
         graphs['lateral'] = axes['lateral'].pcolormesh(
@@ -562,25 +563,25 @@ class Transducer:
                                  which='major',
                                  axis='x')
         graphs['beamprofile'], = axes['beamprofile'].plot(
-            [], [], 
+            [], [],
             **LINE['main'],
-            )
+        )
         # Orientation indicator lines
         graphs['azimuth'] = []
         graphs['elevation'] = []
         for ax in (axes['element'], axes['lateral']):
             graphs['azimuth'].append(
                 ax.axhline(
-                    y=0, 
+                    y=0,
                     **LINE['orientation'],
-                    )
                 )
+            )
             graphs['elevation'].append(
                 ax.axvline(
-                    x=0, 
+                    x=0,
                     **LINE['orientation'],
-                    )
                 )
+            )
 
         return fig, axes, graphs
 
@@ -589,21 +590,21 @@ class Transducer:
         """Create widgets for interactive operation."""
         title = 'Beam-profile from Single Element Transducer'
         title_widget = widgets.Label(
-            title, 
+            title,
             style=dict(font_weight='bold'),
-            )
+        )
 
         left_layout = {
             'continuous_update': True,
             'layout': widgets.Layout(width='95%'),
             'style': {'description_width': '50%'},
-            }
+        }
 
         right_layout = {
             'continuous_update': True,
             'layout': widgets.Layout(width='95%'),
             'style': {'description_width': '30%'},
-            }
+        }
 
         left_width = '25%'
         right_width = '75%'
@@ -695,8 +696,6 @@ class Transducer:
             'width': width_widget,
             'height': height_widget,
             'distance': distance_widget,
-            }
+        }
 
-        w = WidgetLayout(widget_layout, widget)
-
-        return w
+        return WidgetLayout(widget_layout, widget)

@@ -24,12 +24,17 @@ def jinc(x):
 
 
 # Decibel scale
-def db(p, p_ref=1e-6):
-    """Decibel from pressure."""
-    if p_ref == 0:
-        p_ref = np.max(p)
+def db(p, reference=1e-6, power=False):
+    """Decibel from amplitude or power."""
+    if reference == 0:
+        reference = np.max(p)
 
-    return 20 * np.log10(abs(p/p_ref))
+    if power:
+        scale = 10 
+    else:
+        scale = 20
+
+    return scale * np.log10(np.maximum(np.abs(p), 1e-10) / reference)
 
 
 def db_axis(ax, db_scale=(-42, 0), db_sep=6):

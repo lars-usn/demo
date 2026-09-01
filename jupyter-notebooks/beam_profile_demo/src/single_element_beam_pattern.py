@@ -139,9 +139,11 @@ class Transducer:
         """Lateral dimension for axial plot (x or y)."""
         return np.linspace(-self.x_max, self.x_max, 201)
 
+
+#### WRONG when updating only values. Must be fixed ============================
     def z_axis(self):
         """Axial dimension (depth) for axial plot (z)."""
-        return np.linspace(self.rayleigh_distance, self.z_max, 400)
+        return np.linspace(1, self.z_max, 400)
 
     def zx_plane(self):
         """Axial plane (zx or zy) to plot."""
@@ -169,7 +171,7 @@ class Transducer:
         return 1 / self.r() * p1
 
     def p_elevation(self):
-        """Calculate pressure field in the lateral plane (zy)."""
+        """Calculate pressure field in the elevation plane (zy)."""
         arg = self.height_lambda * np.sin(self.axial_angle())
         if self.circular:
             return self.p_azimuth()
@@ -357,16 +359,23 @@ class Transducer:
         ax = self.axes
 
         element_max = self.d_max * 1e3 * np.array([-1, 1])
-        ax["element"].set(xlim=element_max, ylim=element_max)
-
-        ax["axial"].set(
-            ylim=self.x_max * np.array([-1, 1]), xlim=[0, self.z_max]
-        )
+        ax["element"].set(
+            xlim=element_max, 
+            ylim=element_max,
+            )
 
         lateral_max = self.x_max * np.array([-1, 1])
-        ax["lateral"].set(xlim=lateral_max, ylim=lateral_max)
+        ax["axial"].set(
+            ylim=lateral_max, 
+            xlim=[0, self.z_max],
+            )
 
-        ax["beamprofile"].set(xlim=self.x_max * np.array([-1, 1]))
+        ax["lateral"].set(
+            xlim=lateral_max, 
+            ylim=lateral_max,
+            )
+
+        ax["beamprofile"].set(xlim = lateral_max)
 
     def update_resulttext(self):
         """Text box for lateral profile results."""
@@ -612,6 +621,7 @@ class Transducer:
             xlabel="Depth (z) [m]",
             ylabel="Lateral position (Azimuth or Elevation) [m]",
             facecolor=COLOR["intensity_background"],
+            
         )
 
         x_coords = self.z_axis()
@@ -733,8 +743,9 @@ class Transducer:
         graphs["colorbar"] = fig.colorbar(
             graphs["axial"],
             ax=axes["axial"],
+            label = "dB re. max"
         )
-
+        
         return fig, axes, graphs
 
     # Interactive widgets

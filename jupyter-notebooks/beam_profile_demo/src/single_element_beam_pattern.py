@@ -598,7 +598,10 @@ class Transducer:
         )
         graphs = {}
         # bpu.add_logo(fig)
+<<<<<<< Updated upstream
 >>>>>> > Stashed changes
+=======
+>>>>>>> Stashed changes
 
         # Create empty anchored text box
         at = AnchoredText(

@@ -140,9 +140,7 @@ class Transducer:
         return np.linspace(-self.x_max, self.x_max, 201)
 
 
-# WRONG when updating only values. Must be fixed ============================
-
-
+#### WRONG when updating only values. Must be fixed ============================
     def z_axis(self):
         """Axial dimension (depth) for axial plot (z)."""
         return np.linspace(1, self.z_max, 400)
@@ -170,10 +168,6 @@ class Transducer:
             p1 = bpu.jinc(arg)
         else:
             p1 = np.sinc(arg)
-
-        p = 1 / self.r() * p1
-
-        rayleigh_index = np.argmax(z_axis() > rayleigh_distance)
         return 1 / self.r() * p1
 
     def p_elevation(self):
@@ -366,22 +360,22 @@ class Transducer:
 
         element_max = self.d_max * 1e3 * np.array([-1, 1])
         ax["element"].set(
-            xlim=element_max,
+            xlim=element_max, 
             ylim=element_max,
             )
 
         lateral_max = self.x_max * np.array([-1, 1])
         ax["axial"].set(
-            ylim=lateral_max,
+            ylim=lateral_max, 
             xlim=[0, self.z_max],
             )
 
         ax["lateral"].set(
-            xlim=lateral_max,
+            xlim=lateral_max, 
             ylim=lateral_max,
             )
 
-        ax["beamprofile"].set(xlim=lateral_max)
+        ax["beamprofile"].set(xlim = lateral_max)
 
     def update_resulttext(self):
         """Text box for lateral profile results."""
@@ -569,8 +563,6 @@ class Transducer:
         ax.add_patch(patch)
         return patch
 
-
-<< << << < Updated upstream
     def _create_resulttextbox(self, ax):
         """Create and attach a formatted results text box to an Axes.
 
@@ -578,6 +570,7 @@ class Transducer:
         the axes if the figure is resized.
         """
         ax.axis("off")
+<<<<<<< HEAD
 == == == =
     def _initialise_graphs(self):
         """Initialise result graphs."""
@@ -602,6 +595,8 @@ class Transducer:
 >>>>>> > Stashed changes
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> parent of 4bbe23e (Update single_element_beam_pattern.py)
 
         # Create empty anchored text box
         at = AnchoredText(

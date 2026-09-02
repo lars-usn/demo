@@ -18,7 +18,7 @@ import matplotlib.image as mpimg
 def jinc(x):
     """jinc-function, Bessel-version of sinc, 2J_1(x)/x."""
     x[abs(x) < 1e-8] = 1e-8
-    j = 2 * sp.jn(1, np.pi*x)/(np.pi * x)
+    j = 2 * sp.jn(1, np.pi * x) / (np.pi * x)
     j[abs(x) < 1e-8] = 1.0
     return j
 
@@ -30,7 +30,7 @@ def db(p, reference=1e-6, power=False):
         reference = np.max(p)
 
     if power:
-        scale = 10 
+        scale = 10
     else:
         scale = 20
 
@@ -55,7 +55,7 @@ def db_axis(ax, db_scale=(-42, 0), db_sep=6):
 
     ax.yaxis.set_major_locator(MultipleLocator(db_sep))
     ax.yaxis.set_minor_locator(MultipleLocator(1))
-    ax.grid(visible=True, which='major', axis='y')
+    ax.grid(visible=True, which="major", axis="y")
 
     return
 
@@ -71,10 +71,10 @@ def db_colorbar(cbar, db_sep=6):
         Separation between major ticks
     """
     tick_min = (cbar.vmin // db_sep) * db_sep
-    db_ticks = np.arange(tick_min, cbar.vmax+db_sep, db_sep)
+    db_ticks = np.arange(tick_min, cbar.vmax + db_sep, db_sep)
     cbar.set_ticks(db_ticks)
     cbar.minorticks_off()
-    cbar.ax.set_title('[db re. max]')
+    cbar.ax.set_title("[db re. max]")
 
     return
 
@@ -115,13 +115,13 @@ def parabolic_max(y, x, kmax=None, check=False):
     if kmax is None:
         kmax = np.argmax(abs(y))
 
-    kz = np.arange(kmax-1, kmax+2)  # 3 points around max
+    kz = np.arange(kmax - 1, kmax + 2)  # 3 points around max
     yz = y[kz]
     xz = x[kz]
 
     # Fit parabola
     p = np.polyfit(xz, yz, 2)
-    xmax = -p[1]/(2*p[0])      # Max. from differentiation pf polynomial
+    xmax = -p[1] / (2 * p[0])  # Max. from differentiation pf polynomial
     ymax = np.polyval(p, xmax)
 
     # Plot result for inspection
@@ -129,29 +129,29 @@ def parabolic_max(y, x, kmax=None, check=False):
         n_pts = 1000
         xn = np.linspace(min(xz), max(xz), n_pts)
         yn = np.polyval(p, xn)
-        plt.plot(xn, yn, color='C0', linestyle='--')
-        plt.plot(xz, yz, color='C1', marker='x')
-        plt.plot(xmax, ymax, color='red', marker='o')
+        plt.plot(xn, yn, color="C0", linestyle="--")
+        plt.plot(xz, yz, color="C1", marker="x")
+        plt.plot(xmax, ymax, color="red", marker="o")
         plt.grid(True)
 
     return xmax, ymax
 
 
-class Refpoints():
+class AnalyseCurve:
     """Find reference points for function y(x).
 
     Main lobe, -3dB and -6dB limits, zero-crossings, and largest side lobe
     """
 
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    def __init__(self, argument, value):
+        self.x = argument
+        self.y = value
 
-    def k_max(self):
+    def idx_max(self):
         """Find index of main peak."""
         return self.y.argmax()
 
-    def k_zero(self):
+    def idx_zero(self):
         """Find indices of zero crossings."""
         return np.where(np.diff(np.sign(self.y)))[0]
 
@@ -162,7 +162,7 @@ class Refpoints():
     def sidelobe(self):
         """Find value and position of highest side lobe."""
         kp, _ = find_peaks(np.abs(self.y), height=0)
-        kp = np.setdiff1d(kp, self.k_max())        # Remove main peak
+        kp = np.setdiff1d(kp, self.idx_max())  # Remove main peak
 
         if np.size(kp) == 0:
             x = y = np.nan
@@ -187,25 +187,25 @@ class Refpoints():
         y_lim: float
             Reference value
         """
-        k_max = self.k_max()
+        idx_max = self.idx_max()
         x_max, y_max = self.main_peak()
         y_lim = abs(y_max * y_rel)
 
         # Start at peak, look up and down until limit is passed
-        k = k_max
-        while self.y[k] > y_lim and k < len(self.y)-1:
+        k = idx_max
+        while self.y[k] > y_lim and k < len(self.y) - 1:
             k += 1
         k_hi = k
 
-        k = k_max
+        k = idx_max
         while self.y[k] > y_lim and k > 0:
             k -= 1
         k_lo = k
 
         # Seach downwards and upwards from main peak
-        ni = []    # interp requires increasing argument
-        ni.append(np.arange(k_lo, k_max-1, 1))
-        ni.append(np.arange(k_hi, k_max, -1))
+        ni = []  # interp requires increasing argument
+        ni.append(np.arange(k_lo, idx_max - 1, 1))
+        ni.append(np.arange(k_hi, idx_max, -1))
 
         xm = [self.x[ni[k]] for k in range(2)]
         ym = [self.y[ni[k]] for k in range(2)]
@@ -263,8 +263,9 @@ def remove_fig_text(fig):
     return 0
 
 
-def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
-                 background_color='whitesmoke', remove=True):
+def set_fig_text(
+    fig, text, xpos=0.0, ypos=0.0, background_color="whitesmoke", remove=True
+):
     """Remove all existing text and add new text box.
 
     Parameters
@@ -283,18 +284,20 @@ def set_fig_text(fig, text, xpos=0.0, ypos=0.0,
     if remove:
         remove_fig_text(fig)
 
-    fig.text(xpos, ypos, text,
-             fontsize='medium',
-             bbox={'facecolor': background_color,
-                   'boxstyle': 'Round',
-                   'pad': 0.5})
+    fig.text(
+        xpos,
+        ypos,
+        text,
+        fontsize="medium",
+        bbox={"facecolor": background_color, "boxstyle": "Round", "pad": 0.5},
+    )
 
     return 0
 
 
-def add_logo(fig,
-             logofile='usn-logo-purple.png',
-             logopos=[0.02, 0.02, 0.2, 0.2]):
+def add_logo(
+    fig, logofile="usn-logo-purple.png", logopos=[0.02, 0.02, 0.2, 0.2]
+):
     """Add logo image to result figure.
 
     Parameters
@@ -308,9 +311,9 @@ def add_logo(fig,
     """
     try:
         img = mpimg.imread(logofile)
-        ax_logo = fig.add_axes(logopos, anchor='SW')
+        ax_logo = fig.add_axes(logopos, anchor="SW")
         ax_logo.imshow(img)
-        ax_logo.axis('off')
+        ax_logo.axis("off")
     except Exception:
         pass
 

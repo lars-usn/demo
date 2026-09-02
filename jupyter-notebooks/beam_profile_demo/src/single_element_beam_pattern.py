@@ -83,18 +83,18 @@ class Transducer:
         self.theta_max = 90  # deg  Max. angle to calculate
         self.colormap = "inferno"
 
-        self.z_axis = self.calculate_depth_axis()
-        self.x_axis = self.calculate_lateral_axis()
+        self.z_axis = np.linspace(1, self.z_max, 400)
+        self.x_axis = np.linspace(-self.x_max, self.x_max, 201)
 
-        self.zx_plane = self.calculate_axial_plane()
-        self.r, self.theta = self.calculate_axial_distance_angles()
+        self.zx_plane = np.meshgrid(self.z_axis, self.x_axis)
+        self.r, self.theta = self.calculate_axial_distance_angle()
 
-        self.xy_plane = self.calculate_lateral_plane()
+        self.xy_plane = np.meshgrid(self.x_axis, self.x_axis)
         self.rho = self.calculate_lateral_distance()
 
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-        self.update_element()
+        self.update_element_illustration()
         self.update_values()
         self.update_intensity_scale()
         self.scale_axes()
@@ -104,33 +104,14 @@ class Transducer:
 
     # === Calculated parameters ===========================
 
-    # Grid: Coordinates and angles, normally fixed
-    def calculate_depth_axis(self):
-        """Axial dimension (depth) for axial plot (z)."""
-        return np.linspace(1, self.z_max, 400)
-
-    def calculate_lateral_axis(self):
-        """Lateral dimension for axial plot (x or y)."""
-        return np.linspace(-self.x_max, self.x_max, 201)
-
-    def calculate_axial_plane(self):
-        """Axial plane (zx or zy) to plot."""
-        z = self.z_axis
-        x = self.x_axis
-        return np.meshgrid(z, x)
-
-    def calculate_axial_distance_angles(self):
+    # Grid distances and angles, normally fixed
+    def calculate_axial_distance_angle(self):
         """Calculate distance and angles for axial plot."""
         z, x = self.zx_plane
         r = np.hypot(z, x)
         theta = np.arctan2(x, z)
 
         return r, theta
-
-    def calculate_lateral_plane(self):
-        """Lateral region to plot, plane at fixed axial distance."""
-        x = np.linspace(-self.x_max, self.x_max, 201)
-        return np.meshgrid(x, x)
 
     def calculate_lateral_distance(self):
         """Lateral distance from axis."""
@@ -300,7 +281,7 @@ class Transducer:
         return p
 
     # === Commands =============================
-    def update_element(self):
+    def update_element_illustration(self):
         """Update aperture illustration, shape and dimensions."""
         w_mm = self.width * 1e3
         h_mm = self.height * 1e3
@@ -573,7 +554,7 @@ class Transducer:
                 height_mm,
             )
         ):
-            self.update_element()
+            self.update_element_illustration()
 
         if any(
             v is not None

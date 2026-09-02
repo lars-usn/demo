@@ -40,14 +40,7 @@ LINE = {
 }
 
 LOGOFILE = "usn-logo-purple.png"
-
-
-class WidgetLayout:
-    """Container for widgets and layout for interactive Jupyter Notebook."""
-
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
+FIGURE_NAME = "Single Element Beamprofile"
 
 
 class Transducer:
@@ -78,7 +71,7 @@ class Transducer:
 
         # Grid and display settings, normally fixed
         self.z_max = 100.0  # m    Max. depth to calculate
-        self.x_max = 15.0  # m    Max. lateral dimension to calculate
+        self.x_max = 12.0  # m    Max. lateral dimension to calculate
         self.d_max = 200e-3  # m    Max. dimension on element display
         self.theta_max = 90  # deg  Max. angle to calculate
         self.colormap = "inferno"
@@ -94,19 +87,26 @@ class Transducer:
 
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-        self.update_element_illustration()
+        self.update_transducer_illustration()
         self.update_values()
         self.update_intensity_scale()
         self.scale_axes()
 
         if create_widgets:
-            self.widget = self._create_widgets()
+            self.widget_layout, self.widgets = self._create_widgets()
 
     # === Calculated parameters ===========================
-
-    # Grid distances and angles, normally fixed
     def calculate_axial_distance_angle(self):
-        """Calculate distance and angles for axial plot."""
+        """
+        Calculate distance and angles for axial plot.
+
+        Returns
+        -------
+        r : 2D array of float
+            Distance from origo to point (z,x) in the axial plane
+        theta : 2D array of float
+            Angle from origo to point (z,x) in the axial plane
+        """
         z, x = self.zx_plane
         r = np.hypot(z, x)
         theta = np.arctan2(x, z)
@@ -114,7 +114,14 @@ class Transducer:
         return r, theta
 
     def calculate_lateral_distance(self):
-        """Lateral distance from axis."""
+        """
+        Lateral distance from axis.
+
+        Returns
+        -------
+        2D array of float
+            Distance from axis to point (x,y) in the lateral plane
+        """
         x, y = self.xy_plane
         return np.hypot(x, y)
 
@@ -147,7 +154,8 @@ class Transducer:
         else:
             d = self.height
 
-        return 2 * np.arcsin(x_6 * self.wavelength / d)
+        arg = np.clip(x_6 * self.wavelength / d, -1, 1)
+        return 2 * np.arcsin(arg)
 
     @property
     def rayleigh_distance(self):
@@ -193,7 +201,20 @@ class Transducer:
         return ticks
 
     def db(self, x, reference=None, power=False):
-        """Decibel from amplitude or power."""
+        """
+        Decibel from amplitude or power.
+
+        Parameters
+        ----------
+        x : array of float
+            Amplitue or power values
+        reference : float
+            Reference value for dB calculation
+        power : bool
+            Interpret x values as power (True) or amplitude (False)
+        """
+        x = np.asarray(x)
+
         if reference is None:
             reference = np.max(x)
 
@@ -215,21 +236,42 @@ class Transducer:
 
     # === Axial plane ===================
     def p_azimuth(self):
-        """Calculate pressure field in the azimuth plane (zx)."""
+        """
+        Calculate pressure field in the azimuth plane.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x) in the azimuth plane
+        """
         if self.circular:
             return self.p_circular()
         else:
-            return self.p_rectangular(self.width_lambda)
+            return self.p_line(self.width_lambda)
 
     def p_elevation(self):
-        """Calculate pressure field in the elevation plane (zy)."""
+        """
+        Calculate pressure field in the elevation plane.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,y) in the elevation plane
+        """
         if self.circular:
             return self.p_circular()
         else:
-            return self.p_rectangular(self.height_lambda)
+            return self.p_line(self.height_lambda)
 
     def p_circular(self):
-        """Calculate pressure field from a circular aperture."""
+        """
+        Calculate pressure field from a circular aperture.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x) in the axial plane
+        """
         r = self.r
         theta = self.theta
         arg = self.width_lambda * np.sin(theta)
@@ -237,8 +279,15 @@ class Transducer:
         p[:, : self.rayleigh_index] = 0
         return p
 
-    def p_rectangular(self, aperture_lambda):
-        """Calculate pressure field from a rectangular aperture."""
+    def p_line(self, aperture_lambda):
+        """
+        Calculate pressure field from a line aperture.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x)
+        """
         r = self.r
         theta = self.theta
         arg = aperture_lambda * np.sin(theta)
@@ -247,11 +296,23 @@ class Transducer:
         return p
 
     # === Lateral plane ===================
-    def xy_geometry(self):
-        """Calculate geometrical properties for the lateral plane.
+    def calculate_lateral_distance_angles(self):
+        """
+        Calculate geometrical properties for the lateral plane.
 
         Lateral coordinates are fixed, total distance and angles depend
         on axial distance.
+
+        Returns
+        -------
+        r : 2D array of float
+            Distance from origo to point (x,y,z)
+        theta : 2D array of float
+            Azimuthal angle from origo to point (x,y,z)
+        phi : 2D array of float
+            Elevational angle from origo to point (x,y,z)
+        gamma : 2D array of float
+            Angle with acoustic axis from origo to point (x,y,z)
         """
         x, y = self.xy_plane
         rho = self.rho
@@ -264,8 +325,15 @@ class Transducer:
         return r, theta, phi, gamma
 
     def p_lateral(self):
-        """Calculate lateral amplitude at reference distance."""
-        r, theta, phi, gamma = self.xy_geometry()
+        """
+        Calculate lateral amplitude at reference distance.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (x,y,z)
+        """
+        r, theta, phi, gamma = self.calculate_lateral_distance_angles()
 
         if self.circular:
             arg = self.width_lambda * np.sin(gamma)
@@ -281,7 +349,7 @@ class Transducer:
         return p
 
     # === Commands =============================
-    def update_element_illustration(self):
+    def update_transducer_illustration(self):
         """Update aperture illustration, shape and dimensions."""
         w_mm = self.width * 1e3
         h_mm = self.height * 1e3
@@ -371,7 +439,7 @@ class Transducer:
         self.beamwidth = xl[1] - xl[0]
 
         self.x_sidelobe, self.y_sidelobe = curve_analysis.sidelobe()
-        self.db_sidelobe = self.db(self.y_sidelobe, reference=p.max())
+        self.db_sidelobe = float(self.db(self.y_sidelobe, reference=p.max()))
 
         # Update messages
         resulttext = self.update_resulttext()
@@ -420,7 +488,14 @@ class Transducer:
         ax["beamprofile"].set(xlim=lateral_max)
 
     def update_resulttext(self):
-        """Text box for lateral profile results."""
+        """
+        Text box for lateral profile results.
+
+        Returns
+        -------
+        str
+            Formatted text with transducer beam parameters
+        """
         header = (
             f"Frequency \t $f$ = {self.frequency/1e3:.0f} kHz\n"
             "Wavelength \t"
@@ -503,23 +578,23 @@ class Transducer:
           Existing values are retained if a parameter is omitted.
 
         Parameters
-            ----------
-            circular: bool, optional
-                Circular (True) or rectangular (False) aperture
-            azimuth: bool, optional
-                Azimuth (True) or elevation (False) orientation
-            freq_khz: float, optional
-                Frequency in kHz
-            width_mm: float, optional
-                Element width (azimuth, x) in mm
-            height_mm: float, optional
-                Element height (elevation, y) in mm
-            distance: float, optional
-                Reference depth in m
-            db_range: float
-                Range on dB-axes
-            db_gain: float
-                Maximum on dB-axes
+        ----------
+        circular: bool, optional
+            Circular (True) or rectangular (False) aperture
+        azimuth: bool, optional
+            Azimuth (True) or elevation (False) orientation
+        freq_khz: float, optional
+            Frequency in kHz
+        width_mm: float, optional
+            Element width (azimuth, x) in mm
+        height_mm: float, optional
+            Element height (elevation, y) in mm
+        distance: float, optional
+            Reference depth in m
+        db_range: float
+            Range on dB-axes
+        db_gain: float
+            Maximum on dB-axes
         """
         if circular is not None:
             self.circular = circular
@@ -554,7 +629,7 @@ class Transducer:
                 height_mm,
             )
         ):
-            self.update_element_illustration()
+            self.update_transducer_illustration()
 
         if any(
             v is not None
@@ -575,8 +650,20 @@ class Transducer:
     # === Non-public methods ==========================================
     # Graphs and results
 
-    def _create_element(self, ax):
-        """Create aperture patch and return handle."""
+    def _create_transducer_illustration(self, ax):
+        """
+        Create colored patch to illustrate transducer.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where transducer image is shown
+
+        Returns
+        -------
+        Matplotlib patch
+            Illustration of transducer element
+        """
 
         ax.set(
             title="Transducer shape",
@@ -606,10 +693,21 @@ class Transducer:
         return patch
 
     def _create_resulttextbox(self, ax):
-        """Create and attach a formatted results text box to an Axes.
+        """
+        Create and attach a formatted results text box to an Axes.
 
         The text box is anchored to an axis and remains fixed relative to
         the axes if the figure is resized.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where text is shown
+
+        Returns
+        -------
+        Matplotlib AnchoredText
+            Handle to text box
         """
         ax.axis("off")
 
@@ -631,7 +729,14 @@ class Transducer:
         return at
 
     def _create_logo(self, ax):
-        """Load logo file and place in specified axis."""
+        """
+        Load logo file and place in specified axis.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where logo image is shown
+        """
         ax.set_axis_off()
 
         try:
@@ -656,7 +761,18 @@ class Transducer:
             )
 
     def _create_axial_plot(self, ax):
-        """Create axis for axial intensity plot."""
+        """Create axis for axial intensity plot.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where axial intensity image shown
+
+        Returns
+        -------
+        Matplotlib QuadMesh
+            Handle to fill with intensity data
+        """
 
         ax.set(
             aspect="equal",
@@ -679,13 +795,52 @@ class Transducer:
 
         return graph
 
-    def _create_orientation_lines(self, axs):
-        """Create azimuth and elevation reference lines.
+    def _create_lateral_plot(self, ax):
+        """Create axis for lateral intensity plots.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
 
         Returns
         -------
-        tuple
-            (azimuth_lines, elevation_lines)
+        Matplotlib QuadMesh
+            Handle to fill with intensity data
+        """
+        ax.set(box_aspect=1, xlabel="Azimuth [m]", ylabel="Elevation [m]")
+
+        x, y = self.xy_plane
+        x_coords = x[0, :]
+        y_coords = y[:, 0]
+        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
+
+        graph = ax.pcolormesh(
+            x_coords,
+            y_coords,
+            dummy_data,
+            clim=self.db_scale,
+            cmap=self.colormap,
+            shading="auto",
+        )
+
+        return graph
+
+    def _create_orientation_lines(self, axs):
+        """
+        Create azimuth and elevation reference lines.
+
+        Parameters
+        ----------
+        axs : List of axis objects
+            Axes where orientation lines are drawn
+
+        Returns
+        -------
+        azimuth_lines : list of Matplotlib Line2D
+            Handle to azimuth line data
+        elevation_lines : list of Matplotlib Line2D
+            Handle to elevation line data
         """
 
         azimuth_lines = []
@@ -705,29 +860,19 @@ class Transducer:
             )
         return azimuth_lines, elevation_lines
 
-    def _create_lateral_plot(self, ax):
-        """Create axis for lateral intensity plots."""
-        # Lateral intensity plot
-        ax.set(box_aspect=1, xlabel="Azimuth [m]", ylabel="Elevation [m]")
-
-        x, y = self.xy_plane
-        x_coords = x[0, :]
-        y_coords = y[:, 0]
-        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
-
-        graph = ax.pcolormesh(
-            x_coords,
-            y_coords,
-            dummy_data,
-            clim=self.db_scale,
-            cmap=self.colormap,
-            shading="auto",
-        )
-
-        return graph
-
     def _create_beamprofile_plot(self, ax):
-        """Create axis for beam profile graphs."""
+        """
+        Create axis for beam profile graphs.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
+
+        Returns
+        -------
+            Matplotlib Line2D
+        """
         ax.set(
             xlabel="Distance [m]",
             ylabel="Power [dB re. max]",
@@ -745,7 +890,7 @@ class Transducer:
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
-        plt.close("Single Element Beamprofile")
+        plt.close(FIGURE_NAME)
 
         fig, axes = plt.subplot_mosaic(
             [
@@ -756,14 +901,15 @@ class Transducer:
                 ["text", "lateral", "beamprofile"],
                 ["logo", "lateral", "beamprofile"],
             ],
-            figsize=(12, 6),
+            figsize=(14, 6),
             layout="constrained",
-            num="Single Element Beamprofile",
+            num=FIGURE_NAME,
         )
 
         graphs = {}
         self._create_logo(axes["logo"])
-        graphs["element"] = self._create_element(axes["element"])
+        graphs["element"] = self._create_transducer_illustration(
+            axes["element"])
         graphs["text"] = self._create_resulttextbox(axes["text"])
         graphs["axial"] = self._create_axial_plot(axes["axial"])
         graphs["lateral"] = self._create_lateral_plot(axes["lateral"])
@@ -790,7 +936,16 @@ class Transducer:
 
     # Interactive widgets
     def _create_widgets(self):
-        """Create widgets for interactive operation."""
+        """
+        Create widgets for interactive operation.
+
+        Returns
+        -------
+        widget_layout : ipywidgets widget box
+            Widget layout for use in Jupyter Notebook
+        widget_list : dict of widgets
+            Widgets for use in Jupyter Notebook
+        """
         title = "Beam-profile from Single Element Transducer"
         title_widget = widgets.Label(
             title,
@@ -918,7 +1073,7 @@ class Transducer:
 
         widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        widget = {
+        widget_list = {
             "circular": shape_widget,
             "azimuth": orientation_widget,
             "db_range": db_range_widget,
@@ -929,4 +1084,4 @@ class Transducer:
             "distance": distance_widget,
         }
 
-        return WidgetLayout(widget_layout, widget)
+        return widget_layout, widget_list

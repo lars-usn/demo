@@ -113,7 +113,7 @@ class Array:
 
     @property
     def elements(self):
-        """Make array of alemen numbers."""
+        """Make array of element numbers."""
         return np.arange(0, self.n_elements) + 1
 
     @property
@@ -125,12 +125,12 @@ class Array:
 
     @property
     def width(self):
-        """Width of element."""
+        """Width of element from pich and kerf."""
         return self.pitch - self.kerf
 
     @property
     def aperture_width(self):
-        """Width of aperture."""
+        """Width of entire aperture."""
         return self.n_elements * self.pitch - self.kerf
 
     @property
@@ -537,16 +537,16 @@ class Array:
         -------
             Matplotlib Line2D
         """
-        ax.set(
-            xlabel="Distance [m]",
-            ylabel="Power [dB re. max]",
-            title="Lateral beam profile",
-        )
 
-        ax.grid(
-            visible=True,
-            which="major",
-            axis="x",
+        ax.set(
+            thetamin=-90,
+            thetamax=+90,
+            theta_zero_location="S",
+            rmin=-self.db_polar,
+            rmax=0.0,
+            rticks=[-20, -6, 0],
+            title="Radiation Diagram [dB re. max]",
+            y=0,
         )
 
         (graph,) = ax.plot([], [], **LINEFORMAT["main"])
@@ -564,6 +564,7 @@ class Array:
                 ["text", "beamprofile", "axial", "axial"],
                 ["logo", "beamprofile", "axial", "axial"],
             ],
+            per_subplot_kw={"beamprofile": {"projection": "polar"}},
             figsize=(14, 6),
             layout="constrained",
             num=FIGURE_NAME,

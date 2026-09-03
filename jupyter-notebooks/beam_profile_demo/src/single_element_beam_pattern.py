@@ -14,8 +14,8 @@ from pathlib import Path
 import beamplot_utilities as bpu
 
 COLOR = {
-    "element": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
-    "element_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
+    "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
+    "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
     "text_edge": "#7AA6B8",
     "contour": "white",
@@ -357,34 +357,34 @@ class Transducer:
         patch_type = patches.Circle if self.circular else patches.Rectangle
 
         # Redraw shape if changed
-        if not isinstance(self.graphs["element"], patch_type):
-            self.graphs["element"].remove()
+        if not isinstance(self.graphs["transducer"], patch_type):
+            self.graphs["transducer"].remove()
 
             if self.circular:
-                self.graphs["element"] = patches.Circle(
+                self.graphs["transducer"] = patches.Circle(
                     (0, 0),
                     w_mm / 2,
                     fill=True,
-                    color=COLOR["element"],
+                    color=COLOR["transducer"],
                 )
             else:
-                self.graphs["element"] = patches.Rectangle(
+                self.graphs["transducer"] = patches.Rectangle(
                     (-w_mm / 2, -h_mm / 2),
                     w_mm,
                     h_mm,
                     fill=True,
-                    color=COLOR["element"],
+                    color=COLOR["transducer"],
                 )
 
-            self.axes["element"].add_patch(self.graphs["element"])
+            self.axes["transducer"].add_patch(self.graphs["transducer"])
 
         # Update dimensions
         if self.circular:
-            self.graphs["element"].set_radius(w_mm / 2)
+            self.graphs["transducer"].set_radius(w_mm / 2)
         else:
-            self.graphs["element"].set_xy((-w_mm / 2, -h_mm / 2))
-            self.graphs["element"].set_width(w_mm)
-            self.graphs["element"].set_height(h_mm)
+            self.graphs["transducer"].set_xy((-w_mm / 2, -h_mm / 2))
+            self.graphs["transducer"].set_width(w_mm)
+            self.graphs["transducer"].set_height(h_mm)
 
         # Turn on correct orientation lines
         visible = self.azimuth
@@ -420,7 +420,7 @@ class Transducer:
         p_db = self.db(self.p_lateral(), reference=p_max)
         self.graphs["lateral"].set_array(p_db.ravel())
         self.axes["lateral"].set_title(
-            f"Lateral plane at {self.reference_distance:.1f} m"
+            f"Lateral plane at {self.reference_distance:.0f} m"
         )
 
         # Lateral beam profile
@@ -468,10 +468,10 @@ class Transducer:
         """
         ax = self.axes
 
-        element_max = self.d_max * 1e3 * np.array([-1, 1])
-        ax["element"].set(
-            xlim=element_max,
-            ylim=element_max,
+        axis_max = self.d_max * 1e3 * np.array([-1, 1])
+        ax["transducer"].set(
+            xlim=axis_max,
+            ylim=axis_max,
         )
 
         lateral_max = self.x_max * np.array([-1, 1])
@@ -586,9 +586,9 @@ class Transducer:
         freq_khz: float, optional
             Frequency in kHz
         width_mm: float, optional
-            Element width (azimuth, x) in mm
+            Transducer element width (azimuth, x) in mm
         height_mm: float, optional
-            Element height (elevation, y) in mm
+            Transducer element height (elevation, y) in mm
         distance: float, optional
             Reference depth in m
         db_range: float
@@ -667,26 +667,24 @@ class Transducer:
 
         ax.set(
             title="Transducer shape",
-            facecolor=COLOR["element_background"],
+            facecolor=COLOR["transducer_background"],
             box_aspect=1,
             xlabel="Azimuth [mm]",
             ylabel="Elevation [mm]",
         )
-
+        transducer_fill = {"fill": True, "color": COLOR["transducer"]}
         if self.circular:
             patch = patches.Circle(
                 (0, 0),
                 radius=0,
-                fill=True,
-                color=COLOR["element"],
+                **transducer_fill,
             )
         else:
             patch = patches.Rectangle(
                 (0, 0),
                 width=0,
                 height=0,
-                fill=True,
-                color=COLOR["element"],
+                **transducer_fill,
             )
 
         ax.add_patch(patch)
@@ -777,7 +775,8 @@ class Transducer:
         ax.set(
             aspect="equal",
             xlabel="Depth (z) [m]",
-            ylabel="Lateral position (Azimuth or Elevation) [m]",
+            ylabel="Azimuth / Elevation [m]",
+            title="Axial plane",
             facecolor=COLOR["intensity_background"],
         )
 
@@ -876,6 +875,7 @@ class Transducer:
         ax.set(
             xlabel="Distance [m]",
             ylabel="Power [dB re. max]",
+            title="Lateral beam profile",
         )
 
         ax.grid(
@@ -894,9 +894,9 @@ class Transducer:
 
         fig, axes = plt.subplot_mosaic(
             [
-                ["element", "axial", "axial"],
-                ["element", "axial", "axial"],
-                ["element", "axial", "axial"],
+                ["transducer", "axial", "axial"],
+                ["transducer", "axial", "axial"],
+                ["transducer", "axial", "axial"],
                 ["text", "lateral", "beamprofile"],
                 ["text", "lateral", "beamprofile"],
                 ["logo", "lateral", "beamprofile"],
@@ -908,8 +908,9 @@ class Transducer:
 
         graphs = {}
         self._create_logo(axes["logo"])
-        graphs["element"] = self._create_transducer_illustration(
-            axes["element"])
+        graphs["transducer"] = self._create_transducer_illustration(
+            axes["transducer"]
+        )
         graphs["text"] = self._create_resulttextbox(axes["text"])
         graphs["axial"] = self._create_axial_plot(axes["axial"])
         graphs["lateral"] = self._create_lateral_plot(axes["lateral"])
@@ -918,7 +919,9 @@ class Transducer:
         )
 
         graphs["azimuth"], graphs["elevation"] = (
-            self._create_orientation_lines((axes["element"], axes["lateral"]))
+            self._create_orientation_lines(
+                (axes["transducer"], axes["lateral"])
+            )
         )
 
         # Reference line for distance

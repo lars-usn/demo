@@ -29,6 +29,7 @@ COLOR = {
 
 LINEFORMAT = {
     "main": {"color": "C0", "linestyle": "solid"},
+    "reference": {"color": "C0", "linestyle": "dashed"},
 }
 
 STEMFORMAT = {
@@ -53,23 +54,34 @@ class Array:
         self.steering_angle = np.radians(20)  # rad Steering angle
         self.c = 1500  # m/s Speed of soundin load medium
 
-        # Display settings
-        self.theta_max = 90  # deg  Max. angle to calculate
-        self.n_x = 300  # No. of points in the x-direction (azimuth)
-        self.n_z = 400  # No. of points in the z-direction (depth)
+        # Grid and display settings, normally fixed
         self.db_range = 60  # dB   Dynamic gange on dB-scales
         self.db_gain = 6  # dB   Max. on dB-scales
         self.db_polar = 30  # dB   Dynamic range on polar plot
 
-        # Grid and display settings, normally fixed
         self.x_max = 70.0  # m    Max. lateral dimension to calculate
         self.z_max = 140.0  # m    Max. depth to calculate
-        self.theta_max = 90  # deg  Max. angle to calculate
+        self.theta_max_degrees = 90  # deg  Max. angle to calculate
         self.colormap = "inferno"
 
-        self.z_axis = np.linspace(1, self.z_max, 400)
-        self.x_axis = np.linspace(-self.x_max, self.x_max, 201)
-
+        self.n_theta = 300  # No. of points in beam profile plot
+        self.n_x = 300  # No. of points in the x-direction (azimuth)
+        self.n_z = 400  # No. of points in the z-direction (depth)
+        self.z_axis = np.linspace(
+            1,
+            self.z_max,
+            self.n_z,
+        )
+        self.x_axis = np.linspace(
+            -self.x_max,
+            self.x_max,
+            self.n_x,
+        )
+        self.theta_axis = np.linspace(
+            -self.theta_max,
+            self.theta_max,
+            self.n_theta,
+        )
         self.zx_plane = np.meshgrid(self.z_axis, self.x_axis)
         self.r, self.theta = self.calculate_axial_distance_angle()
 
@@ -102,6 +114,11 @@ class Array:
 
     # Simple parameters are properties
     @property
+    def theta_max(self):
+        """Max. angle to calculate."""
+        return np.radians(self.theta_max_degrees)
+
+    @property
     def wavelength(self):
         """Calculate acoustic wavelength."""
         return self.c / self.frequency
@@ -113,15 +130,16 @@ class Array:
 
     @property
     def elements(self):
-        """Make array of element numbers."""
+        """Elementr indices numbered from 1 to N."""
         return np.arange(0, self.n_elements) + 1
 
     @property
     def delays(self):
         """Calculate delay for all elements."""
-        nc = 1 / 2 * (self.n_elements + 1)
-        tau = -(self.elements - nc) * self.delay
-        return tau
+        # nc = 1 / 2 * (self.n_elements + 1)  # Rel. array centre
+        tau = -self.elements * self.delay
+
+        return tau - np.min(tau)
 
     @property
     def width(self):
@@ -210,53 +228,70 @@ class Array:
         return np.sinc(self.width_lambda * np.sin(theta))
 
     def directivity_array_points(self, theta):
-        """Directivity of arrray of points."""
-        s_theta = np.sin(theta) - np.sin(self.steering_angle)
-        x = pi * self.pitch_lambda * s_theta
-        x[x == 0] = 1e-4  # Avoid 0/0 erroers
-        d = np.sin(self.n_elements * x) / (self.n_elements * np.sin(x))
+        """Directivity of array of points."""
+        theta_diff = np.sin(theta) - np.sin(self.steering_angle)
+        arg = pi * self.pitch_lambda * theta_diff
+        arg = np.where(np.abs(arg) < 1e-12, np.copysign(1e-12, arg), arg)
+        d = np.sin(self.n_elements * arg) / (self.n_elements * np.sin(arg))
 
         return d
 
     def p_axial(self):
         """Calculate axial pressure field in the azimuth plane (zx)."""
-        r, theta = self.calculate_axial_distance_angle()
+        r = self.r
+        theta = self.theta
 
-        p0 = self.n_elements * self.width / r
-        p1 = self.directivity_element(theta)
-        pn = self.directivity_array_points(theta)
+        p_spherical = self.n_elements * self.width / r
+        p_element = self.directivity_element(theta)
+        p_points = self.directivity_array_points(theta)
 
-        return p0 * p1 * pn
+        return p_spherical * p_element * p_points
 
     # === Commands =============================
+    def _update_stem_plot(self, graph, x, y, base=0):
+        """Update values on a stem-plot.
+
+        Parameters
+        ----------
+        graph : StemContainer
+            Plot values returned from stem-command
+        x : 1D array of float
+            x-values
+        y : 1D array of float
+            y-values
+        """
+        markerline, stemlines, baseline = graph
+
+        baseline.set_data(x, base*np.ones_like(y))
+        markerline.set_data(x, y)
+        stemlines.set_segments([[[xi, base], [xi, yi]]
+                                for xi, yi in zip(x, y)])
+
     def update_values(self):
         """Update graph values, no scale or other changes."""
 
         # Beam profile, intensity plot
-        p_axial = self.p_axial()
-        p_max = np.max(np.abs(p_axial))
-        p_db = self.db(p_axial, reference=p_max)
-
+        p_db = self.db(self.p_axial())
         p_display = p_db.transpose()
         self.graphs["axial"].set_array(p_display.ravel())
 
         # Delays, stem-plot
-        markerline, stemlines, baseline = self.graphs["delay"]
-        n = self.elements
-        tau = self.delays * 1e6
-        markerline.set_data(n, tau)
+        self._update_stem_plot(
+            self.graphs["delay"],
+            self.elements,
+            self.delays * 1e6,
+        )
 
-        stemlines.set_segments([[[xi, 0], [xi, yi]] for xi, yi in zip(n, tau)])
+        # Beamprofile plot, polar
+        theta = self.theta_axis
+        p_element = self.directivity_element(theta)
+        p_points = self.directivity_array_points(theta)
+        p_array = p_element * p_points
+        p_max = np.max(abs(p_points))
 
-        # self.graphs["delay"].set_data(self.elements, self.delays * 1e6)
-
-        # Lateral beam profile
-        # x = self.x_axis
-        # z = self.z_axis
-        # k_ref = np.argmin(abs(z - self.reference_distance))
-        # p = p_axial[:, k_ref]
-        # p_db = self.db(p, reference=p_max)
-        # self.graphs["beamprofile"].set_data(x, p_db)
+        array_graph, element_graph = self.graphs["beamprofile"]
+        array_graph.set_data(theta, self.db(p_array, reference=p_max))
+        element_graph.set_data(theta, self.db(p_element, reference=p_max))
 
         # Update messages
         resulttext = self.update_resulttext()
@@ -289,25 +324,25 @@ class Array:
         )
 
         array_text = (
-            r"No. of elements $N_{el}$ = "
+            r"No. of elements \t$N_{el}$ = "
             f"{self.n_elements:d} "
             "\n"
-            f"Element width $w$ = {self.width*1e3:.2f}"
+            f"Element width \t$w$ = {self.width*1e3:.2f}"
             "\n"
-            f"Kerf $w$ = {self.kerf*1e3:.3f} mm"
+            f"Kerf \t$k$ = {self.kerf*1e3:.3f} mm"
             "\n"
-            f"Pitch $d$ = {self.pitch*1e3:.2f} mm"
+            f"Pitch \t$d$ = {self.pitch*1e3:.2f} mm"
             f" = {self.pitch_lambda:.2f}"
             r" $\lambda$"
             "\n"
-            f"Array width $D$ = {self.aperture_width*1e3:.0f} mm"
+            f"Array width \t$D$ = {self.aperture_width*1e3:.0f} mm"
             f" = {self.aperture_lambda:.1f}"
             r" $\lambda$"
         )
 
         angle_text = (
             r"Steering angle $\theta_s$ = "
-            rf"{self.steering_angle:.1f}$^\circ$"
+            rf"{np.degrees(self.steering_angle):.1f}$^\circ$"
         )
 
         distance_text = (
@@ -379,7 +414,6 @@ class Array:
             self.update_intensity_scale()
 
     # === Non-public methods ==========================================
-    # Graphs and results
     def _create_resulttextbox(self, ax):
         """
         Create and attach a formatted results text box to an Axes.
@@ -461,7 +495,6 @@ class Array:
         Matplotlib QuadMesh
             Handle to fill with intensity data
         """
-
         ax.set(
             xlim=(-self.x_max, self.x_max),
             ylim=(self.z_max, 0),
@@ -471,14 +504,15 @@ class Array:
             title="Axial plane",
             facecolor=COLOR["intensity_background"],
         )
-        print("Creating axial intensity plot")
 
-        x_coords = self.x_axis
-        y_coords = self.z_axis
-        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
+        dummy_data = np.full(
+            (self.n_z, self.n_x),
+            np.nan,
+        )
+
         graph = ax.pcolormesh(
-            x_coords,
-            y_coords,
+            self.x_axis,
+            self.z_axis,
             dummy_data,
             clim=self.db_scale,
             cmap=self.colormap,
@@ -498,10 +532,10 @@ class Array:
 
         Returns
         -------
-        matplotlib.lines.Line2D
-            Line object that will be updated with delay data.
+        StemContainer
+            Stem plot object that will be updated with delay data.
         """
-        delay_max = 1e6 * self.aperture_width / (2 * self.c)
+        delay_max = 1e6 * self.aperture_width / self.c
 
         bin_log = int(np.floor(np.log2(self.n_elements)))
         sep = max(1, 2 ** (bin_log - 2))
@@ -510,7 +544,7 @@ class Array:
         ax.set(
             xlim=(0, self.n_elements + 1),
             xticks=delay_ticks,
-            ylim=(-delay_max, delay_max),
+            ylim=(0, delay_max),
             xlabel="Element no.",
             ylabel=r"Delay [$\mu$s]",
             title="Element delays",
@@ -519,7 +553,6 @@ class Array:
         ax.grid(True, which="major", linewidth=0.8)
         ax.grid(True, which="minor", linewidth=0.3, alpha=0.3)
 
-        #        (graph,) = ax.stem([], [], **STEM["main"])
         graph = ax.stem([0, 0], [1, 1], **STEMFORMAT["main"])
 
         return graph
@@ -541,17 +574,26 @@ class Array:
         ax.set(
             thetamin=-90,
             thetamax=+90,
-            theta_zero_location="S",
             rmin=-self.db_polar,
             rmax=0.0,
             rticks=[-20, -6, 0],
-            title="Radiation Diagram [dB re. max]",
-            y=0,
+        )
+        ax.set_theta_zero_location("S")   # Unreliable in ax.set()
+
+        # Title as manually controlled text object,
+        # works better with polar plot
+        ax.text(
+            0.5, 0.90,
+            'Radiation Diagram [dB re. max]',
+            transform=ax.transAxes,
+            ha='center',
+            va='top',
         )
 
-        (graph,) = ax.plot([], [], **LINEFORMAT["main"])
+        array_graph, = ax.plot([], [], **LINEFORMAT["main"])
+        element_graph, = ax.plot([], [], **LINEFORMAT["reference"])
 
-        return graph
+        return (array_graph, element_graph)
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
@@ -588,56 +630,51 @@ class Array:
 
     # Interactive widgets
     def _create_widgets(self):
-        """
-        Create widgets for interactive operation.
+        """Create widgets for interactive operation."""
+        title = 'Beam-profile from Transducer ArrY'
+        title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
-        Returns
-        -------
-        widget_layout : ipywidgets widget box
-            Widget layout for use in Jupyter Notebook
-        widget_list : dict of widgets
-            Widgets for use in Jupyter Notebook
-        """
-        title = "Beam-profile from Single Element Transducer"
-        title_widget = widgets.Label(
-            title,
-            style=dict(font_weight="bold"),
-        )
-
-        left_layout = {
-            "continuous_update": True,
-            "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "50%"},
+        text_layout = {
+            'continuous_update': False,
+            'layout': widgets.Layout(width='95%'),
+            'style': {'description_width': '50%'},
         }
 
-        right_layout = {
-            "continuous_update": True,
-            "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "30%"},
+        slider_layout = {
+            'continuous_update': True,
+            'layout': widgets.Layout(width='95%'),
+            'style': {'description_width': '30%'},
         }
 
-        left_width = "25%"
-        right_width = "75%"
+        text_width = '20%'
+        slider_width = '60%'
 
-        # Left column widgets (Dropboxes, number boxes)
-        shape_widget = widgets.Dropdown(
-            options=[
-                ("Rectangular", False),
-                ("Circular", True),
-            ],
-            value=True,
-            description="Shape",
-            **left_layout,
+        # Text widgets (Dropboxes, number boxes)
+        n_elements_widget = widgets.BoundedIntText(
+            value=self.n_elements,
+            min=1,
+            max=256,
+            step=1,
+            description='No. of elements',
+            **text_layout,
         )
 
-        orientation_widget = widgets.Dropdown(
-            options=[
-                ("Azimuth (width)", True),
-                ("Elevation (height)", False),
-            ],
-            value=True,
-            description="Orientation",
-            **left_layout,
+        frequency_widget = widgets.BoundedFloatText(
+            value=self.frequency/1e3,
+            min=10,
+            max=400,
+            step=1,
+            description='Frequency [kHz]',
+            **text_layout,
+        )
+
+        pitch_widget = widgets.BoundedFloatText(
+            value=self.pitch*1e3,
+            min=0.1,
+            max=100,
+            step=0.1,
+            description='Element pitch [mm]',
+            **text_layout,
         )
 
         db_range_widget = widgets.BoundedFloatText(
@@ -645,95 +682,63 @@ class Array:
             min=6,
             max=120,
             step=6,
-            description="Range [dB]",
-            **left_layout,
+            description='Range [dB]',
+            **text_layout,
         )
 
         db_gain_widget = widgets.BoundedFloatText(
-            value=self.db_gain,
-            min=-120,
-            max=120,
-            step=6,
-            description="Gain [dB]",
-            **left_layout,
+            value=self.db_gain, min=-120, max=120, step=6,
+            description='Gain [dB]',
+            **text_layout,
         )
 
-        left_col = widgets.VBox(
+        steering_angle_widget = widgets.FloatSlider(
+            min=-90,
+            max=90,
+            value=0,
+            step=1,
+            readout_format='.0f',
+            description='Steering angle [Deg.]',
+            **slider_layout,
+        )
+
+        array_parameter_column = widgets.VBox(
             [
-                shape_widget,
-                orientation_widget,
+                n_elements_widget,
+                frequency_widget,
+                pitch_widget,
+            ],
+            layout=widgets.Layout(width=text_width),
+        )
+
+        scaling_column = widgets.VBox(
+            [
                 db_range_widget,
                 db_gain_widget,
             ],
-            layout=widgets.Layout(width=left_width),
+            layout=widgets.Layout(width=text_width),
         )
 
-        # Right column widgets (Sliders)
-        frequency_widget = widgets.FloatSlider(
-            value=self.frequency / 1e3,
-            min=1,
-            max=400,
-            step=1,
-            readout_format=".0f",
-            description="Frequency [kHz]",
-            **right_layout,
-        )
-
-        width_widget = widgets.FloatSlider(
-            value=self.width * 1e3,
-            min=10,
-            max=400,
-            step=10,
-            readout_format=".0f",
-            description="Width / Diameter [mm]",
-            **right_layout,
-        )
-
-        height_widget = widgets.FloatSlider(
-            value=self.height * 1e3,
-            min=10,
-            max=400,
-            step=10,
-            readout_format=".0f",
-            description="Height [mm]",
-            **right_layout,
-        )
-
-        distance_widget = widgets.FloatSlider(
-            value=self.distance,
-            min=1.0,
-            max=self.z_max,
-            step=1.0,
-            readout_format=".0f",
-            description="Distance [m]",
-            **right_layout,
-        )
-
-        right_col = widgets.VBox(
-            [
-                frequency_widget,
-                width_widget,
-                height_widget,
-                distance_widget,
-            ],
-            layout=widgets.Layout(width=right_width),
-        )
+        slider_column = widgets.VBox(
+            [steering_angle_widget],
+            layout=widgets.Layout(width=slider_width))
 
         widget_layout = widgets.HBox(
-            [left_col, right_col], layout=widgets.Layout(width="80%")
-        )
+            [
+                array_parameter_column,
+                scaling_column,
+                slider_column,
+            ],
+            layout=widgets.Layout(width='80%'))
 
         widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        widget_list = {
-            "circular": shape_widget,
-            "azimuth": orientation_widget,
-            "db_range": db_range_widget,
-            "db_gain": db_gain_widget,
-            "frequency": frequency_widget,
-            "width": width_widget,
-            "height": height_widget,
-            "distance": distance_widget,
-        }
+        widget = {'n_elements': n_elements_widget,
+                  'frequency': frequency_widget,
+                  'pitch': pitch_widget,
+                  'db_range': db_range_widget,
+                  'db_gain': db_gain_widget,
+                  'steering_angle': steering_angle_widget,
+                  }
 
-        return widget_layout, widget_list
+        return widget_layout, widget

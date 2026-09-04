@@ -8,421 +8,729 @@ Fraunhofer-Approximation.
 An interactive version can be run from the Jupyter Notebook 'array_demo.ipynb'
 """
 
-# Python libraries
+# Libraries
 from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+import matplotlib.image as mpimg
+from matplotlib.offsetbox import AnchoredText
+from matplotlib.ticker import MultipleLocator
 import ipywidgets as widgets
+from pathlib import Path
 
 # Internal libraries
 import beamplot_utilities as bpu
 
+COLOR = {
+    "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
+    "text_edge": "#7AA6B8",
+    "intensity_background": "black",
+}
 
-# Class definitions
-class WidgetLayout():
-    """Container for widgets and layout."""
+LINEFORMAT = {
+    "main": {"color": "C0", "linestyle": "solid"},
+    "reference": {"color": "C0", "linestyle": "dashed"},
+}
 
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
+STEMFORMAT = {
+    "main": {"linefmt": "C0", "basefmt": "#101010"},
+}
 
 
-class Array():
-    """Define, calculate, and display transducer beam profile."""
+LOGOFILE = "usn-logo-purple.png"
+FIGURE_NAME = "Transducer Array Beamprofile"
+
+
+class Array:
+    """Define, calculate, and display a transducer beam profile."""
 
     def __init__(self, create_widgets=False):
 
-        # Transducer array definition
-        self.n_elements = 32    # Number of elements in array
-        self.kerf = 100e-6      # m   Kerf between elements
-        self.pitch = 7.5e-3     # m   Pitch between elements
+        # Transducer definition
+        self.n_elements = 32  # Number of elements in array
+        self.kerf = 100e-6  # m   Kerf between elements
+        self.pitch = 7.5e-3  # m   Pitch between elements
         self.frequency = 100e3  # Hz  Ultrasound frequency
-        self.angle_s = 20       # deg Steering angle
-        self.c = 1500           # m/s Speed of soundin load medium
+        self.steering_angle = np.radians(20)  # rad Steering angle
+        self.c = 1500  # m/s Speed of soundin load medium
 
-        # Display settings
-        self.theta_max = 90    # deg  Max. angle to calculate
-        self.x_max = 70.0      # m    Max. lateral dimension to calculate
-        self.z_max = 140.0     # m    Max. depth to calculate
-        self.n_x = 300         # No. of points in the x-direction (azimuth)
-        self.n_z = 400         # No. of points in the z-direction (depth)
-        self.db_range = 60     # dB   Dynamic gange on dB-scales
-        self.db_gain = 6       # dB   Max. on dB-scales
-        self.db_polar = 30     # dB   Dynamic range on polar plot
+        # Grid and display settings, normally fixed
+        self.db_range = 60  # dB   Dynamic gange on dB-scales
+        self.db_gain = 6  # dB   Max. on dB-scales
+        self.db_polar = 30  # dB   Dynamic range on polar plot
 
-        # Colors and markers
-        self.text_face = 'whitesmoke'
-        self.element_color = 'crimson'
+        self.x_max = 70.0  # m    Max. lateral dimension to calculate
+        self.z_max = 140.0  # m    Max. depth to calculate
+        self.theta_max_degrees = 90  # deg  Max. angle to calculate
+        self.colormap = "inferno"
 
-        self.colormap = 'inferno'
-        self.intensity_background = 'black'
+        self.n_theta = 300  # No. of points in beam profile plot
+        self.n_x = 300  # No. of points in the x-direction (azimuth)
+        self.n_z = 400  # No. of points in the z-direction (depth)
+        self.z_axis = np.linspace(
+            1,
+            self.z_max,
+            self.n_z,
+        )
+        self.x_axis = np.linspace(
+            -self.x_max,
+            self.x_max,
+            self.n_x,
+        )
+        self.theta_axis = np.linspace(
+            -self.theta_max,
+            self.theta_max,
+            self.n_theta,
+        )
+        self.zx_plane = np.meshgrid(self.z_axis, self.x_axis)
+        self.r, self.theta = self.calculate_axial_distance_angle()
 
-        # Initialisation
-        self.axes, self.fig = self._initialise_graphs()
+        # Initialise figures and values
+        self.fig, self.axes, self.graphs = self._initialise_graphs()
+        self.update_values()
+        self.update_intensity_scale()
         self.scale_axes()
 
         if create_widgets:
-            self.widget = self._create_widgets()
+            self.widget_layout, self.widgets = self._create_widgets()
 
     # === Calculated parameters ===========================
-    def theta_s(self):
-        """Steering angle in radians.."""
-        return np.radians(self.angle_s)
+    def calculate_axial_distance_angle(self):
+        """
+        Calculate distance and angles for axial plot.
 
+        Returns
+        -------
+        r : 2D array of float
+            Distance from origo to point (z,x) in the axial plane
+        theta : 2D array of float
+            Angle from origo to point (z,x) in the axial plane
+        """
+        z, x = self.zx_plane
+        r = np.hypot(z, x)
+        theta = np.arctan2(x, z)
+
+        return r, theta
+
+    # Simple parameters are properties
+    @property
+    def theta_max(self):
+        """Max. angle to calculate."""
+        return np.radians(self.theta_max_degrees)
+
+    @property
+    def wavelength(self):
+        """Calculate acoustic wavelength."""
+        return self.c / self.frequency
+
+    @property
     def delay(self):
         """Delay between elements (no focusing)."""
-        return -np.sin(self.theta_s()) * self.pitch / self.c
+        return -np.sin(self.steering_angle) * self.pitch / self.c
 
-    def delay_array(self):
-        """Delay over all elements."""
-        nc = 1/2*(self.n_elements+1)
+    @property
+    def elements(self):
+        """Elementr indices numbered from 1 to N."""
+        return np.arange(0, self.n_elements) + 1
 
-        n = np.arange(0, self.n_elements)+1
-        tau = -(n-nc) * self.delay()
-        tau = tau
-        return [tau, n]
+    @property
+    def delays(self):
+        """Calculate delay for all elements."""
+        # nc = 1 / 2 * (self.n_elements + 1)  # Rel. array centre
+        tau = -self.elements * self.delay
 
+        return tau - np.min(tau)
+
+    @property
     def width(self):
-        """Width of element."""
+        """Width of element from pich and kerf."""
         return self.pitch - self.kerf
 
-    def wavelength(self):
-        """Calculate acoustic wavelenght."""
-        return self.c/self.frequency
-
-    def d_aperture(self):
-        """Width of aperture."""
+    @property
+    def aperture_width(self):
+        """Width of entire aperture."""
         return self.n_elements * self.pitch - self.kerf
 
-    def p_lambda(self):
+    @property
+    def pitch_lambda(self):
         """Pitch relative to wavelength."""
-        return self.pitch / self.wavelength()
+        return self.pitch / self.wavelength
 
-    def w_lambda(self):
+    @property
+    def width_lambda(self):
         """Element width relative to wavelength."""
-        return self.width() / self.wavelength()
+        return self.width / self.wavelength
 
-    def d_lambda(self):
+    @property
+    def aperture_lambda(self):
         """Aperture width relative to wavelength."""
-        return self.d_aperture() / self.wavelength()
+        return self.aperture_width / self.wavelength
 
-    def z_r(self):
+    @property
+    def rayleigh_distance(self):
         """Rayleigh distance, far-field limit."""
-        return self.d_aperture()**2/(2*self.wavelength())
+        return self.aperture_width**2 / (2 * self.wavelength)
 
-    def z_c(self):
-        """Limit reference distance to outside far-field limit."""
-        return np.max([self.z_ref, self.z_r()])
+    @property
+    def rayleigh_index(self):
+        """Find Rayleigh distance index."""
+        index = np.searchsorted(
+            self.z_axis,
+            self.rayleigh_distance,
+            side="right",
+        )
+        return index
+
+    @property
+    def db_scale(self):
+        """Calculate dB-scale limits from gain and dynamic range."""
+        return np.array([-self.db_range, 0]) - self.db_gain
+
+    @property
+    def db_ticks(self):
+        """Set major dB ticks at fixed intervals (6 dB)."""
+        db_sep = 6
+
+        vmin, vmax = self.db_scale
+        ticks = np.arange(
+            db_sep * np.floor(vmin / db_sep),
+            db_sep * np.ceil(vmax / db_sep) + db_sep,
+            db_sep,
+        )
+        return ticks
+
+    def db(self, x, reference=None, power=False):
+        """
+        Decibel from amplitude or power.
+
+        Parameters
+        ----------
+        x : array of float
+            Amplitue or power values
+        reference : float
+            Reference value for dB calculation
+        power : bool
+            Interpret x values as power (True) or amplitude (False)
+        """
+        x = np.asarray(x)
+
+        if reference is None:
+            reference = np.max(x)
+
+        scale = 20 if not power else 10
+        arg = np.clip(np.abs(x), 1e-20, None)
+
+        return scale * np.log10(arg / reference)
 
     # === Axial plane ===================
-    def x(self):
-        """Lateral dimension for axial plot (x or y)."""
-        return np.linspace(-self.x_max, self.x_max, self.n_x)
-
-    def z(self):
-        """Axial dimension (depth) for axial plot (z)."""
-        return np.linspace(self.z_r(), self.z_max, self.n_z)
-
-    def zx(self):
-        """Axial plane (zx or zy) to plot."""
-        pts = np.meshgrid(self.z(), self.x())
-        return pts
-
-    def r(self):
-        """Distance from aperture centre for axial plot."""
-        return np.sqrt(self.zx()[0]**2 + self.zx()[1]**2)
-
-    def theta(self):
-        """Azimuth(x) angle to point(z, x)."""
-        return np.arctan2(self.zx()[1], self.zx()[0])
-
     def directivity_element(self, theta):
         """Directivity of one element."""
-        return np.sinc(self.w_lambda() * np.sin(theta))
+        return np.sinc(self.width_lambda * np.sin(theta))
 
     def directivity_array_points(self, theta):
-        """Directivity of arrray of points."""
-        s_theta = np.sin(theta) - np.sin(self.theta_s())
-        x = pi * self.p_lambda() * s_theta
-        x[x == 0] = 1e-4   # Avoid 0/0 erroers
-        d = np.sin(self.n_elements * x) / (self.n_elements * np.sin(x))
+        """Directivity of array of points."""
+        theta_diff = np.sin(theta) - np.sin(self.steering_angle)
+        arg = pi * self.pitch_lambda * theta_diff
+        arg = np.where(np.abs(arg) < 1e-12, np.copysign(1e-12, arg), arg)
+        d = np.sin(self.n_elements * arg) / (self.n_elements * np.sin(arg))
 
         return d
 
     def p_axial(self):
         """Calculate axial pressure field in the azimuth plane (zx)."""
-        p0 = self.n_elements * self.width() / self.r()
-        p = p0 * self.directivity_element(self.theta()) * \
-            self.directivity_array_points(self.theta())
+        r = self.r
+        theta = self.theta
 
-        return p
-
-    # === Commands =============================
-    def display(self):
-        """Display beam pattern in graphs."""
-        self._remove_old_artists()
-        ax = self.axes
-
-        # Intensity, azimuth plane
-        p_ref = self.n_elements * self.width() / self.z_r()
-        p_db = bpu.db(self.p_axial(), p_ref=p_ref)
-
-        im = ax['axial'].pcolormesh(self.x(), self.z(),  p_db.transpose(),
-                                    clim=self._db_scale(),
-                                    cmap=self.colormap)
-
-        self.cbar = self.fig.colorbar(im, ax=ax['axial'])
-        bpu.db_colorbar(self.cbar, db_sep=6)
-
-        # Illustrate aray
-        ax['axial'].fill(self.d_aperture()*np.array([-1, 1, 1, -1])/2,
-                         self.z_r()*np.array([0, 0, 1, 1]),
-                         color=self.element_color,
-                         alpha=0.7)
-
-        # Delay profile
-        tau, n = self.delay_array()
-        ax['delay'].stem(n, tau*1e6, 'C0')
-
-        # Directivity plot, polar
-        theta = np.linspace(-pi/2, pi/2, 500)
+        p_spherical = self.n_elements * self.width / r
         p_element = self.directivity_element(theta)
         p_points = self.directivity_array_points(theta)
-        p_array = p_element * p_points
 
-        ax['beamprofile'].plot(theta, bpu.db(p_element, p_ref=1),
-                               color='C0', linestyle='dashed')
+        return p_spherical * p_element * p_points
 
-        ax['beamprofile'].plot(theta, bpu.db(p_array, p_ref=1),
-                               color='C0', linestyle='solid')
-
-        # Scaling, text box
-        self.scale_axes()
-        self._resulttext()
-
-        return
-
-    def scale_axes(self):
-        """Change scales of all graphs."""
-        ax = self.axes
-
-        # Axial beam profile, intensity plot
-        ax["axial"].set(xlim=self.x_max*np.array([-1, 1]),
-                        ylim=(self.z_max, 0))
-
-        # Delay profile
-        delay_max = 1e6 * 1/2 * self.n_elements * self.pitch / self.c
-        ax['delay'].set(xlim=(1, self.n_elements),
-                        ylim=(-delay_max, delay_max))
-        bin_log = np.floor(np.log2(self.n_elements))
-        dn = 2**(bin_log-2)  # 4 power-of-2 scaled ticks
-
-        ax['delay'].set_xticks(np.arange(1, self.n_elements), minor=True)
-        ax['delay'].set_xticks(np.arange(0, self.n_elements+1, dn))
-
-        # Directivity plot, polar
-        ax['beamprofile'].set(thetamin=-90,
-                              thetamax=+90,
-                              theta_zero_location='S',
-                              rmin=-self.db_polar,
-                              rmax=0.0,
-                              rticks=[-20, -6, 0]) #np.flip(np.arange(0, -self.db_polar, -6)))
-
-        ax['beamprofile'].set_title('Radiation Diagram [dB re. max]', y=0)
-
-        return 0
-
-    def interact(self,
-                 n_elements=None,
-                 frequency=None,
-                 pitch=None,
-                 angle_s=None,
-                 db_range=None,
-                 db_gain=None
-                 ):
-        """Scale inputs and  display results.
-
-        For interactive operation with dimensions in mm and frequency in kHz.
-        Existing values are used if a parameter is omitted.
+    # === Commands =============================
+    def _update_stem_plot(self, graph, x, y, base=0):
+        """Update values on a stem-plot.
 
         Parameters
         ----------
-        n_elements: int, optional
-            No. of elements in array
-        frequency: float, optional
-            Frequency in kHz
-        pitch: float, optional
-            Element pitch in mm
-        angle_s: float, optional
-            Steering angle in degrees
+        graph : StemContainer
+            Plot values returned from stem-command
+        x : 1D array of float
+            x-values
+        y : 1D array of float
+            y-values
+        """
+        markerline, stemlines, baseline = graph
+
+        baseline.set_data(x, base*np.ones_like(y))
+        markerline.set_data(x, y)
+        stemlines.set_segments([[[xi, base], [xi, yi]]
+                                for xi, yi in zip(x, y)])
+
+    def update_values(self):
+        """Update graph values, no scale or other changes."""
+
+        # Beam profile, intensity plot
+        p_db = self.db(self.p_axial())
+        p_display = p_db.transpose()
+        self.graphs["axial"].set_array(p_display.ravel())
+
+        # Delays, stem-plot
+        self._update_stem_plot(
+            self.graphs["delay"],
+            self.elements,
+            self.delays * 1e6,
+        )
+
+        # Beamprofile plot, polar
+        theta = self.theta_axis
+        p_element = self.directivity_element(theta)
+        p_points = self.directivity_array_points(theta)
+        p_array = p_element * p_points
+        p_max = np.max(abs(p_points))
+
+        array_graph, element_graph = self.graphs["beamprofile"]
+        array_graph.set_data(theta, self.db(p_array, reference=p_max))
+        element_graph.set_data(theta, self.db(p_element, reference=p_max))
+
+        # Update messages
+        resulttext = self.update_resulttext()
+        self.graphs["text"].txt.set_text(resulttext)
+
+    def update_intensity_scale(self):
+        """Update intensity graph levels."""
+        self.graphs["axial"].set_clim(self.db_scale)
+        self.graphs["colorbar"].set_ticks(self.db_ticks)
+
+    def scale_axes(self):
+        """
+        Change scales of all graphs.
+
+        Normally fixed at start and not changed when parameters are changed.
+        """
+
+    def update_resulttext(self):
+        """
+        Text box for lateral profile results.
+
+        Returns
+        -------
+        str
+            Formatted text with transducer beam parameters
+        """
+        header = (
+            f"Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n"
+            rf"Wavelength  $\lambda$ = {self.wavelength*1e3:.1f} mm"
+        )
+
+        array_text = (
+            r"No. of elements \t$N_{el}$ = "
+            f"{self.n_elements:d} "
+            "\n"
+            f"Element width \t$w$ = {self.width*1e3:.2f}"
+            "\n"
+            f"Kerf \t$k$ = {self.kerf*1e3:.3f} mm"
+            "\n"
+            f"Pitch \t$d$ = {self.pitch*1e3:.2f} mm"
+            f" = {self.pitch_lambda:.2f}"
+            r" $\lambda$"
+            "\n"
+            f"Array width \t$D$ = {self.aperture_width*1e3:.0f} mm"
+            f" = {self.aperture_lambda:.1f}"
+            r" $\lambda$"
+        )
+
+        angle_text = (
+            r"Steering angle $\theta_s$ = "
+            rf"{np.degrees(self.steering_angle):.1f}$^\circ$"
+        )
+
+        distance_text = (
+            r"Rayleigh distance $z_R$ = " f"{self.rayleigh_distance:.2f} m"
+        )
+
+        result_text = (
+            header
+            + "\n"
+            + array_text
+            + "\n"
+            + angle_text
+            + "\n"
+            + distance_text
+        )
+
+        return result_text
+
+    def interact(
+        self,
+        n_elements=None,
+        freq_khz=None,
+        pitch_mm=None,
+        db_range=None,
+        db_gain=None,
+        steering_angle_degrees=None,
+    ):
+        """
+        Scale inputs and  display the resulting response.
+
+        For interactive operation with dimensions in mm and frequency in kHz.
+          Existing values are retained if a parameter is omitted.
+
+        Parameters
+        ----------
+        freq_khz: float, optional
+            Frequency [kHz]
+        pitch_mm: float, optional
+            Array pitch [mm]. Distance between elements
         db_range: float
             Range on dB-axes
         db_gain: float
             Maximum on dB-axes
+        steering_angle_degrees : float
+            Steering angle [deg]
         """
-        if n_elements is not None:
-            self.n_elements = n_elements
-        if frequency is not None:
-            self.frequency = 1e3*frequency
-        if pitch is not None:
-            self.pitch = 1e-3*pitch
-        if angle_s is not None:
-            self.angle_s = angle_s
+        if freq_khz is not None:
+            self.frequency = float(freq_khz) * 1e3
+
+        if pitch_mm is not None:
+            self.pitch = float(pitch_mm) * 1e-3
+
+        if steering_angle_degrees is not None:
+            self.steering_angle = np.radians(steering_angle_degrees)
+
         if db_range is not None:
             self.db_range = db_range
+
         if db_gain is not None:
             self.db_gain = db_gain
 
-        # Display result in graphs
-        self.display()
+        if any(
+            v is not None
+            for v in (n_elements, freq_khz, pitch_mm, steering_angle_degrees)
+        ):
+            self.update_values()
 
-        return
+        if any(v is not None for v in (db_range, db_gain)):
+            self.update_intensity_scale()
 
     # === Non-public methods ==========================================
+    def _create_resulttextbox(self, ax):
+        """
+        Create and attach a formatted results text box to an Axes.
 
-    # Graphs and results
-    def _db_scale(self):
-        db_lim = np.array([-self.db_range, 0]) - self.db_gain
-        return db_lim
+        The text box is anchored to an axis and remains fixed relative to
+        the axes if the figure is resized.
 
-    def _resulttext(self):
-        """Text box for lateral profile results."""
-        header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
-                  fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.1f} mm')
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where text is shown
 
-        array_text = (r'No. of elements $N_{el}$ = '
-                      f'{self.n_elements:d} '
-                      '\n'
-                      f'Element width $w$ = {self.width()*1e3:.2f}'
-                      '\n'
-                      f'Kerf $w$ = {self.kerf*1e3:.3f} mm'
-                      '\n'
-                      f'Pitch $d$ = {self.pitch*1e3:.2f} mm'
-                      f' = {self.p_lambda():.2f}'
-                      r' $\lambda$'
-                      '\n'
-                      f'Array width $D$ = {self.d_aperture()*1e3:.0f} mm'
-                      f' = {self.d_lambda():.1f}'
-                      r' $\lambda$'
-                      )
+        Returns
+        -------
+        Matplotlib AnchoredText
+            Handle to text box
+        """
+        ax.axis("off")
 
-        angle_text = (r'Steering angle $\theta_s$ = '
-                      fr'{self.angle_s:.1f}$^\circ$')
+        # Create empty anchored text box
+        at = AnchoredText(
+            "Beam parameters coming here",
+            loc="upper center",
+            pad=0.4,
+            borderpad=0.2,
+            frameon=True,
+        )
 
-        distance_text = (r'Rayleigh distance $z_R$ = '
-                         f'{self.z_r():.2f} m')
+        at.patch.set_facecolor(COLOR["text_face"])
+        at.patch.set_edgecolor(COLOR["text_edge"])
+        at.patch.set_boxstyle("round")
 
-        result_text = header + '\n' + array_text + \
-            '\n' + angle_text + '\n' + distance_text
+        ax.add_artist(at)
 
-        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
+        return at
 
-        return
+    def _create_logo(self, ax):
+        """
+        Load logo file and place in specified axis.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where logo image is shown
+        """
+        ax.set_axis_off()
+
+        try:
+            base_path = Path(__file__).resolve().parent
+        except NameError:
+            # Running in Jupyter
+            base_path = Path.cwd()
+
+        logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
+
+        if logo_path.exists():
+            img = mpimg.imread(logo_path)
+            ax.imshow(img)
+        else:
+            ax.text(
+                0.5,
+                0.5,
+                "USN",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
+
+    def _create_axial_plot(self, ax):
+        """Create axis for axial intensity plot.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where axial intensity image shown
+
+        Returns
+        -------
+        Matplotlib QuadMesh
+            Handle to fill with intensity data
+        """
+        ax.set(
+            xlim=(-self.x_max, self.x_max),
+            ylim=(self.z_max, 0),
+            aspect="equal",
+            xlabel="Azimuth [m]",
+            ylabel="Depth  [m]",
+            title="Axial plane",
+            facecolor=COLOR["intensity_background"],
+        )
+
+        dummy_data = np.full(
+            (self.n_z, self.n_x),
+            np.nan,
+        )
+
+        graph = ax.pcolormesh(
+            self.x_axis,
+            self.z_axis,
+            dummy_data,
+            clim=self.db_scale,
+            cmap=self.colormap,
+            shading="auto",
+        )
+
+        return graph
+
+    def _create_delay_plot(self, ax):
+        """
+        Create axis for displaying element delays.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis where element delays are plotted.
+
+        Returns
+        -------
+        StemContainer
+            Stem plot object that will be updated with delay data.
+        """
+        delay_max = 1e6 * self.aperture_width / self.c
+
+        bin_log = int(np.floor(np.log2(self.n_elements)))
+        sep = max(1, 2 ** (bin_log - 2))
+        delay_ticks = np.arange(0, self.n_elements + 1, sep)
+
+        ax.set(
+            xlim=(0, self.n_elements + 1),
+            xticks=delay_ticks,
+            ylim=(0, delay_max),
+            xlabel="Element no.",
+            ylabel=r"Delay [$\mu$s]",
+            title="Element delays",
+        )
+
+        ax.grid(True, which="major", linewidth=0.8)
+        ax.grid(True, which="minor", linewidth=0.3, alpha=0.3)
+
+        graph = ax.stem([0, 0], [1, 1], **STEMFORMAT["main"])
+
+        return graph
+
+    def _create_beamprofile_plot(self, ax):
+        """
+        Create axis for beam profile graphs.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
+
+        Returns
+        -------
+            Matplotlib Line2D
+        """
+
+        ax.set(
+            thetamin=-90,
+            thetamax=+90,
+            rmin=-self.db_polar,
+            rmax=0.0,
+            rticks=[-20, -6, 0],
+        )
+        ax.set_theta_zero_location("S")   # Unreliable in ax.set()
+
+        # Title as manually controlled text object,
+        # works better with polar plot
+        ax.text(
+            0.5, 0.90,
+            'Radiation Diagram [dB re. max]',
+            transform=ax.transAxes,
+            ha='center',
+            va='top',
+        )
+
+        array_graph, = ax.plot([], [], **LINEFORMAT["main"])
+        element_graph, = ax.plot([], [], **LINEFORMAT["reference"])
+
+        return (array_graph, element_graph)
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
-        plt.close('all')
-        fig = plt.figure(figsize=[15, 5],
-                         constrained_layout=True,
-                         num='Array Beamprofile')
-        bpu.add_logo(fig)
+        plt.close(FIGURE_NAME)
 
-        gs = GridSpec(4, 4, figure=fig)
-        ax = {'axial': fig.add_subplot(gs[0:, 2:]),
-              'delay': fig.add_subplot(gs[0, 1]),
-              'beamprofile': fig.add_subplot(gs[1:, 1], projection='polar')}
+        fig, axes = plt.subplot_mosaic(
+            [
+                ["text", "delay", "axial", "axial"],
+                ["text", "delay", "axial", "axial"],
+                [".", "beamprofile", "axial", "axial"],
+                [".", "beamprofile", "axial", "axial"],
+                ["logo", "beamprofile", "axial", "axial"],
+            ],
+            per_subplot_kw={"beamprofile": {"projection": "polar"}},
+            figsize=(14, 6),
+            layout="constrained",
+            num=FIGURE_NAME,
+        )
 
-        # Axial intensity plot
-        ax['axial'].set(aspect='equal',
-                        ylabel='Depth (z) [m]',
-                        xlabel='Azimuth (x) [m]',
-                        facecolor=self.intensity_background)
+        graphs = {}
+        self._create_logo(axes["logo"])
+        graphs["text"] = self._create_resulttextbox(axes["text"])
+        graphs["axial"] = self._create_axial_plot(axes["axial"])
+        graphs["delay"] = self._create_delay_plot(axes["delay"])
+        graphs["beamprofile"] = self._create_beamprofile_plot(
+            axes["beamprofile"]
+        )
 
-        # Delay graph
-        ax['delay'].set(xlabel='Element no.',
-                        ylabel=r'Delay [$\mu$s]')
+        # Colorbar for intensity plots
+        graphs["colorbar"] = fig.colorbar(
+            graphs["axial"], ax=axes["axial"], label="dB re. max"
+        )
 
-        ax['delay'].grid(visible=True, which='major')
-
-        return ax, fig
-
-    def _remove_old_artists(self):
-        for ax in self.axes.values():
-            bpu.remove_artists(ax)
-
-        try:
-            self.cbar.remove()
-        except Exception:
-            pass
-
-        return 0
+        return fig, axes, graphs
 
     # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
-        title = 'Beam-profile from Single Element Transducer'
+        title = 'Beam-profile from Transducer Array'
         title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
-        text_layout = {'continuous_update': False,
-                       'layout': widgets.Layout(width='95%'),
-                       'style': {'description_width': '50%'}}
+        text_layout = {
+            'continuous_update': False,
+            'layout': widgets.Layout(width='95%'),
+            'style': {'description_width': '50%'},
+        }
 
-        slider_layout = {'continuous_update': True,
-                         'layout': widgets.Layout(width='95%'),
-                         'style': {'description_width': '30%'}}
+        slider_layout = {
+            'continuous_update': True,
+            'layout': widgets.Layout(width='95%'),
+            'style': {'description_width': '30%'},
+        }
 
         text_width = '20%'
         slider_width = '60%'
 
         # Text widgets (Dropboxes, number boxes)
         n_elements_widget = widgets.BoundedIntText(
-            value=64, min=1, max=1024, step=1,
+            value=self.n_elements,
+            min=1,
+            max=256,
+            step=1,
             description='No. of elements',
-            **text_layout)
+            **text_layout,
+        )
 
         frequency_widget = widgets.BoundedFloatText(
-            value=100, min=1, max=400, step=1,
+            value=self.frequency/1e3,
+            min=10,
+            max=400,
+            step=1,
             description='Frequency [kHz]',
-            **text_layout)
+            **text_layout,
+        )
 
         pitch_widget = widgets.BoundedFloatText(
-            value=7.5, min=0.1, max=100, step=0.1,
+            value=self.pitch*1e3,
+            min=0.1,
+            max=100,
+            step=0.1,
             description='Element pitch [mm]',
-            **text_layout)
+            **text_layout,
+        )
 
         db_range_widget = widgets.BoundedFloatText(
-            value=60, min=6, max=120, step=6,
+            value=self.db_range,
+            min=6,
+            max=120,
+            step=6,
             description='Range [dB]',
-            **text_layout)
+            **text_layout,
+        )
 
         db_gain_widget = widgets.BoundedFloatText(
-            value=0, min=-120, max=120, step=6,
+            value=self.db_gain, min=-120, max=120, step=6,
             description='Gain [dB]',
-            **text_layout)
+            **text_layout,
+        )
 
-        col_par = widgets.VBox([n_elements_widget,
-                                frequency_widget,
-                                pitch_widget],
-                               layout=widgets.Layout(width=text_width))
-
-        col_db = widgets.VBox([db_range_widget,
-                               db_gain_widget],
-                              layout=widgets.Layout(width=text_width))
-
-        # Slider widgets
         steering_angle_widget = widgets.FloatSlider(
-            min=-90, max=90,
-            value=0, step=1,
+            min=-90,
+            max=90,
+            value=0,
+            step=1,
             readout_format='.0f',
             description='Steering angle [Deg.]',
-            **slider_layout)
+            **slider_layout,
+        )
 
-        col_slider = widgets.VBox([steering_angle_widget],
-                                  layout=widgets.Layout(width=slider_width))
+        array_parameter_column = widgets.VBox(
+            [
+                n_elements_widget,
+                frequency_widget,
+                pitch_widget,
+            ],
+            layout=widgets.Layout(width=text_width),
+        )
 
-        widget_layout = widgets.HBox([col_par, col_db, col_slider],
-                                     layout=widgets.Layout(width='80%'))
+        scaling_column = widgets.VBox(
+            [
+                db_range_widget,
+                db_gain_widget,
+            ],
+            layout=widgets.Layout(width=text_width),
+        )
+
+        slider_column = widgets.VBox(
+            [steering_angle_widget],
+            layout=widgets.Layout(width=slider_width))
+
+        widget_layout = widgets.HBox(
+            [
+                array_parameter_column,
+                scaling_column,
+                slider_column,
+            ],
+            layout=widgets.Layout(width='80%'))
 
         widget_layout = widgets.VBox([title_widget, widget_layout])
 
@@ -434,6 +742,4 @@ class Array():
                   'steering_angle': steering_angle_widget,
                   }
 
-        w = WidgetLayout(widget_layout, widget)
-
-        return w
+        return widget_layout, widget

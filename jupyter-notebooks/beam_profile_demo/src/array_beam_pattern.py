@@ -13,16 +13,11 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from matplotlib.offsetbox import AnchoredText
-from matplotlib.ticker import MultipleLocator
 import ipywidgets as widgets
 from pathlib import Path
 
-# Internal libraries
-import beamplot_utilities as bpu
-
 COLOR = {
-    "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
+    "text_face": "#F5F5F5",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
     "text_edge": "#7AA6B8",
     "intensity_background": "black",
 }
@@ -64,9 +59,9 @@ class Array:
         self.theta_max_degrees = 90  # deg  Max. angle to calculate
         self.colormap = "inferno"
 
-        self.n_theta = 300  # No. of points in beam profile plot
-        self.n_x = 300  # No. of points in the x-direction (azimuth)
-        self.n_z = 400  # No. of points in the z-direction (depth)
+        self.n_theta = 600  # No. of points in beam profile plot
+        self.n_x = 601  # No. of points in the x-direction (azimuth)
+        self.n_z = 600  # No. of points in the z-direction (depth)
         self.z_axis = np.linspace(
             1,
             self.z_max,
@@ -88,8 +83,8 @@ class Array:
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
         self.update_values()
-        self.update_intensity_scale()
-        self.scale_axes()
+        self.scale_delay_plot()
+        self.scale_intensity_plot()
 
         if create_widgets:
             self.widget_layout, self.widgets = self._create_widgets()
@@ -241,11 +236,13 @@ class Array:
         r = self.r
         theta = self.theta
 
-        p_spherical = self.n_elements * self.width / r
+        p_aperture = self.n_elements * self.width / r
+        p_aperture[:, : self.rayleigh_index] = 0
+
         p_element = self.directivity_element(theta)
         p_points = self.directivity_array_points(theta)
 
-        return p_spherical * p_element * p_points
+        return p_aperture * p_element * p_points
 
     # === Commands =============================
     def _update_stem_plot(self, graph, x, y, base=0):
@@ -262,16 +259,18 @@ class Array:
         """
         markerline, stemlines, baseline = graph
 
-        baseline.set_data(x, base*np.ones_like(y))
+        baseline.set_data(x, base * np.ones_like(y))
         markerline.set_data(x, y)
-        stemlines.set_segments([[[xi, base], [xi, yi]]
-                                for xi, yi in zip(x, y)])
+        stemlines.set_segments(
+            [[[xi, base], [xi, yi]] for xi, yi in zip(x, y)]
+        )
 
     def update_values(self):
         """Update graph values, no scale or other changes."""
 
         # Beam profile, intensity plot
-        p_db = self.db(self.p_axial())
+        p_ref = self.n_elements * self.width
+        p_db = self.db(self.p_axial(), reference=p_ref)
         p_display = p_db.transpose()
         self.graphs["axial"].set_array(p_display.ravel())
 
@@ -287,79 +286,75 @@ class Array:
         p_element = self.directivity_element(theta)
         p_points = self.directivity_array_points(theta)
         p_array = p_element * p_points
-        p_max = np.max(abs(p_points))
 
         array_graph, element_graph = self.graphs["beamprofile"]
-        array_graph.set_data(theta, self.db(p_array, reference=p_max))
-        element_graph.set_data(theta, self.db(p_element, reference=p_max))
+        array_graph.set_data(
+            theta,
+            self.db(p_array, reference=1),
+        )
+        element_graph.set_data(
+            theta,
+            self.db(p_element, reference=1),
+        )
 
-        # Update messages
-        resulttext = self.update_resulttext()
-        self.graphs["text"].txt.set_text(resulttext)
+        # Information text
+        self.update_resulttext()
 
-    def update_intensity_scale(self):
+    def scale_intensity_plot(self):
         """Update intensity graph levels."""
         self.graphs["axial"].set_clim(self.db_scale)
         self.graphs["colorbar"].set_ticks(self.db_ticks)
 
-    def scale_axes(self):
-        """
-        Change scales of all graphs.
+    def scale_delay_plot(self):
+        """Scale axes on element delay plots."""
+        delay_max = self.aperture_width / self.c
+        delay_scale_max_um = np.ceil(1e6 * delay_max / 10) * 10
 
-        Normally fixed at start and not changed when parameters are changed.
-        """
+        bin_log = int(np.floor(np.log2(self.n_elements)))
+        sep = max(1, 2 ** (bin_log - 2))
+        delay_ticks = np.arange(0, self.n_elements + 1, sep)
+
+        self.axes["delay"].set(
+            xlim=(0, self.n_elements + 1),
+            xticks=delay_ticks,
+            ylim=(0, delay_scale_max_um),
+        )
 
     def update_resulttext(self):
-        """
-        Text box for lateral profile results.
+        """Update text box with array parameters."""
 
-        Returns
-        -------
-        str
-            Formatted text with transducer beam parameters
-        """
-        header = (
-            f"Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n"
-            rf"Wavelength  $\lambda$ = {self.wavelength*1e3:.1f} mm"
-        )
+        value_lines = [
+            f"{self.frequency/1e3:.0f} kHz",
+            f"{self.wavelength*1e3:.1f} mm",
+            f"{self.n_elements}",
+            f"{self.width*1e3:.1f} mm",
+            f"{self.kerf*1e3:.1f} mm",
+            f"{self.pitch*1e3:.1f} mm",
+            f"{self.aperture_width*1e3:.0f} mm",
+            rf"{np.degrees(self.steering_angle):.0f}$^\circ$",
+            f"{self.rayleigh_distance:.1f} m",
+        ]
 
-        array_text = (
-            r"No. of elements \t$N_{el}$ = "
-            f"{self.n_elements:d} "
-            "\n"
-            f"Element width \t$w$ = {self.width*1e3:.2f}"
-            "\n"
-            f"Kerf \t$k$ = {self.kerf*1e3:.3f} mm"
-            "\n"
-            f"Pitch \t$d$ = {self.pitch*1e3:.2f} mm"
-            f" = {self.pitch_lambda:.2f}"
-            r" $\lambda$"
-            "\n"
-            f"Array width \t$D$ = {self.aperture_width*1e3:.0f} mm"
-            f" = {self.aperture_lambda:.1f}"
-            r" $\lambda$"
-        )
+        lamda_symb = r"$\lambda$"
+        wavelength_lines = [
+            "",
+            "",
+            "",
+            f"{self.width_lambda:.2f}" + lamda_symb,
+            "",
+            f"{self.pitch_lambda:.2f}" + lamda_symb,
+            f"{self.aperture_lambda:.1f}" + lamda_symb,
+            "",
+            "",
+        ]
 
-        angle_text = (
-            r"Steering angle $\theta_s$ = "
-            rf"{np.degrees(self.steering_angle):.1f}$^\circ$"
-        )
+        for line_no, value in enumerate(value_lines):
+            self.graphs["text"][(line_no, 2)].get_text().set_text(value)
 
-        distance_text = (
-            r"Rayleigh distance $z_R$ = " f"{self.rayleigh_distance:.2f} m"
-        )
+        for line_no, value in enumerate(wavelength_lines):
+            self.graphs["text"][(line_no, 3)].get_text().set_text(value)
 
-        result_text = (
-            header
-            + "\n"
-            + array_text
-            + "\n"
-            + angle_text
-            + "\n"
-            + distance_text
-        )
-
-        return result_text
+        return
 
     def interact(
         self,
@@ -389,6 +384,9 @@ class Array:
         steering_angle_degrees : float
             Steering angle [deg]
         """
+        if n_elements is not None:
+            self.n_elements = int(n_elements)
+
         if freq_khz is not None:
             self.frequency = float(freq_khz) * 1e3
 
@@ -411,7 +409,10 @@ class Array:
             self.update_values()
 
         if any(v is not None for v in (db_range, db_gain)):
-            self.update_intensity_scale()
+            self.scale_intensity_plot()
+
+        if any(v is not None for v in (n_elements, pitch_mm)):
+            self.scale_delay_plot()
 
     # === Non-public methods ==========================================
     def _create_resulttextbox(self, ax):
@@ -428,27 +429,46 @@ class Array:
 
         Returns
         -------
-        Matplotlib AnchoredText
-            Handle to text box
+        matplotlib.table.Table
+            Handle to results table.
         """
         ax.axis("off")
 
-        # Create empty anchored text box
-        at = AnchoredText(
-            "Beam parameters coming here",
-            loc="upper center",
-            pad=0.4,
-            borderpad=0.2,
-            frameon=True,
+        resulttext = [
+            ["Frequency", "$f$", "-", ""],
+            ["Wavelenght", r"$\lambda$", "-", ""],
+            ["No. of elements", "$N_{el}$", "-", ""],
+            ["Element width", "$w$", "-", "-"],
+            ["Kerf", "$k$", "-", ""],
+            ["Pitch", "$d$", "-", ""],
+            ["Array width", "$D$", "-", ""],
+            ["Steering angle", r"$\theta_s$", "-", ""],
+            ["Rayleigh distance ", r"$z_R$", "-", ""],
+        ]
+
+        table = ax.table(
+            cellText=resulttext,
+            loc="upper left",
+            cellLoc="left",
+            colWidths=[0.45, 0.10, 0.25, 0.15],
         )
 
-        at.patch.set_facecolor(COLOR["text_face"])
-        at.patch.set_edgecolor(COLOR["text_edge"])
-        at.patch.set_boxstyle("round")
+        for cell in table.get_celld().values():
+            cell.set_linewidth(0.2)
+            cell.visible_edges = "TB"
+            cell.set_facecolor(COLOR["text_face"])
+            cell.PAD = 0.03
+            cell.set_text_props(fontfamily="DejaVu Sans")
 
-        ax.add_artist(at)
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 1.1)
 
-        return at
+        for r in range(len(resulttext)):
+            table[(r, 1)].set_text_props(ha="center")
+            table[(r, 2)].set_text_props(ha="left")
+
+        return table
 
     def _create_logo(self, ax):
         """
@@ -535,23 +555,14 @@ class Array:
         StemContainer
             Stem plot object that will be updated with delay data.
         """
-        delay_max = 1e6 * self.aperture_width / self.c
-
-        bin_log = int(np.floor(np.log2(self.n_elements)))
-        sep = max(1, 2 ** (bin_log - 2))
-        delay_ticks = np.arange(0, self.n_elements + 1, sep)
-
         ax.set(
-            xlim=(0, self.n_elements + 1),
-            xticks=delay_ticks,
-            ylim=(0, delay_max),
             xlabel="Element no.",
             ylabel=r"Delay [$\mu$s]",
             title="Element delays",
         )
 
-        ax.grid(True, which="major", linewidth=0.8)
-        ax.grid(True, which="minor", linewidth=0.3, alpha=0.3)
+        ax.grid(True, which="major")
+        ax.grid(True, which="minor")
 
         graph = ax.stem([0, 0], [1, 1], **STEMFORMAT["main"])
 
@@ -578,20 +589,21 @@ class Array:
             rmax=0.0,
             rticks=[-20, -6, 0],
         )
-        ax.set_theta_zero_location("S")   # Unreliable in ax.set()
+        ax.set_theta_zero_location("S")  # Unreliable in ax.set()
 
         # Title as manually controlled text object,
         # works better with polar plot
         ax.text(
-            0.5, 0.90,
-            'Radiation Diagram [dB re. max]',
+            0.5,
+            0.90,
+            "Radiation Diagram [dB re. max]",
             transform=ax.transAxes,
-            ha='center',
-            va='top',
+            ha="center",
+            va="top",
         )
 
-        array_graph, = ax.plot([], [], **LINEFORMAT["main"])
-        element_graph, = ax.plot([], [], **LINEFORMAT["reference"])
+        (array_graph,) = ax.plot([], [], **LINEFORMAT["main"])
+        (element_graph,) = ax.plot([], [], **LINEFORMAT["reference"])
 
         return (array_graph, element_graph)
 
@@ -601,14 +613,14 @@ class Array:
 
         fig, axes = plt.subplot_mosaic(
             [
-                ["text", "delay", "axial", "axial"],
-                ["text", "delay", "axial", "axial"],
-                [".", "beamprofile", "axial", "axial"],
-                [".", "beamprofile", "axial", "axial"],
+                [".", "delay", "axial", "axial"],
+                [".", "delay", "axial", "axial"],
+                ["text", "beamprofile", "axial", "axial"],
+                ["text", "beamprofile", "axial", "axial"],
                 ["logo", "beamprofile", "axial", "axial"],
             ],
             per_subplot_kw={"beamprofile": {"projection": "polar"}},
-            figsize=(14, 6),
+            figsize=(16, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
@@ -632,23 +644,23 @@ class Array:
     # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
-        title = 'Beam-profile from Transducer Array'
-        title_widget = widgets.Label(title, style=dict(font_weight='bold'))
+        title = "Beam-profile from Transducer Array"
+        title_widget = widgets.Label(title, style=dict(font_weight="bold"))
 
         text_layout = {
-            'continuous_update': False,
-            'layout': widgets.Layout(width='95%'),
-            'style': {'description_width': '50%'},
+            "continuous_update": False,
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "50%"},
         }
 
         slider_layout = {
-            'continuous_update': True,
-            'layout': widgets.Layout(width='95%'),
-            'style': {'description_width': '30%'},
+            "continuous_update": True,
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "30%"},
         }
 
-        text_width = '20%'
-        slider_width = '60%'
+        text_width = "20%"
+        slider_width = "60%"
 
         # Text widgets (Dropboxes, number boxes)
         n_elements_widget = widgets.BoundedIntText(
@@ -656,25 +668,25 @@ class Array:
             min=1,
             max=256,
             step=1,
-            description='No. of elements',
+            description="No. of elements",
             **text_layout,
         )
 
         frequency_widget = widgets.BoundedFloatText(
-            value=self.frequency/1e3,
+            value=self.frequency / 1e3,
             min=10,
             max=400,
             step=1,
-            description='Frequency [kHz]',
+            description="Frequency [kHz]",
             **text_layout,
         )
 
         pitch_widget = widgets.BoundedFloatText(
-            value=self.pitch*1e3,
+            value=self.pitch * 1e3,
             min=0.1,
             max=100,
             step=0.1,
-            description='Element pitch [mm]',
+            description="Element pitch [mm]",
             **text_layout,
         )
 
@@ -683,13 +695,16 @@ class Array:
             min=6,
             max=120,
             step=6,
-            description='Range [dB]',
+            description="Range [dB]",
             **text_layout,
         )
 
         db_gain_widget = widgets.BoundedFloatText(
-            value=self.db_gain, min=-120, max=120, step=6,
-            description='Gain [dB]',
+            value=self.db_gain,
+            min=-120,
+            max=120,
+            step=6,
+            description="Gain [dB]",
             **text_layout,
         )
 
@@ -698,15 +713,15 @@ class Array:
             max=90,
             value=0,
             step=1,
-            readout_format='.0f',
-            description='Steering angle [Deg.]',
+            readout_format=".0f",
+            description="Steering angle [Deg.]",
             **slider_layout,
         )
 
         array_parameter_column = widgets.VBox(
             [
-                n_elements_widget,
                 frequency_widget,
+                n_elements_widget,
                 pitch_widget,
             ],
             layout=widgets.Layout(width=text_width),
@@ -722,7 +737,8 @@ class Array:
 
         slider_column = widgets.VBox(
             [steering_angle_widget],
-            layout=widgets.Layout(width=slider_width))
+            layout=widgets.Layout(width=slider_width),
+        )
 
         widget_layout = widgets.HBox(
             [
@@ -730,16 +746,18 @@ class Array:
                 scaling_column,
                 slider_column,
             ],
-            layout=widgets.Layout(width='80%'))
+            layout=widgets.Layout(width="80%"),
+        )
 
         widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        widget = {'n_elements': n_elements_widget,
-                  'frequency': frequency_widget,
-                  'pitch': pitch_widget,
-                  'db_range': db_range_widget,
-                  'db_gain': db_gain_widget,
-                  'steering_angle': steering_angle_widget,
-                  }
+        widget = {
+            "n_elements": n_elements_widget,
+            "frequency": frequency_widget,
+            "pitch": pitch_widget,
+            "db_range": db_range_widget,
+            "db_gain": db_gain_widget,
+            "steering_angle": steering_angle_widget,
+        }
 
         return widget_layout, widget

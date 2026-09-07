@@ -53,7 +53,7 @@ class ArrayWaves:
         self.duration = 10.0
 
         # Display
-        self.x_lim = 4.0
+        self.x_lim = 6.0
         self.z_max = 12.0
         self.x_ax_range = 6.0 * np.array([-1, 1])
         self.n_points = 100

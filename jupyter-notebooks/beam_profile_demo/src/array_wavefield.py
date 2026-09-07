@@ -1,7 +1,7 @@
 """Calculate the wavefronts from a line array.
 
 The array consists of N elements described as points.
-Wavefronts are plotted as sperical waves rom each element
+Wavefronts are plotted as shperical waves from each element
 
 An interactive version can be run from the Jupyter Notebook
 'wavefront_demo.ipynb'
@@ -60,7 +60,7 @@ class ArrayWaves:
 
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-        self.update_wavefield_graphs()
+        self.redraw_wavefield_axis()
 
     @property
     def wavelength(self):
@@ -95,13 +95,13 @@ class ArrayWaves:
     def delay(self):
         """Find delay vector."""
         delay = self.delay_diff * np.arange(self.n_elements)
-        delay -= min(delay)
+        delay -= delay.min()
 
         return delay
 
     @property
     def n_time_steps(self):
-        return self.duration / self.time_step
+        return int(round(self.duration / self.time_step))
 
     @property
     def radius_time_steps(self):
@@ -131,7 +131,7 @@ class ArrayWaves:
         Returns
         -------
         x : 1D NumPy array
-            Lateral coordinate of wavefron curve
+            Lateral coordinate of wavefront curve
         """
         if radius >= 0:
             z_sq = radius**2 - self.x_range**2
@@ -159,9 +159,9 @@ class ArrayWaves:
         self.draw_wavefronts(self.x_sources, radii)
 
     def animate_wavefronts(self):
-        """Run animation ow wavefronts."""
+        """Run animation of wavefronts."""
 
-        self.update_wavefield_graphs()
+        self.redraw_wavefield_axis()
 
         for radius in self.radius_time_steps:
             t0 = time.perf_counter()
@@ -172,7 +172,7 @@ class ArrayWaves:
             elapsed = time.perf_counter() - t0
             time.sleep(max(0, self.time_step - elapsed))
 
-    def update_wavefield_graphs(self):
+    def redraw_wavefield_axis(self):
         """Remove old wavefront lines and create new set of empty lines."""
         ax = self.axes["wavefronts"]
 
@@ -238,7 +238,7 @@ class ArrayWaves:
         )
 
         ax.grid(visible=False)
-        ax.set_facecolor("#F0FBFF")
+        ax.set_facecolor(COLOR["background"])
         ax.set_axis_off()
 
         graphs = {}
@@ -250,7 +250,7 @@ class ArrayWaves:
         ]
 
         # Acoustic axis, normally not changed
-        graphs["axis"] = ax.plot(
+        graphs["acoustic_axis"] = ax.plot(
             [0, self.z_max],
             [0, self.z_max * np.sin(self.steering_angle)],
             **LINEFORMAT["indicator"],

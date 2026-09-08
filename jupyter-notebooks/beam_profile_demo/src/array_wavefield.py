@@ -1,7 +1,7 @@
 """Calculate the wavefronts from a line array.
 
 The array consists of N elements described as points.
-Wavefronts are plotted as shperical waves from each element
+Wavefronts are plotted as spherical waves from each element
 
 An interactive version can be run from the Jupyter Notebook
 'wavefront_demo.ipynb'
@@ -10,8 +10,9 @@ An interactive version can be run from the Jupyter Notebook
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from matplotlib.animation import FuncAnimation
 from pathlib import Path
-import time
+import ipywidgets
 
 COLOR = {
     "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
@@ -24,16 +25,20 @@ COLOR = {
 LINEFORMAT = {
     "wavefront": {
         "color": "#FF6B35",  # FF6B35 FF5E3A FF4500 FF7A00 FF7043
-        "linestyle": "dashed",
-        "linewidth": 4,
+        "linestyle": "dotted",
+        "linewidth": 1,
     },
-    "indicator": {"color": "#1F77B4", "linestyle": "dotted"},
+    "indicator": {
+        "color": "#1F77B4",
+        "linestyle": "dotted",
+        "linewidth": 1,
+    },
     "reference": {"color": "C0", "linestyle": "dashed"},
     "source": {
         "color": COLOR["transducer"],
         "linestyle": "none",
         "marker": "s",
-        "markersize": 30,
+        "markersize": 8,
     },
 }
 
@@ -42,8 +47,8 @@ FIGURE_NAME = "Transducer Array Beamprofile"
 
 
 class ArrayWaves:
-    def __init__(self):
-        self.n_elements = 4
+    def __init__(self, create_widgets=False):
+        self.n_elements = 6
         self.c = 1500
         self.frequency = 100e3
         self.steering_angle = 0
@@ -51,40 +56,32 @@ class ArrayWaves:
         # Timing
         self.time_step = 0.1
         self.duration = 10.0
+        self.animation = None
 
         # Display
+        self.pitch = 1.0
         self.x_lim = 6.0
-        self.z_max = 12.0
+        self.z_max = 24.0
         self.x_ax_range = 6.0 * np.array([-1, 1])
         self.n_points = 100
 
+        self.theta_wavefront = np.radians(np.linspace(-90, 90, 50))
+        self.cos_wavefront = np.cos(self.theta_wavefront)
+        self.sin_wavefront = np.sin(self.theta_wavefront)
+
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-        self.redraw_wavefield_axis()
+        self.draw_wavefield_axis()
+        self.draw_sources()
+        self.update_resulttext()
+
+        if create_widgets:
+            self.widget_layout, self.widgets = self._create_widgets()
 
     @property
     def wavelength(self):
         """Calculate acoustic wavelength."""
         return self.c / self.frequency
-
-    @property
-    def pitch(self):
-        """
-        Set element pitch.
-
-        Made large for demonstration of spherical wavefronts,
-        grating lobes not an issue in this demo
-        """
-        return 1.0
-
-    @property
-    def x_range(self):
-        """Lateral extent of wavefronts, relative source."""
-        return np.linspace(
-            -self.x_lim,
-            self.x_lim,
-            self.n_points,
-        )
 
     @property
     def delay_diff(self):
@@ -106,7 +103,8 @@ class ArrayWaves:
     @property
     def radius_time_steps(self):
         steps = np.arange(self.n_time_steps) / self.n_time_steps
-        return steps * self.z_max / np.cos(self.steering_angle)
+
+        return steps * self.z_max
 
     @property
     def x_sources(self):
@@ -118,7 +116,7 @@ class ArrayWaves:
     def calculate_wavefront(self, x0, radius):
         """
         Calculate wavefront as a circular arc around an element.
-        x is lateral dimansion (y-axis).
+        x is lateral dimension (y-axis).
         z is axial dimension (depth) (x-axis).
 
         Parameters
@@ -134,58 +132,84 @@ class ArrayWaves:
             Lateral coordinate of wavefront curve
         """
         if radius >= 0:
-            z_sq = radius**2 - self.x_range**2
-
-            z = np.full_like(z_sq, np.nan, dtype=float)
-            np.sqrt(z_sq, out=z, where=(z_sq >= 0))
+            z = radius * self.cos_wavefront
+            x = radius * self.sin_wavefront
         else:
-            z = np.full_like(self.x_range, np.nan)
+            z = [0]
+            x = [0]
 
-        return z, self.x_range + x0
+        return z, x + x0
 
     def draw_wavefronts(self, x_sources, radii):
         """Draw wavefronts around sources in lateral xy-plane."""
 
         for x0, radius, graph in zip(
-            x_sources, radii, self.graphs["wavefronts"]
+            x_sources,
+            radii,
+            self.graphs["wavefronts"],
         ):
             z, x = self.calculate_wavefront(x0, radius)
             graph.set_data(z, x)
 
     def display_wavefront(self, r0=0):
-        """Create figure and draw wavefronts."""
+        """Update wavefronts for a specified propagation distance."""
         radii = r0 - self.c * self.delay
 
         self.draw_wavefronts(self.x_sources, radii)
 
-    def animate_wavefronts(self):
-        """Run animation of wavefronts."""
+    def _animation_frame(self, frame):
+        """Define image to be shown as one animation frame."""
+        radius = self.radius_time_steps[frame]
+        self.display_wavefront(radius)
+        return self.graphs["wavefronts"]
 
-        self.redraw_wavefield_axis()
+    def run_animation(self):
+        """Run wavefield animation."""
+        self.stop_animation()
+        self.draw_wavefield_axis()
+        self.animation = FuncAnimation(
+            self.fig,
+            self._animation_frame,
+            frames=len(self.radius_time_steps),
+            interval=1000 * self.time_step,
+            repeat=True,
+        )
+        self.fig.canvas.draw_idle()
 
-        for radius in self.radius_time_steps:
-            t0 = time.perf_counter()
-            self.display_wavefront(radius)
+    def stop_animation(self):
+        if (
+            self.animation is not None
+            and self.animation.event_source is not None
+        ):
+            self.animation.event_source.stop()
 
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            elapsed = time.perf_counter() - t0
-            time.sleep(max(0, self.time_step - elapsed))
+        self.animation = None
 
-    def redraw_wavefield_axis(self):
-        """Remove old wavefront lines and create new set of empty lines."""
-        ax = self.axes["wavefronts"]
+    def draw_wavefield_axis(self):
+        """Draw orientation axis and empty wavefront lines."""
 
+        # Indicator for direction
+        z_max_disp = self.z_max
+        self.graphs["direction"].set_data(
+            [0, z_max_disp * np.cos(self.steering_angle)],
+            [0, z_max_disp * np.sin(self.steering_angle)],
+        )
+
+        # Empty wavefront lines
+        for graph in self.graphs["wavefronts"]:
+            graph.set_data([], [])
+
+    def draw_sources(self):
+        """
+        Mark source positions and create new set of wavefronts.
+
+        Wavefront lines are recreated because the number of array elements
+        may change during operation.
+        """
         # Draw sources
         self.graphs["sources"].set_data(
             np.zeros_like(self.x_sources),
             self.x_sources,
-        )
-
-        # Indicator for direction
-        self.graphs["direction"].set_data(
-            [0, self.z_max],
-            [0, self.z_max * np.sin(self.steering_angle)],
         )
 
         # Create new empty wavefront graphs
@@ -193,27 +217,46 @@ class ArrayWaves:
             graph.remove()
 
         self.graphs["wavefronts"] = [
-            ax.plot([], [], **LINEFORMAT["wavefront"])[0]
+            self.axes["wavefronts"].plot([], [], **LINEFORMAT["wavefront"])[0]
             for _ in range(self.n_elements)
         ]
-        ax.set_axis_on()
+
+    def update_resulttext(self):
+        """Update text box with array parameters."""
+
+        value_lines = [
+            f"{self.n_elements}",
+            rf"{np.degrees(self.steering_angle):.0f}$^\circ$",
+        ]
+
+        for line_no, value in enumerate(value_lines):
+            self.graphs["text"][(line_no, 2)].get_text().set_text(value)
+
+        return
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close(FIGURE_NAME)
 
+        wavefront_row = ["wavefronts"] * 6
+
         fig, axes = plt.subplot_mosaic(
             [
-                [".", "wavefronts", "wavefronts", "wavefronts"],
-                ["logo", "wavefronts", "wavefronts", "wavefronts"],
+                ["."] + wavefront_row,
+                ["text"] + wavefront_row,
+                ["text"] + wavefront_row,
+                ["."] + wavefront_row,
+                ["."] + wavefront_row,
+                ["logo"] + wavefront_row,
             ],
-            figsize=(16, 6),
+            figsize=(18, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
 
-        self._create_logo(axes["logo"])
         graphs = self._create_wavefront_plot(axes["wavefronts"])
+        graphs["text"] = self._create_resulttextbox(axes["text"])
+        self._create_logo(axes["logo"])
 
         return fig, axes, graphs
 
@@ -229,18 +272,29 @@ class ArrayWaves:
 
         # Axes
         ax.set(
-            xlabel="Distance [m]",
-            ylabel="Lateral position",
-            title="Wavefronts ",
+            xlabel="Distance",
+            ylabel="Transducer Array",
+            title="Wavefront image",
             aspect="equal",
             xlim=(0, self.z_max),
             ylim=self.x_ax_range,
         )
 
+        # Remove axes, but keep coloured background
         ax.grid(visible=False)
         ax.set_facecolor(COLOR["background"])
-        ax.set_axis_off()
 
+        ax.tick_params(
+            left=False,
+            bottom=False,
+            labelleft=False,
+            labelbottom=False,
+        )
+
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+        # Create atrists for plots
         graphs = {}
 
         # Wavefront image
@@ -252,7 +306,7 @@ class ArrayWaves:
         # Acoustic axis, normally not changed
         graphs["acoustic_axis"] = ax.plot(
             [0, self.z_max],
-            [0, self.z_max * np.sin(self.steering_angle)],
+            [0, 0],
             **LINEFORMAT["indicator"],
         )[0]
 
@@ -261,6 +315,54 @@ class ArrayWaves:
         graphs["direction"] = ax.plot([], [], **LINEFORMAT["indicator"])[0]
 
         return graphs
+
+    def _create_resulttextbox(self, ax):
+        """
+        Create and attach a formatted results text box to an Axes.
+
+        The text box is anchored to an axis and remains fixed relative to
+        the axes if the figure is resized.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where text is shown
+
+        Returns
+        -------
+        matplotlib.table.Table
+            Handle to results table.
+        """
+        ax.axis("off")
+
+        resulttext = [
+            ["No. of elements", "$N_{el}$", "-"],
+            ["Steering angle", r"$\theta_s$", "-"],
+        ]
+
+        table = ax.table(
+            cellText=resulttext,
+            loc="upper left",
+            cellLoc="left",
+            colWidths=[0.50, 0.25, 0.25],
+        )
+
+        for cell in table.get_celld().values():
+            cell.set_linewidth(0.2)
+            cell.visible_edges = "TB"
+            cell.set_facecolor(COLOR["text_face"])
+            cell.PAD = 0.03
+            cell.set_text_props(fontfamily="DejaVu Sans")
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 1.1)
+
+        for r in range(len(resulttext)):
+            table[(r, 1)].set_text_props(ha="center")
+            table[(r, 2)].set_text_props(ha="left")
+
+        return table
 
     def _create_logo(self, ax):
         """
@@ -293,3 +395,121 @@ class ArrayWaves:
                 va="center",
                 transform=ax.transAxes,
             )
+
+    def _refresh(self):
+        self.fig.canvas.draw_idle()
+
+    # === Callbacks ================================================
+    def _run_animation_callback(self, button):
+        self.run_animation()
+
+    def _stop_animation_callback(self, button):
+        self.stop_animation()
+
+    def _radius_change_callback(self, change):
+        self.stop_animation()
+        self.display_wavefront(change["new"])
+        self._refresh()
+
+    def _steering_change_callback(self, change):
+        self.stop_animation()
+        self.steering_angle = np.radians(change["new"])
+        self.update_resulttext()
+        self.draw_wavefield_axis()
+        self._refresh()
+
+    # === Interactive widgets ========================================
+    def _create_widgets(self):
+        """Create widgets for interactive operation."""
+        title = "Wavefronts from Transducer Array"
+        title_widget = ipywidgets.Label(
+            title,
+            style=dict(font_weight="bold"),
+        )
+
+        slider_layout = {
+            "continuous_update": True,
+            "layout": ipywidgets.Layout(width="95%"),
+            "style": {"description_width": "30%"},
+        }
+
+        text_width = "20%"
+        slider_width = "60%"
+
+        # Define widgets
+        radius_widget = ipywidgets.FloatSlider(
+            value=0,
+            min=0,
+            max=self.z_max,
+            step=0.1,
+            description="Distance [m]",
+            **slider_layout,
+        )
+
+        steering_angle_widget = ipywidgets.FloatSlider(
+            min=-90,
+            max=90,
+            value=0,
+            step=1,
+            readout_format=".0f",
+            description="Steering angle [Deg.]",
+            **slider_layout,
+        )
+
+        animate_widget = ipywidgets.Button(
+            description="Run",
+            button_style="primary",
+            icon="play",
+        )
+
+        stop_widget = ipywidgets.Button(
+            description="Stop",
+            button_style="danger",
+            icon="stop",
+        )
+
+        # Connect to callbacks
+        radius_widget.observe(
+            self._radius_change_callback,
+            names="value",
+        )
+
+        steering_angle_widget.observe(
+            self._steering_change_callback,
+            names="value",
+        )
+
+        animate_widget.on_click(self._run_animation_callback)
+        stop_widget.on_click(self._stop_animation_callback)
+
+        # Widget layout
+        array_parameter_column = ipywidgets.VBox(
+            [
+                animate_widget,
+                stop_widget,
+            ],
+            layout=ipywidgets.Layout(width=text_width),
+        )
+
+        slider_column = ipywidgets.VBox(
+            [radius_widget, steering_angle_widget],
+            layout=ipywidgets.Layout(width=slider_width),
+        )
+
+        widget_layout = ipywidgets.HBox(
+            [
+                array_parameter_column,
+                slider_column,
+            ],
+            layout=ipywidgets.Layout(width="80%"),
+        )
+
+        widget_layout = ipywidgets.VBox([title_widget, widget_layout])
+
+        widget = {
+            "radius": radius_widget,
+            "steering_angle": steering_angle_widget,
+            "animate": animate_widget,
+        }
+
+        return widget_layout, widget

@@ -59,11 +59,12 @@ class ArrayWaves:
         self.animation = None
 
         # Display
-        self.pitch = 1.0
+        self.pitch = 1.0  # Large pitch for demonstration
         self.x_lim = 6.0
         self.z_max = 24.0
         self.x_ax_range = 6.0 * np.array([-1, 1])
         self.n_points = 100
+        self._radius_steps = None
 
         self.theta_wavefront = np.radians(np.linspace(-90, 90, 50))
         self.cos_wavefront = np.cos(self.theta_wavefront)
@@ -102,9 +103,7 @@ class ArrayWaves:
 
     @property
     def radius_time_steps(self):
-        steps = np.arange(self.n_time_steps) / self.n_time_steps
-
-        return steps * self.z_max
+        return np.linspace(0, self.z_max, self.n_time_steps)
 
     @property
     def x_sources(self):
@@ -128,8 +127,11 @@ class ArrayWaves:
 
         Returns
         -------
-        x : 1D NumPy array
-            Lateral coordinate of wavefront curve
+        z : ndarray
+            Axial coordinates
+
+        x : ndarray
+            Lateral coordinates
         """
         if radius >= 0:
             z = radius * self.cos_wavefront
@@ -158,20 +160,23 @@ class ArrayWaves:
         self.draw_wavefronts(self.x_sources, radii)
 
     def _animation_frame(self, frame):
-        """Define image to be shown as one animation frame."""
-        radius = self.radius_time_steps[frame]
-        self.display_wavefront(radius)
+        """Update artists for a single animation frame."""
+        self.display_wavefront(self._radius_steps[frame])
         return self.graphs["wavefronts"]
 
     def run_animation(self):
         """Run wavefield animation."""
         self.stop_animation()
         self.draw_wavefield_axis()
+
+        self._radius_steps = self.radius_time_steps
+        n_steps = len(self._radius_steps)
+
         self.animation = FuncAnimation(
             self.fig,
             self._animation_frame,
-            frames=len(self.radius_time_steps),
-            interval=1000 * self.time_step,
+            frames=n_steps,
+            interval=int(1000 * self.time_step),
             repeat=True,
         )
         self.fig.canvas.draw_idle()
@@ -231,8 +236,6 @@ class ArrayWaves:
 
         for line_no, value in enumerate(value_lines):
             self.graphs["text"][(line_no, 2)].get_text().set_text(value)
-
-        return
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
@@ -294,7 +297,7 @@ class ArrayWaves:
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-        # Create atrists for plots
+        # Create artists for plots
         graphs = {}
 
         # Wavefront image
@@ -414,8 +417,12 @@ class ArrayWaves:
     def _steering_change_callback(self, change):
         self.stop_animation()
         self.steering_angle = np.radians(change["new"])
-        self.update_resulttext()
         self.draw_wavefield_axis()
+        self.update_resulttext()
+
+        radius = self.widgets["radius"].value
+        self.display_wavefront(radius)
+
         self._refresh()
 
     # === Interactive widgets ========================================
@@ -434,7 +441,7 @@ class ArrayWaves:
         }
 
         text_width = "20%"
-        slider_width = "60%"
+        slider_width = "95%"
 
         # Define widgets
         radius_widget = ipywidgets.FloatSlider(

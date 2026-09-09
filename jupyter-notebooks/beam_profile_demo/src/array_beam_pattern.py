@@ -355,8 +355,6 @@ class Array:
         for line_no, value in enumerate(wavelength_lines):
             self.graphs["text"][(line_no, 3)].get_text().set_text(value)
 
-        return
-
     # === Non-public methods ==========================================
     def _create_resulttextbox(self, ax):
         """

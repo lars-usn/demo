@@ -440,14 +440,14 @@ class Transducer:
         self.x_sidelobe, self.y_sidelobe = curve_analysis.sidelobe()
 
         self.db_sidelobe = float(
-            self.db(self.y_sidelobe,
-                    reference=np.nanmax(p),
-                    ),
+            self.db(
+                self.y_sidelobe,
+                reference=np.nanmax(p),
+            ),
         )
 
         # Update messages
-        resulttext = self.update_resulttext()
-        self.graphs["text"].txt.set_text(resulttext)
+        self.update_resulttext()
 
     def update_intensity_scale(self):
         """Update intensity graph levels."""
@@ -491,79 +491,6 @@ class Transducer:
 
         ax["beamprofile"].set(xlim=lateral_max)
 
-    def update_resulttext(self):
-        """
-        Text box for lateral profile results.
-
-        Returns
-        -------
-        str
-            Formatted text with transducer beam parameters
-        """
-        header = (
-            f"Frequency \t $f$ = {self.frequency/1e3:.0f} kHz\n"
-            "Wavelength \t"
-            rf"$\lambda$ = {self.wavelength*1e3:.1f} mm"
-        )
-
-        if self.circular:  # Height dimension omitted
-            size_text = (
-                f"Diameter \t $D$ = {self.width*1e3:.0f} mm = "
-                rf"{self.width_lambda:.1f} $\lambda$"
-            )
-        else:
-            size_text = (
-                f"Width \t\t$w$ = {self.width*1e3:.0f} mm = "
-                rf"{self.width_lambda:.1f} $\lambda$"
-                "\n"
-                f"Height \t\t$h$ = {self.height*1e3:.0f} mm = "
-                rf"{self.height_lambda:.1f} $\lambda$"
-            )
-
-        angle_text = (
-            f"Opening angle ({self.lim_text})"
-            "\t"
-            r"$\theta_0$ = "
-            rf"{np.degrees(self.opening_angle):.1f}$^\circ$"
-        )
-
-        distance_text = (
-            "Rayleigh distance \t  $z_R$ = " f"{self.rayleigh_distance:.2f} m"
-        )
-        beamwidth_text = (
-            f"Beam width ({self.lim_text}) "
-            "\t"
-            r" $D_z$ = "
-            f"{self.beamwidth:.2f} m"
-        )
-
-        if np.isnan(self.x_sidelobe):
-            sidelobe_text = ""
-        else:
-            sidelobe_text = (
-                "Highest sidelobe "
-                "\t"
-                f" $x$ = {abs(self.x_sidelobe):.2f} m, "
-                f"{self.db_sidelobe:.1f} dB"
-            )
-
-        result_text = (
-            header
-            + "\n"
-            + size_text
-            + "\n"
-            + "\n"
-            + distance_text
-            + "\n"
-            + angle_text
-            + "\n"
-            + beamwidth_text
-            + "\n"
-            + sidelobe_text
-        )
-
-        return result_text
-
     # === Non-public methods ==========================================
     def _create_transducer_illustration(self, ax):
         """
@@ -605,6 +532,83 @@ class Transducer:
         ax.add_patch(patch)
         return patch
 
+    def update_resulttext(self):
+        """Update text box with array parameters."""
+
+        LEGEND_COL = 0
+        SYMBOL_COL = 1
+        VALUE_COL = 2
+        WAVELENGTH_COL = 3
+
+        value_lines = [
+            f"{self.frequency/1e3:.0f} kHz",
+            f"{self.wavelength*1e3:.1f} mm",
+            f"{self.width*1e3:.0f} mm",
+            f"{self.height*1e3:.0f} mm",
+            f"{self.rayleigh_distance:.1f} m",
+            rf"{np.degrees(self.opening_angle):.1f}$^\circ$",
+            f"{self.beamwidth:.2f} m",
+            f"{self.db_sidelobe:.1f} dB",
+        ]
+
+        wavelength_lines = [
+            "",
+            "",
+            rf"{self.width_lambda:.1f}$\lambda$",
+            rf"{self.height_lambda:.1f}$\lambda$",
+            "",
+            "",
+            "",
+            "",
+        ]
+
+        legend_lines = [
+            self.graphs["text"][(row, LEGEND_COL)].get_text().get_text()
+            for row in range(len(value_lines))
+        ]
+
+        symbol_lines = [
+            self.graphs["text"][(row, SYMBOL_COL)].get_text().get_text()
+            for row in range(len(value_lines))
+        ]
+
+        if not self.circular:
+            symbol_lines[2] = "w"
+            symbol_lines[3] = "h"
+            legend_lines[2] = "Width"
+            legend_lines[3] = "Height"
+        else:
+            symbol_lines[2] = "D"
+            symbol_lines[3] = ""
+            legend_lines[2] = "Diameter"
+            legend_lines[3] = ""
+            value_lines[3] = ""
+            wavelength_lines[3] = ""
+
+        assert len(legend_lines) == len(value_lines) == len(wavelength_lines)
+
+        for line_no, (
+            legend_txt,
+            symbol_txt,
+            value_txt,
+            wavelength_txt,
+        ) in enumerate(
+            zip(legend_lines, symbol_lines, value_lines, wavelength_lines)
+        ):
+
+            self.graphs["text"][(line_no, LEGEND_COL)].get_text().set_text(
+                legend_txt
+            )
+            self.graphs["text"][(line_no, SYMBOL_COL)].get_text().set_text(
+                symbol_txt
+            )
+            self.graphs["text"][(line_no, VALUE_COL)].get_text().set_text(
+                value_txt
+            )
+            self.graphs["text"][(line_no, WAVELENGTH_COL)].get_text().set_text(
+                wavelength_txt
+            )
+
     def _create_resulttextbox(self, ax):
         """
         Create and attach a formatted results text box to an Axes.
@@ -619,27 +623,81 @@ class Transducer:
 
         Returns
         -------
-        Matplotlib AnchoredText
-            Handle to text box
+        matplotlib.table.Table
+            Handle to results table.
         """
         ax.axis("off")
 
-        # Create empty anchored text box
-        at = AnchoredText(
-            "Beam parameters coming here",
-            loc="upper center",
-            pad=0.4,
-            borderpad=0.2,
-            frameon=True,
+        resulttext = [
+            ["Frequency", "$f$", "-", ""],
+            ["Wavelenght", r"$\lambda$", "-", ""],
+            ["Width", "$w$", "-", "-"],
+            ["Height", "$h$", "-", "-"],
+            ["Rayleigh distance ", r"$z_R$", "-", ""],
+            ["Opening angle (-6 dB)", r"$\theta_0$", "-", ""],
+            ["Beam width (-6 dB)", "$D_z$", "-", ""],
+            ["Highest sidelobe", "$PSL$", "-", ""],
+        ]
+
+        table = ax.table(
+            cellText=resulttext,
+            loc="upper left",
+            cellLoc="left",
+            colWidths=[0.40, 0.20, 0.25, 0.25],
         )
 
-        at.patch.set_facecolor(COLOR["text_face"])
-        at.patch.set_edgecolor(COLOR["text_edge"])
-        at.patch.set_boxstyle("round")
+        for cell in table.get_celld().values():
+            cell.set_linewidth(0.2)
+            cell.visible_edges = "TB"
+            cell.set_facecolor(COLOR["text_face"])
+            cell.PAD = 0.05
+            cell.set_text_props(fontfamily="DejaVu Sans")
 
-        ax.add_artist(at)
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 1.1)
 
-        return at
+        for r in range(len(resulttext)):
+            table[(r, 1)].set_text_props(ha="center")
+            table[(r, 2)].set_text_props(ha="left")
+
+        return table
+
+    # def _create_resulttextbox(self, ax):
+    #     """
+    #     Create and attach a formatted results text box to an Axes.
+
+    #     The text box is anchored to an axis and remains fixed relative to
+    #     the axes if the figure is resized.
+
+    #     Parameters
+    #     ----------
+    #     ax : Axis object
+    #         Axis where text is shown
+
+    #     Returns
+    #     -------
+    #     Matplotlib AnchoredText
+    #         Handle to text box
+    #     """
+    #     ax.axis("off")
+
+    #     # Create empty anchored text box
+    #     at = AnchoredText(
+    #         "Beam parameters coming here",
+    #         loc="upper center",
+    #         pad=0.4,
+    #         borderpad=0.2,
+    #         frameon=True,
+    #     )
+
+    #     at.patch.set_facecolor(COLOR["text_face"])
+    #     at.patch.set_edgecolor(COLOR["text_edge"])
+    #     at.patch.set_boxstyle("round")
+
+    #     ax.add_artist(at)
+
+    #     return at
 
     def _create_logo(self, ax):
         """

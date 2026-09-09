@@ -402,7 +402,7 @@ class ArrayWaves:
     def _refresh(self):
         self.fig.canvas.draw_idle()
 
-    # === Callbacks ================================================
+    # === Widget callbacks =========================================
     def _run_animation_callback(self, button):
         self.run_animation()
 
@@ -422,10 +422,9 @@ class ArrayWaves:
 
         radius = self.widgets["radius"].value
         self.display_wavefront(radius)
-
         self._refresh()
 
-    # === Interactive widgets ========================================
+    # === Interactive widgets ======================================
     def _create_widgets(self):
         """Create widgets for interactive operation."""
         title = "Wavefronts from Transducer Array"
@@ -443,7 +442,7 @@ class ArrayWaves:
         text_width = "20%"
         slider_width = "95%"
 
-        # Define widgets
+        # === Define widgets
         radius_widget = ipywidgets.FloatSlider(
             value=0,
             min=0,
@@ -451,6 +450,10 @@ class ArrayWaves:
             step=0.1,
             description="Distance [m]",
             **slider_layout,
+        )
+        radius_widget.observe(
+            self._radius_change_callback,
+            names="value",
         )
 
         steering_angle_widget = ipywidgets.FloatSlider(
@@ -462,34 +465,26 @@ class ArrayWaves:
             description="Steering angle [Deg.]",
             **slider_layout,
         )
+        steering_angle_widget.observe(
+            self._steering_change_callback,
+            names="value",
+        )
 
         animate_widget = ipywidgets.Button(
             description="Run",
             button_style="primary",
             icon="play",
         )
+        animate_widget.on_click(self._run_animation_callback)
 
         stop_widget = ipywidgets.Button(
             description="Stop",
             button_style="danger",
             icon="stop",
         )
-
-        # Connect to callbacks
-        radius_widget.observe(
-            self._radius_change_callback,
-            names="value",
-        )
-
-        steering_angle_widget.observe(
-            self._steering_change_callback,
-            names="value",
-        )
-
-        animate_widget.on_click(self._run_animation_callback)
         stop_widget.on_click(self._stop_animation_callback)
 
-        # Widget layout
+        # === Widget layout
         array_parameter_column = ipywidgets.VBox(
             [
                 animate_widget,

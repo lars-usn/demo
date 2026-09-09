@@ -151,7 +151,7 @@ class ArrayWaves:
             self.graphs["wavefronts"],
         ):
             z, x = self.calculate_wavefront(x0, radius)
-            graph.set_data(z, x)
+            graph.set_data(x, z)
 
     def display_wavefront(self, r0=0):
         """Update wavefronts for a specified propagation distance."""

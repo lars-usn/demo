@@ -332,6 +332,7 @@ class Array:
             f"{self.pitch*1e3:.1f} mm",
             f"{self.aperture_width*1e3:.0f} mm",
             rf"{np.degrees(self.steering_angle):.0f}$^\circ$",
+            rf"{-self.delay*1e6:.2f} $\mu$s",
             f"{self.rayleigh_distance:.1f} m",
         ]
 
@@ -385,6 +386,7 @@ class Array:
             ["Pitch", "$d$", "-", ""],
             ["Array width", "$D$", "-", ""],
             ["Steering angle", r"$\theta_s$", "-", ""],
+            ["Element delay", r"$\tau$", "-", ""],
             ["Rayleigh distance ", r"$z_R$", "-", ""],
         ]
 

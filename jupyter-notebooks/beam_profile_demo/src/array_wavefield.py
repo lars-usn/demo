@@ -26,7 +26,7 @@ LINEFORMAT = {
     "wavefront": {
         "color": "#FF6B35",  # FF6B35 FF5E3A FF4500 FF7A00 FF7043
         "linestyle": "dotted",
-        "linewidth": 1,
+        "linewidth": 1.5,
     },
     "indicator": {
         "color": "#1F77B4",
@@ -42,6 +42,10 @@ LINEFORMAT = {
     },
 }
 
+STEMFORMAT = {
+    "main": {"linefmt": "C0", "basefmt": "#101010"},
+}
+
 LOGOFILE = "usn-logo-purple.png"
 FIGURE_NAME = "Transducer Array Beamprofile"
 
@@ -54,16 +58,15 @@ class ArrayWaves:
         self.steering_angle = 0
 
         # Timing
-        self.time_step = 0.1
+        self.time_step = 0.10
         self.duration = 10.0
         self.animation = None
 
         # Display
         self.pitch = 1.0  # Large pitch for demonstration
-        self.x_lim = 6.0
+        self.x_max = 18.0
         self.z_max = 24.0
-        self.x_ax_range = 6.0 * np.array([-1, 1])
-        self.n_points = 100
+        self.x_ax_range = self.x_max * np.array([-1, 1])
         self._radius_steps = None
 
         self.theta_wavefront = np.radians(np.linspace(-90, 90, 50))
@@ -72,9 +75,10 @@ class ArrayWaves:
 
         # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-        self.draw_wavefield_axis()
         self.draw_sources()
+        self.draw_wavefield_axis()
         self.update_resulttext()
+        self.scale_delay_plot()
 
         if create_widgets:
             self.widget_layout, self.widgets = self._create_widgets()
@@ -85,24 +89,26 @@ class ArrayWaves:
         return self.c / self.frequency
 
     @property
-    def delay_diff(self):
+    def delay(self):
         """Find delay between elements."""
         return self.pitch * np.sin(self.steering_angle) / self.c
 
     @property
-    def delay(self):
+    def delays(self):
         """Find delay vector."""
-        delay = self.delay_diff * np.arange(self.n_elements)
-        delay -= delay.min()
+        delays = self.delay * np.arange(self.n_elements)
+        delays -= delays.min()
 
-        return delay
+        return delays
 
     @property
     def n_time_steps(self):
+        """Number of animation frames."""
         return int(round(self.duration / self.time_step))
 
     @property
     def radius_time_steps(self):
+        """Wavefront radii used during animation."""
         return np.linspace(0, self.z_max, self.n_time_steps)
 
     @property
@@ -115,8 +121,8 @@ class ArrayWaves:
     def calculate_wavefront(self, x0, radius):
         """
         Calculate wavefront as a circular arc around an element.
-        x is lateral dimension (y-axis).
-        z is axial dimension (depth) (x-axis).
+        x is lateral dimension
+        z is axial dimension (depth)
 
         Parameters
         ----------
@@ -133,14 +139,15 @@ class ArrayWaves:
         x : ndarray
             Lateral coordinates
         """
-        if radius >= 0:
-            z = radius * self.cos_wavefront
-            x = radius * self.sin_wavefront
-        else:
-            z = [0]
-            x = [0]
+        if radius <= 0:
+            z = np.empty(0)
+            x = np.empty(0)
+            return z, x
 
-        return z, x + x0
+        z = radius * self.cos_wavefront
+        x = radius * self.sin_wavefront + x0
+
+        return z, x
 
     def draw_wavefronts(self, x_sources, radii):
         """Draw wavefronts around sources in lateral xy-plane."""
@@ -155,8 +162,7 @@ class ArrayWaves:
 
     def display_wavefront(self, r0=0):
         """Update wavefronts for a specified propagation distance."""
-        radii = r0 - self.c * self.delay
-
+        radii = r0 - self.c * self.delays
         self.draw_wavefronts(self.x_sources, radii)
 
     def _animation_frame(self, frame):
@@ -194,15 +200,29 @@ class ArrayWaves:
         """Draw orientation axis and empty wavefront lines."""
 
         # Indicator for direction
-        z_max_disp = self.z_max
+        ax_length = np.hypot(self.z_max, self.x_max)
         self.graphs["direction"].set_data(
-            [0, z_max_disp * np.cos(self.steering_angle)],
-            [0, z_max_disp * np.sin(self.steering_angle)],
+            [0, ax_length * np.sin(self.steering_angle)],
+            [0, ax_length * np.cos(self.steering_angle)],
         )
 
         # Empty wavefront lines
         for graph in self.graphs["wavefronts"]:
             graph.set_data([], [])
+
+        # Delay graph
+        self.scale_delay_plot()
+        delay_max = (self.n_elements - 1) * self.pitch / self.c
+        if delay_max > 0:
+            delay_values = self.delays / delay_max
+        else:
+            delay_values = np.zeros_like(self.delays)
+
+        self._update_stem_plot(
+            self.graphs["delay"],
+            np.arange(self.n_elements) + 1,
+            delay_values,
+        )
 
     def draw_sources(self):
         """
@@ -213,8 +233,8 @@ class ArrayWaves:
         """
         # Draw sources
         self.graphs["sources"].set_data(
-            np.zeros_like(self.x_sources),
             self.x_sources,
+            np.zeros_like(self.x_sources),
         )
 
         # Create new empty wavefront graphs
@@ -225,6 +245,13 @@ class ArrayWaves:
             self.axes["wavefronts"].plot([], [], **LINEFORMAT["wavefront"])[0]
             for _ in range(self.n_elements)
         ]
+
+    def scale_delay_plot(self):
+        """Scale axes on element delay plots."""
+        self.axes["delay"].set(
+            xlim=(0.5, self.n_elements + 0.5),
+            ylim=(0, 1),
+        )
 
     def update_resulttext(self):
         """Update text box with array parameters."""
@@ -237,27 +264,46 @@ class ArrayWaves:
         for line_no, value in enumerate(value_lines):
             self.graphs["text"][(line_no, 2)].get_text().set_text(value)
 
+    def _update_stem_plot(self, graph, x, y, base=0):
+        """Update values on a stem-plot.
+
+        Parameters
+        ----------
+        graph : StemContainer
+            Plot values returned from stem-command
+        x : 1D array of float
+            x-values
+        y : 1D array of float
+            y-values
+        """
+        markerline, stemlines, baseline = graph
+
+        baseline.set_data(x, base * np.ones_like(y))
+        markerline.set_data(x, y)
+        stemlines.set_segments(
+            [[[xi, base], [xi, yi]] for xi, yi in zip(x, y)]
+        )
+
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close(FIGURE_NAME)
 
-        wavefront_row = ["wavefronts"] * 6
+        wavefront_row = ["wavefronts"] * 4
 
         fig, axes = plt.subplot_mosaic(
             [
-                ["."] + wavefront_row,
                 ["text"] + wavefront_row,
-                ["text"] + wavefront_row,
-                ["."] + wavefront_row,
+                ["delay"] + wavefront_row,
                 ["."] + wavefront_row,
                 ["logo"] + wavefront_row,
             ],
-            figsize=(18, 6),
+            figsize=(16, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
 
         graphs = self._create_wavefront_plot(axes["wavefronts"])
+        graphs["delay"] = self._create_delay_plot(axes["delay"])
         graphs["text"] = self._create_resulttextbox(axes["text"])
         self._create_logo(axes["logo"])
 
@@ -275,12 +321,10 @@ class ArrayWaves:
 
         # Axes
         ax.set(
-            xlabel="Distance",
-            ylabel="Transducer Array",
-            title="Wavefront image",
+            title="Transducer Array",
             aspect="equal",
-            xlim=(0, self.z_max),
-            ylim=self.x_ax_range,
+            xlim=self.x_ax_range,
+            ylim=(self.z_max, 0),
         )
 
         # Remove axes, but keep coloured background
@@ -306,18 +350,45 @@ class ArrayWaves:
             for _ in range(self.n_elements)
         ]
 
-        # Acoustic axis, normally not changed
-        graphs["acoustic_axis"] = ax.plot(
-            [0, self.z_max],
-            [0, 0],
-            **LINEFORMAT["indicator"],
-        )[0]
+        # Acoustic axis, disabled
+        # graphs["acoustic_axis"] = ax.plot(
+        #     [0, 0],
+        #     [0, self.z_max],
+        #     **LINEFORMAT["indicator"],
+        # )[0]
 
         # Sources, steering direction, changed during runtime
         graphs["sources"] = ax.plot([], [], **LINEFORMAT["source"])[0]
         graphs["direction"] = ax.plot([], [], **LINEFORMAT["indicator"])[0]
 
         return graphs
+
+    def _create_delay_plot(self, ax):
+        """
+        Create axis for displaying element delays.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis where element delays are plotted.
+
+        Returns
+        -------
+        StemContainer
+            Stem plot object that will be updated with delay data.
+        """
+        ax.set(
+            xlabel="Element no.",
+            ylabel=r"Delay [rel.]",
+            title="Element delays",
+        )
+
+        ax.grid(True, which="major")
+        ax.grid(True, which="minor")
+
+        graph = ax.stem([0], [1], **STEMFORMAT["main"])
+
+        return graph
 
     def _create_resulttextbox(self, ax):
         """
@@ -399,9 +470,6 @@ class ArrayWaves:
                 transform=ax.transAxes,
             )
 
-    def _refresh(self):
-        self.fig.canvas.draw_idle()
-
     # === Widget callbacks =========================================
     def _run_animation_callback(self, button):
         self.run_animation()
@@ -412,17 +480,18 @@ class ArrayWaves:
     def _radius_change_callback(self, change):
         self.stop_animation()
         self.display_wavefront(change["new"])
-        self._refresh()
+        self.fig.canvas.draw_idle()
 
     def _steering_change_callback(self, change):
         self.stop_animation()
         self.steering_angle = np.radians(change["new"])
+
         self.draw_wavefield_axis()
         self.update_resulttext()
 
         radius = self.widgets["radius"].value
         self.display_wavefront(radius)
-        self._refresh()
+        self.fig.canvas.draw_idle()
 
     # === Interactive widgets ======================================
     def _create_widgets(self):

@@ -532,15 +532,22 @@ class Transducer:
         ax.add_patch(patch)
         return patch
 
+    def _set_cell_table(self, table, row, col, text):
+        """Insert text at (row, col) in a table."""
+        table[(row, col)].get_text().set_text(text)
+
     def update_resulttext(self):
         """Update text box with array parameters."""
-
         LEGEND_COL = 0
         SYMBOL_COL = 1
         VALUE_COL = 2
         WAVELENGTH_COL = 3
+        WIDTH_ROW = 2
+        HEIGHT_ROW = 3
 
-        value_lines = [
+        table = self.graphs["text"]
+
+        value_texts = [
             f"{self.frequency/1e3:.0f} kHz",
             f"{self.wavelength*1e3:.1f} mm",
             f"{self.width*1e3:.0f} mm",
@@ -551,62 +558,36 @@ class Transducer:
             f"{self.db_sidelobe:.1f} dB",
         ]
 
-        wavelength_lines = [
-            "",
-            "",
-            rf"{self.width_lambda:.1f}$\lambda$",
-            rf"{self.height_lambda:.1f}$\lambda$",
-            "",
-            "",
-            "",
-            "",
-        ]
+        width_wavelength_text = rf"{self.width_lambda:.1f}$\lambda$"
+        height_wavelength_text = rf"{self.height_lambda:.1f}$\lambda$"
 
-        legend_lines = [
-            self.graphs["text"][(row, LEGEND_COL)].get_text().get_text()
-            for row in range(len(value_lines))
-        ]
-
-        symbol_lines = [
-            self.graphs["text"][(row, SYMBOL_COL)].get_text().get_text()
-            for row in range(len(value_lines))
-        ]
-
-        if not self.circular:
-            symbol_lines[2] = "w"
-            symbol_lines[3] = "h"
-            legend_lines[2] = "Width"
-            legend_lines[3] = "Height"
+        if self.circular:
+            shape_texts = (("Diameter", "D"), ("", ""))
+            wavelength_texts = (width_wavelength_text, "")
+            value_texts[HEIGHT_ROW] = ""
         else:
-            symbol_lines[2] = "D"
-            symbol_lines[3] = ""
-            legend_lines[2] = "Diameter"
-            legend_lines[3] = ""
-            value_lines[3] = ""
-            wavelength_lines[3] = ""
+            shape_texts = (("Width", "w"), ("Height", "h"))
+            wavelength_texts = (width_wavelength_text, height_wavelength_text)
 
-        assert len(legend_lines) == len(value_lines) == len(wavelength_lines)
+        for line_no, value_text in enumerate(value_texts):
+            self._set_cell_table(table, line_no, VALUE_COL, value_text)
 
-        for line_no, (
-            legend_txt,
-            symbol_txt,
-            value_txt,
-            wavelength_txt,
-        ) in enumerate(
-            zip(legend_lines, symbol_lines, value_lines, wavelength_lines)
+        for line_no, (legend_text, symbol_text) in zip(
+            (WIDTH_ROW, HEIGHT_ROW),
+            shape_texts,
         ):
+            self._set_cell_table(table, line_no, LEGEND_COL, legend_text)
+            self._set_cell_table(table, line_no, SYMBOL_COL, symbol_text)
 
-            self.graphs["text"][(line_no, LEGEND_COL)].get_text().set_text(
-                legend_txt
-            )
-            self.graphs["text"][(line_no, SYMBOL_COL)].get_text().set_text(
-                symbol_txt
-            )
-            self.graphs["text"][(line_no, VALUE_COL)].get_text().set_text(
-                value_txt
-            )
-            self.graphs["text"][(line_no, WAVELENGTH_COL)].get_text().set_text(
-                wavelength_txt
+        for line_no, wavelength_text in zip(
+            (WIDTH_ROW, HEIGHT_ROW),
+            wavelength_texts,
+        ):
+            self._set_cell_table(
+                table,
+                line_no,
+                WAVELENGTH_COL,
+                wavelength_text,
             )
 
     def _create_resulttextbox(self, ax):
@@ -662,42 +643,6 @@ class Transducer:
             table[(r, 2)].set_text_props(ha="left")
 
         return table
-
-    # def _create_resulttextbox(self, ax):
-    #     """
-    #     Create and attach a formatted results text box to an Axes.
-
-    #     The text box is anchored to an axis and remains fixed relative to
-    #     the axes if the figure is resized.
-
-    #     Parameters
-    #     ----------
-    #     ax : Axis object
-    #         Axis where text is shown
-
-    #     Returns
-    #     -------
-    #     Matplotlib AnchoredText
-    #         Handle to text box
-    #     """
-    #     ax.axis("off")
-
-    #     # Create empty anchored text box
-    #     at = AnchoredText(
-    #         "Beam parameters coming here",
-    #         loc="upper center",
-    #         pad=0.4,
-    #         borderpad=0.2,
-    #         frameon=True,
-    #     )
-
-    #     at.patch.set_facecolor(COLOR["text_face"])
-    #     at.patch.set_edgecolor(COLOR["text_edge"])
-    #     at.patch.set_boxstyle("round")
-
-    #     ax.add_artist(at)
-
-    #     return at
 
     def _create_logo(self, ax):
         """
@@ -870,6 +815,8 @@ class Transducer:
                 ["transducer", "axial", "axial"],
                 ["transducer", "axial", "axial"],
                 ["transducer", "axial", "axial"],
+                ["transducer", "axial", "axial"],
+                ["text", "lateral", "beamprofile"],
                 ["text", "lateral", "beamprofile"],
                 ["text", "lateral", "beamprofile"],
                 ["logo", "lateral", "beamprofile"],

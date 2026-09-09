@@ -356,64 +356,6 @@ class Array:
 
         return
 
-    def interact(
-        self,
-        n_elements=None,
-        freq_khz=None,
-        pitch_mm=None,
-        db_range=None,
-        db_gain=None,
-        steering_angle_degrees=None,
-    ):
-        """
-        Scale inputs and  display the resulting response.
-
-        For interactive operation with dimensions in mm and frequency in kHz.
-          Existing values are retained if a parameter is omitted.
-
-        Parameters
-        ----------
-        freq_khz: float, optional
-            Frequency [kHz]
-        pitch_mm: float, optional
-            Array pitch [mm]. Distance between elements
-        db_range: float
-            Range on dB-axes
-        db_gain: float
-            Maximum on dB-axes
-        steering_angle_degrees : float
-            Steering angle [deg]
-        """
-        if n_elements is not None:
-            self.n_elements = int(n_elements)
-
-        if freq_khz is not None:
-            self.frequency = float(freq_khz) * 1e3
-
-        if pitch_mm is not None:
-            self.pitch = float(pitch_mm) * 1e-3
-
-        if steering_angle_degrees is not None:
-            self.steering_angle = np.radians(steering_angle_degrees)
-
-        if db_range is not None:
-            self.db_range = db_range
-
-        if db_gain is not None:
-            self.db_gain = db_gain
-
-        if any(
-            v is not None
-            for v in (n_elements, freq_khz, pitch_mm, steering_angle_degrees)
-        ):
-            self.update_values()
-
-        if any(v is not None for v in (db_range, db_gain)):
-            self.scale_intensity_plot()
-
-        if any(v is not None for v in (n_elements, pitch_mm)):
-            self.scale_delay_plot()
-
     # === Non-public methods ==========================================
     def _create_resulttextbox(self, ax):
         """
@@ -613,8 +555,8 @@ class Array:
 
         fig, axes = plt.subplot_mosaic(
             [
-                [".", "delay", "axial", "axial"],
-                [".", "delay", "axial", "axial"],
+                ["text", "delay", "axial", "axial"],
+                ["text", "delay", "axial", "axial"],
                 ["text", "beamprofile", "axial", "axial"],
                 ["text", "beamprofile", "axial", "axial"],
                 ["logo", "beamprofile", "axial", "axial"],
@@ -641,7 +583,34 @@ class Array:
 
         return fig, axes, graphs
 
-    # Interactive widgets
+    # === Widget callbacks ================================================
+    def _frequency_change_callback(self, change):
+        self.frequency = float(change["new"]) * 1e3
+        self.update_values()
+
+    def _n_elements_change_callback(self, change):
+        self.n_elements = int(change["new"])
+        self.update_values()
+        self.scale_delay_plot()
+
+    def _pitch_change_callback(self, change):
+        self.pitch = float(change["new"]) * 1e-3
+        self.update_values()
+        self.scale_delay_plot()
+
+    def _steering_angle_change_callback(self, change):
+        self.steering_angle = np.radians(change["new"])
+        self.update_values()
+
+    def _db_gain_change_callback(self, change):
+        self.db_gain = change["new"]
+        self.scale_intensity_plot()
+
+    def _db_range_change_callback(self, change):
+        self.db_range = change["new"]
+        self.scale_intensity_plot()
+
+    # === Interactive widgets ========================================
     def _create_widgets(self):
         """Create widgets for interactive operation."""
         title = "Beam-profile from Transducer Array"
@@ -671,6 +640,10 @@ class Array:
             description="No. of elements",
             **text_layout,
         )
+        n_elements_widget.observe(
+            self._n_elements_change_callback,
+            names="value",
+        )
 
         frequency_widget = widgets.BoundedFloatText(
             value=self.frequency / 1e3,
@@ -679,6 +652,10 @@ class Array:
             step=1,
             description="Frequency [kHz]",
             **text_layout,
+        )
+        frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
         )
 
         pitch_widget = widgets.BoundedFloatText(
@@ -689,6 +666,10 @@ class Array:
             description="Element pitch [mm]",
             **text_layout,
         )
+        pitch_widget.observe(
+            self._pitch_change_callback,
+            names="value",
+        )
 
         db_range_widget = widgets.BoundedFloatText(
             value=self.db_range,
@@ -698,6 +679,10 @@ class Array:
             description="Range [dB]",
             **text_layout,
         )
+        db_range_widget.observe(
+            self._db_range_change_callback,
+            names="value",
+        )
 
         db_gain_widget = widgets.BoundedFloatText(
             value=self.db_gain,
@@ -706,6 +691,10 @@ class Array:
             step=6,
             description="Gain [dB]",
             **text_layout,
+        )
+        db_gain_widget.observe(
+            self._db_gain_change_callback,
+            names="value",
         )
 
         steering_angle_widget = widgets.FloatSlider(
@@ -717,7 +706,12 @@ class Array:
             description="Steering angle [Deg.]",
             **slider_layout,
         )
+        steering_angle_widget.observe(
+            self._steering_angle_change_callback,
+            names="value",
+        )
 
+        # === Widget layout ==========================================
         array_parameter_column = widgets.VBox(
             [
                 frequency_widget,

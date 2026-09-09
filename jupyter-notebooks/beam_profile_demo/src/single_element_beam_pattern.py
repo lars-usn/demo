@@ -73,7 +73,6 @@ class Transducer:
         self.z_max = 100.0  # m    Max. depth to calculate
         self.x_max = 12.0  # m    Max. lateral dimension to calculate
         self.d_max = 200e-3  # m    Max. dimension on element display
-        self.theta_max = 90  # deg  Max. angle to calculate
         self.colormap = "inferno"
 
         self.z_axis = np.linspace(1, self.z_max, 400)
@@ -207,7 +206,7 @@ class Transducer:
         Parameters
         ----------
         x : array of float
-            Amplitue or power values
+            Amplitude or power values
         reference : float
             Reference value for dB calculation
         power : bool
@@ -216,7 +215,9 @@ class Transducer:
         x = np.asarray(x)
 
         if reference is None:
-            reference = np.max(x)
+            reference = np.nanmax(x)
+
+        reference = np.clip(abs(reference), 1e-20, None)
 
         scale = 20 if not power else 10
         arg = np.clip(np.abs(x), 1e-20, None)
@@ -226,13 +227,11 @@ class Transducer:
     def jinc(self, x):
         """jinc-function, Bessel-version of sinc, 2 J_1(pi x)/(pi x)."""
         x = np.asarray(x)
-        mask = np.abs(x) < 1e-10
-        x_safe = np.where(mask, 1.0, x)
 
-        j = 2 * sp.j1(np.pi * x_safe) / (np.pi * x_safe)
-        j[mask] = 1.0
+        with np.errstate(divide="ignore", invalid="ignore"):
+            j = 2 * sp.j1(np.pi * x) / (np.pi * x)
 
-        return j
+        return np.where(np.abs(x) > 1e-10, j, 1.0)
 
     # === Axial plane ===================
     def p_azimuth(self):
@@ -276,7 +275,7 @@ class Transducer:
         theta = self.theta
         arg = self.width_lambda * np.sin(theta)
         p = 1 / r * self.jinc(arg)
-        p[:, : self.rayleigh_index] = 0
+        p[:, : self.rayleigh_index] = np.nan
         return p
 
     def p_line(self, aperture_lambda):
@@ -292,7 +291,7 @@ class Transducer:
         theta = self.theta
         arg = aperture_lambda * np.sin(theta)
         p = np.sinc(arg) / r
-        p[:, : self.rayleigh_index] = 0
+        p[:, : self.rayleigh_index] = np.nan
         return p
 
     # === Lateral plane ===================
@@ -402,8 +401,8 @@ class Transducer:
         p_el = self.p_elevation()
 
         p_max = max(
-            np.max(np.abs(p_az)),
-            np.max(np.abs(p_el)),
+            np.nanmax(np.abs(p_az)),
+            np.nanmax(np.abs(p_el)),
         )
 
         # Axial
@@ -439,7 +438,12 @@ class Transducer:
         self.beamwidth = xl[1] - xl[0]
 
         self.x_sidelobe, self.y_sidelobe = curve_analysis.sidelobe()
-        self.db_sidelobe = float(self.db(self.y_sidelobe, reference=p.max()))
+
+        self.db_sidelobe = float(
+            self.db(self.y_sidelobe,
+                    reference=np.nanmax(p),
+                    ),
+        )
 
         # Update messages
         resulttext = self.update_resulttext()
@@ -560,96 +564,7 @@ class Transducer:
 
         return result_text
 
-    def interact(
-        self,
-        circular=None,
-        azimuth=None,
-        freq_khz=None,
-        width_mm=None,
-        height_mm=None,
-        distance=None,
-        db_range=None,
-        db_gain=None,
-    ):
-        """
-        Scale inputs and  display the resulting response.
-
-        For interactive operation with dimensions in mm and frequency in kHz.
-          Existing values are retained if a parameter is omitted.
-
-        Parameters
-        ----------
-        circular: bool, optional
-            Circular (True) or rectangular (False) aperture
-        azimuth: bool, optional
-            Azimuth (True) or elevation (False) orientation
-        freq_khz: float, optional
-            Frequency in kHz
-        width_mm: float, optional
-            Transducer element width (azimuth, x) in mm
-        height_mm: float, optional
-            Transducer element height (elevation, y) in mm
-        distance: float, optional
-            Reference depth in m
-        db_range: float
-            Range on dB-axes
-        db_gain: float
-            Maximum on dB-axes
-        """
-        if circular is not None:
-            self.circular = circular
-
-        if azimuth is not None:
-            self.azimuth = azimuth
-
-        if freq_khz is not None:
-            self.frequency = float(freq_khz) * 1e3
-
-        if width_mm is not None:
-            self.width = float(width_mm) * 1e-3
-
-        if height_mm is not None:
-            self.height = float(height_mm) * 1e-3
-
-        if distance is not None:
-            self.distance = float(distance)
-
-        if db_range is not None:
-            self.db_range = db_range
-
-        if db_gain is not None:
-            self.db_gain = db_gain
-
-        if any(
-            v is not None
-            for v in (
-                circular,
-                azimuth,
-                width_mm,
-                height_mm,
-            )
-        ):
-            self.update_transducer_illustration()
-
-        if any(
-            v is not None
-            for v in (
-                circular,
-                azimuth,
-                freq_khz,
-                width_mm,
-                height_mm,
-                distance,
-            )
-        ):
-            self.update_values()
-
-        if any(v is not None for v in (db_range, db_gain)):
-            self.update_intensity_scale()
-
     # === Non-public methods ==========================================
-    # Graphs and results
-
     def _create_transducer_illustration(self, ax):
         """
         Create colored patch to illustrate transducer.
@@ -937,7 +852,44 @@ class Transducer:
 
         return fig, axes, graphs
 
-    # Interactive widgets
+    # === Widget callbacks =========================================
+    def _frequency_change_callback(self, change):
+        self.frequency = float(change["new"]) * 1e3
+        self.update_values()
+
+    def _shape_change_callback(self, change):
+        self.circular = change["new"]
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _orientation_change_callback(self, change):
+        self.azimuth = change["new"]
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _width_change_callback(self, change):
+        self.width = float(change["new"]) * 1e-3
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _height_change_callback(self, change):
+        self.height = float(change["new"]) * 1e-3
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _distance_change_callback(self, change):
+        self.distance = float(change["new"])
+        self.update_values()
+
+    def _db_gain_change_callback(self, change):
+        self.db_gain = change["new"]
+        self.update_intensity_scale()
+
+    def _db_range_change_callback(self, change):
+        self.db_range = change["new"]
+        self.update_intensity_scale()
+
+    # === Interactive widgets ======================================
     def _create_widgets(self):
         """
         Create widgets for interactive operation.
@@ -980,6 +932,10 @@ class Transducer:
             description="Shape",
             **left_layout,
         )
+        shape_widget.observe(
+            self._shape_change_callback,
+            names="value",
+        )
 
         orientation_widget = widgets.Dropdown(
             options=[
@@ -990,6 +946,10 @@ class Transducer:
             description="Orientation",
             **left_layout,
         )
+        orientation_widget.observe(
+            self._orientation_change_callback,
+            names="value",
+        )
 
         db_range_widget = widgets.BoundedFloatText(
             value=self.db_range,
@@ -999,6 +959,10 @@ class Transducer:
             description="Range [dB]",
             **left_layout,
         )
+        db_range_widget.observe(
+            self._db_range_change_callback,
+            names="value",
+        )
 
         db_gain_widget = widgets.BoundedFloatText(
             value=self.db_gain,
@@ -1007,6 +971,10 @@ class Transducer:
             step=6,
             description="Gain [dB]",
             **left_layout,
+        )
+        db_gain_widget.observe(
+            self._db_gain_change_callback,
+            names="value",
         )
 
         left_col = widgets.VBox(
@@ -1029,6 +997,10 @@ class Transducer:
             description="Frequency [kHz]",
             **right_layout,
         )
+        frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
 
         width_widget = widgets.FloatSlider(
             value=self.width * 1e3,
@@ -1038,6 +1010,10 @@ class Transducer:
             readout_format=".0f",
             description="Width / Diameter [mm]",
             **right_layout,
+        )
+        width_widget.observe(
+            self._width_change_callback,
+            names="value",
         )
 
         height_widget = widgets.FloatSlider(
@@ -1049,6 +1025,10 @@ class Transducer:
             description="Height [mm]",
             **right_layout,
         )
+        height_widget.observe(
+            self._height_change_callback,
+            names="value",
+        )
 
         distance_widget = widgets.FloatSlider(
             value=self.distance,
@@ -1058,6 +1038,10 @@ class Transducer:
             readout_format=".0f",
             description="Distance [m]",
             **right_layout,
+        )
+        distance_widget.observe(
+            self._distance_change_callback,
+            names="value",
         )
 
         right_col = widgets.VBox(

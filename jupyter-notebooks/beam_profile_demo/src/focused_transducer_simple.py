@@ -7,360 +7,349 @@ import matplotlib.image as mpimg
 import ipywidgets as widgets
 from pathlib import Path
 
-# Internal libraries
-import beamplot_utilities as bpu
-
 COLOR = {
-    "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
-    "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
+    "aperture": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
+    "baffle": "lightgrey",
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
-    "text_edge": "#7AA6B8",
-    "background": "#EAF6FF",  # DDF2FF, E6F7FA F0FBFF
 }
 
 LINEFORMAT = {
     "aperture": {
-        "color": COLOR["transducer"],
+        "color": COLOR["aperture"],
         "linestyle": "solid",
-        "linewidth": 3,
+        "linewidth": 2.0,
     },
-    "marker": {"color": "C1", "linestyle": "solid"},
+    "focus": {"color": "C1", "linestyle": "solid"},
+    "rayleigh": {"color": "red", "linestyle": "dashed"},
     "helper": {"color": "darkgrey", "linestyle": "dashed"},
-    "beam": {"color": "C0", "linestyle": "dashed"},
+    "beam": {"color": "C0", "linestyle": "solid"},
 }
 
+FILL = {"focalzone": {"color": "C1", "alpha": 0.7}}
 
 LOGOFILE = "usn-logo-purple.png"
 FIGURE_NAME = "Transducer Focusing"
 
 
-class WidgetLayout():
-    """Container for widgets and layout."""
-
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
-
-
-class Transducer():
+class Transducer:
     """Define, calculate, and display transducer beam profile."""
 
     def __init__(self, create_widgets=False):
 
         # Transducer definition
-        self.diameter = 20e-3   # m   Element diameter
-        self.frequency = 3e6    # Hz  Ultrasound frequency
-        self.focal_length = 50e-3    # m  Focal length
+        self.diameter = 20e-3  # m   Element diameter
+        self.frequency = 3e6  # Hz  Ultrasound frequency
+        self.focal_length = 50e-3  # m  Focal length
 
-        self.c = 1540           # m/s Speed of soundin load medium
+        self.c = 1540  # m/s Speed of sound in load medium
 
         # Display scale
-        self.x_max = 40e-3
+        self.x_max = 50e-3
         self.z_max = 200e-3
-        self.z_min = -3e-3
+        self.z_min = -2e-3
 
-        # Colors and markers
-        self.helper_line = {'color': 'darkgrey',
-                            'linestyle': 'dashed'}
-
-        self.marker_line = {'color': 'C1',
-                            'linestyle': 'solid'}
-
-        self.beam_line = {'color': 'C0',
-                          'linestyle': 'solid'}
-
-        self.focalzone_fill = {'color': 'C1',
-                               'alpha': 0.7}
-
-        self.baffle_fill = {'color': 'grey'}
+        self.z_axis = np.linspace(0, self.z_max, 300)
 
         # Initialisation
-        ax, fig = self._initialise_graphs()
-        self.axes = ax
-        self.fig = fig
-        self.scale_axes()
+        self.fig, self.axes, self.graphs = self._initialise_graphs()
+        self.update_lines()
+        self.update_resulttext()
 
         if create_widgets:
-            self.widget = self._create_widgets()
+            self.widget_layout, self.widgets = self._create_widgets()
 
     # === Calculated parameters ===========================
-    def a(self):
+    @property
+    def radius(self):
         """Calculate transducer radius."""
-        return self.diameter/2
+        return self.diameter / 2
 
+    @property
     def wavelength(self):
         """Calculate acoustic wavelength."""
-        return self.c/self.frequency
+        return self.c / self.frequency
 
-    def d_lambda(self):
+    @property
+    def diameter_wavelength(self):
         """Calculate aperture width relative to wavelength."""
-        return self.diameter / self.wavelength()
+        return self.diameter / self.wavelength
 
-    def theta_0(self):
+    @property
+    def opening_angle(self):
         """Calculate opening angle from theory, two-sided, -12 dB."""
-        return 2*self.wavelength()/self.diameter
+        return 2 * self.wavelength / self.diameter
 
+    @property
     def f_number(self):
         """Calculate numeric aperture (f-number)."""
-        return self.focal_length/self.diameter
+        return self.focal_length / self.diameter
 
-    def z_r(self):
+    @property
+    def rayleigh_distance(self):
         """Calculate Rayleigh distance, far-field limit."""
-        return self.diameter**2/(2*self.wavelength())
+        return self.diameter**2 / (2 * self.wavelength)
 
+    @property
     def beamwidth(self):
-        """Estimate beam width."""
-        return self.theta_0()*self.focal_length
+        """Estimate beam width from opening angle."""
+        return self.opening_angle * self.focal_length
 
+    @property
     def focalzone(self):
-        """Find limits of the focal zone."""
-        z1 = self.focal_length / (1 + self.theta_0()*self.f_number())
-        x1 = z1*self.theta_0()/2
+        """
+        Find limits of the focal zone.
+        Returns results as corners of ploygon
 
-        z2 = self.focal_length / (1 - self.theta_0()*self.f_number())
-        x2 = z2*self.theta_0()/2
+        """
+        c = self.opening_angle * self.f_number
+        if c >= 1:
+            return np.full((4, 2), np.nan)
 
-        return [np.array([z1, z2]), np.array([x1, x2])]
+        z1 = self.focal_length / (1 + c)
+        x1 = z1 * self.opening_angle / 2
 
+        z2 = self.focal_length / (1 - c)
+        x2 = z2 * self.opening_angle / 2
+
+        z = np.array([z1, z2, z2, z1])
+        x = np.array([x1, x2, -x2, -x1])
+
+        return np.column_stack([z, x])
+
+    @property
     def focalzone_length(self):
-        """Fnd length of focal zone."""
-        z, x = self.focalzone()
+        """Find length of focal zone."""
+        fz = self.focalzone
+        z = fz[:, 0]
 
-        return z[1]-z[0]
+        return z.max() - z.min()
 
+    @property
     def focalzone_length_approx(self):
         """Calculate approximate length of focal zone."""
-        return 4 * self.wavelength() * self.f_number()**2
+        return 4 * self.wavelength * self.f_number**2
 
-    # === Calculated parameteres ===================
-
-    def z(self):
-        """Define depth-axis (z)."""
-        return np.linspace(0, self.z_max, 300)
-
+    # === Calculated parameters ===================
     def aperture_curve(self):
         """Calculate position of aperture."""
-        phi_max = np.arcsin(self.a()/self.focal_length)
-        phi = np.linspace(-phi_max, phi_max, 301)
+        phi_max = np.arcsin(self.radius / self.focal_length)
+        phi = np.linspace(-phi_max, phi_max, 101)
 
         x = self.focal_length * np.sin(phi)
-        z = self.focal_length * (1-np.cos(phi))
+        z = self.focal_length * (1 - np.cos(phi))
 
-        return [z, x]
+        return z, x
 
     def diffraction_curve(self):
         """Calculate outer beam profile from diffraction (opening angle)."""
-        return self.z() * np.tan(self.theta_0()/2)
+        return self.z_axis * np.tan(self.opening_angle / 2)
 
     def focusing_curve(self):
         """Calculate outer beam profile from focusing."""
-        return self.a() * (1 - self.z() / self.focal_length)
+        return self.radius * (1 - self.z_axis / self.focal_length)
 
     def beam_curve(self):
         """Estimate beam profile from combined opening angle and focusing."""
-        return np.maximum(abs(self.diffraction_curve()),
-                          abs(self.focusing_curve()))
+        return np.maximum(
+            abs(self.diffraction_curve()), abs(self.focusing_curve())
+        )
 
     # === Commands =============================
-    def display(self):
-        """Display beam pattern in graphs."""
-        self._remove_old_artists()
-        ax = self.axes['beam']
+    def update_lines(self):
+        """Update graph with beam pattern and guide lines."""
 
-        graph = {}
-        graph["aperture"] = ax.plot([], [], **LINEFORMAT["aperture"])
+        # Guide lines
+        focal_length_mm = self.focal_length * np.ones(2) * 1e3
+        self.graphs["focus"].set_xdata(focal_length_mm)
 
-        xlim = ax.get_xlim()
-        ax.axvspan(xmin=xlim[0], xmax=0, **self.baffle_fill)
-        ax.fill_betweenx(y=x_a*1e3, x1=z_a*1e3, color=self.aperture_color)
+        rayleigh_distance_mm = self.rayleigh_distance * np.ones(2) * 1e3
+        self.graphs["rayleigh_distance"].set_xdata(rayleigh_distance_mm)
 
-        # Mark focal length and Rayleigh distances
-        ax.axvline(x=self.focal_length*1e3, **self.marker_line)
-        ax.axvline(x=self.z_r()*1e3, **self.helper_line)
+        diffraction_mm = self.diffraction_curve() * 1e3
+        for graph, sign in zip(self.graphs["diffraction"], [-1, 1]):
+            graph.set_ydata(sign * diffraction_mm)
 
-        # Draw beam limits
-        z = self.z()*1e3
-        x_d = self.diffraction_curve() * 1e3
-        x_f = self.focusing_curve() * 1e3
-        x_b = self.beam_curve() * 1e3
+        # Beam
+        beam_mm = self.beam_curve() * 1e3
+        for graph, sign in zip(self.graphs["beam"], [-1, 1]):
+            graph.set_ydata(sign * beam_mm)
 
-        ax.plot(z, x_d, z, -x_d, **self.helper_line)
-        ax.plot(z, x_f, z, -x_f, **self.helper_line)
-        ax.plot(z, x_b, z, -x_b, **self.beam_line)
+        # Aperture
+        z, x = self.aperture_curve()
+        z_mm = z * 1e3
+        x_mm = x * 1e3
+        self.graphs["aperture"].set_data(z_mm, x_mm)
 
-        # Mark focal zone
-        z_fz, x_fz = self.focalzone()
-        z_fz = np.concatenate((z_fz, np.flip(z_fz)))
-        x_fz = np.concatenate((x_fz, np.flip(-x_fz)))
-        ax.fill(z_fz*1e3, x_fz*1e3, **self.focalzone_fill)
+        z_fill_mm = np.pad(z_mm, (1, 1), "constant", constant_values=0)
+        x_fill_mm = np.pad(x_mm, (1, 1), "edge")
+        aperture_fill = np.column_stack([z_fill_mm, x_fill_mm])
+        self.graphs["aperture_fill"].set_xy(aperture_fill)
 
-        self._resulttext()
+        # Focal zone
+        focal_zone_mm = self.focalzone * 1e3
+        self.graphs["focalzone"].set_xy(focal_zone_mm)
 
-        return
+    def update_resulttext(self):
+        """Update text box with array parameters."""
 
-    def scale_axes(self):
-        """Change scales of all graphs."""
-        ax = self.axes
+        value_lines = [
+            f"{self.frequency/1e6:.2f} MHz",
+            rf"{self.wavelength*1e6:.0f} $\mu$m",
+            f"{self.diameter*1e3:.1f} mm",
+            f"{self.focal_length*1e3:.0f} mm",
+            f"{self.focal_length/self.diameter:.1f}",
+            f"{self.rayleigh_distance*1e3:.0f} mm",
+            rf"{np.degrees(self.opening_angle):.1f}$^\circ$",
+            f"{self.beamwidth*1e3:.1f} mm",
+            "",
+            "",
+            f"{self.focalzone_length*1e3:.1f} mm",
+        ]
 
-        ax['beam'].set(ylim=self.x_max*np.array([-1, 1])*1e3,
-                       xlim=np.array([self.z_min, self.z_max])*1e3)
+        for line_no, value in enumerate(value_lines):
+            self.graphs["text"][(line_no, 2)].get_text().set_text(value)
 
-        return 0
+        lambda_symbol = r"$\lambda$"
 
-    def interact(self,
-                 diameter=None,
-                 frequency=None,
-                 focal_length=None,
-                 c=None,
-                 ):
-        """Scale inputs and  display results.
+        self.graphs["text"][(2, 3)].get_text().set_text(
+            f"{self.diameter_wavelength:.1f} " + lambda_symbol,
+        )
 
-        For interactive operation with  dimensions in mm and frequency in kHz.
-        Existing values are used if a parameter is omitted.
+        self.graphs["text"][(7, 3)].get_text().set_text(
+            f"{self.beamwidth/self.wavelength:.1f} " + lambda_symbol,
+        )
+
+    # === Non-public methods ==========================================
+    def _create_resulttextbox(self, ax):
+        """
+        Create and attach a formatted results text box to an Axes.
+
+        The text box is anchored to an axis and remains fixed relative to
+        the axes if the figure is resized.
 
         Parameters
         ----------
-        diameter: float, optional
-            Element diameter in mm
-        frequency: float, optional
-            Frequency in MHz
-        focal_length: float, optional
-            Transducer focal length in mm
-        c: float, optional
-            Speed of sound in m/s
+        ax : Axis object
+            Axis where text is shown
+
+        Returns
+        -------
+        matplotlib.table.Table
+            Handle to results table.
         """
-        if diameter is not None:
-            self.diameter = 1e-3*diameter
-        if frequency is not None:
-            self.frequency = 1e6*frequency
-        if focal_length is not None:
-            self.focal_length = 1e-3*focal_length
-        if c is not None:
-            self.c = c
+        ax.axis("off")
 
-        # Display result in graphs
-        self.display()
+        resulttext = [
+            ["Frequency", "$f$", "", ""],
+            ["Wavelength", r"$\lambda$", "", ""],
+            ["Diameter", "$D$", "", ""],
+            ["Focal length", "$F$", "", ""],
+            ["F-number", "$FN$", "", ""],
+            ["Rayleigh distance ", r"$z_R$", "", ""],
+            [
+                "Opening angle, -12 dB",
+                r"$\theta_{12dB}$",
+                "",
+                "",
+            ],
+            ["Beam width", "$D_F$", "", ""],
+            ["Focal zone", r"$z_{F1}$", "", ""],
+            ["", r"$z_{F2}$", "", ""],
+            ["Focal zone length", r"$L_F$", "", ""],
+        ]
 
-        return
+        table = ax.table(
+            cellText=resulttext,
+            loc="upper left",
+            cellLoc="left",
+            colWidths=[0.50, 0.15, 0.20, 0.15],
+        )
 
-    # === Non-public methods ==========================================
+        for cell in table.get_celld().values():
+            cell.set_linewidth(0.2)
+            cell.visible_edges = "TB"
+            cell.set_facecolor(COLOR["text_face"])
+            cell.PAD = 0.03
+            cell.set_text_props(fontfamily="DejaVu Sans")
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 1.1)
+
+        for r in range(len(resulttext)):
+            table[(r, 1)].set_text_props(ha="center")
+            table[(r, 2)].set_text_props(ha="left")
+
+        return table
+
     def _create_beam_plot(self, ax):
-        """Display beam pattern in graphs."""
+        """
+        Display beam pattern in graphs.
 
+        Axes are defined so that
+        Lateral axis, x -> Plot axis y
+        Depth axis z -> Plot axis x
+        """
         x_max_mm = self.x_max * 1e3
         z_lim_mm = np.array([self.z_min, self.z_max]) * 1e3
 
-        ax.set(aspect='equal',
-               xlabel='Depth (z) [mm]',
-               ylabel='Lateral (x) [mm]',
-               xlim=(-x_max_mm, x_max_mm),
-               ylim=z_lim_mm,
-               )
+        ax.set(
+            aspect="equal",
+            xlabel="Depth (z) [mm]",
+            ylabel="Lateral (x) [mm]",
+            ylim=(-x_max_mm, x_max_mm),
+            xlim=z_lim_mm,
+        )
+        ax.grid(visible="True", which="both")
 
-        ax.grid(visible='True', which='both')
+        # Baffle, static
+        ax.axvspan(xmin=z_lim_mm[0], xmax=0, color=COLOR["baffle"])
 
-        graph = {}
+        graphs = {}
 
-        # Aperture and baffle
-        graph["aperture"] = ax.plot([], [], **LINEFORMAT["aperture"])
-        graph["baffle"] = ax.axvspan(
-            xmin=z_lim_mm[0],
-            xmax=0,
-            **self.baffle_fill)
+        # Aperture
+        (graphs["aperture"],) = ax.plot([], [], **LINEFORMAT["aperture"])
+        (graphs["aperture_fill"],) = ax.fill([], [], color=COLOR["aperture"])
 
-        xlim = ax.get_xlim()
-        graph["aperture_fill"] = ax.fill_betweenx(
-            y=[],
-            x1=[],
-            color=COLOR["aperture"],
+        # Marker lines
+        graphs["focus"] = ax.axvline(x=10, **LINEFORMAT["focus"])
+        graphs["rayleigh_distance"] = ax.axvline(
+            x=20, **LINEFORMAT["rayleigh"]
         )
 
-        # Mark focal length and Rayleigh distances
-        graph["focus"] = ax.axvline([, **self.marker_line)
-        ax.axvline(x=self.z_r()*1e3, **self.helper_line)
-
-        # Draw beam limits
-        z=self.z()*1e3
-        x_d=self.diffraction_curve() * 1e3
-        x_f=self.focusing_curve() * 1e3
-        x_b=self.beam_curve() * 1e3
-
-        ax.plot(z, x_d, z, -x_d, **self.helper_line)
-        ax.plot(z, x_f, z, -x_f, **self.helper_line)
-        ax.plot(z, x_b, z, -x_b, **self.beam_line)
+        # Result lines. Depth-values (x axis) are fixed
+        z_axis_mm = self.z_axis * 1e3
+        dummy_data = np.zeros_like(z_axis_mm)
+        graphs["diffraction"] = ax.plot(
+            z_axis_mm,
+            dummy_data,
+            z_axis_mm,
+            dummy_data,
+            **LINEFORMAT["helper"],
+        )
+        graphs["beam"] = ax.plot(
+            z_axis_mm,
+            dummy_data,
+            z_axis_mm,
+            dummy_data,
+            **LINEFORMAT["beam"],
+        )
 
         # Mark focal zone
-        z_fz, x_fz=self.focalzone()
-        z_fz=np.concatenate((z_fz, np.flip(z_fz)))
-        x_fz=np.concatenate((x_fz, np.flip(-x_fz)))
-        ax.fill(z_fz*1e3, x_fz*1e3, **self.focalzone_fill)
+        (graphs["focalzone"],) = ax.fill([], [], **FILL["focalzone"])
 
-        self._resulttext()
-
-        return
-
-    # Graphs and results
-
-    def _resulttext(self):
-        """Text box for lateral profile results."""
-        z_f, x_f=self.focalzone()
-        result_text=(f'Frequency  $f$ = {self.frequency/1e6:.1f} MHz'
-                       '\n'
-                       fr'Wavelength  $\lambda$ = '
-                       fr'{self.wavelength()*1e3:.2f} mm'
-                       '\n'
-                       f'Diameter $D$ = {self.diameter*1e3:.0f} mm = '
-                       fr'{self.d_lambda():.1f} $\lambda$'
-                       '\n'
-                       r'Focal length $F$ = '
-                       f'{self.focal_length*1e3:.0f} mm'
-                       '\n'
-                       fr'F-number  $FN$ = '
-                       f'{self.focal_length/self.diameter:.1f}'
-                       '\n'
-                       r'Rayleigh distance $z_R$ = '
-                       f'{self.z_r()*1e3:.0f} mm'
-                       '\n\n'
-                       f'Opening angle, double-sided, -12 dB  '
-                       r' $\theta_{-12dB}$ = '
-                       fr'{np.degrees(self.theta_0()):.1f}$^\circ$'
-                       '\n'
-                       r'Beam width  $D_F$ = '
-                       f'{self.beamwidth()*1e3:.1f} mm'
-                       '\n'
-                       'Focal zone '
-                       '$z_{F1}$ = ' f'{z_f[0]*1e3:.1f} mm,    '
-                       '$z_{F2}$ = ' f'{z_f[1]*1e3:.1f} mm'
-                       '\n'
-                       r'Focal zone length $L_F$ = '
-                       f'{self.focalzone_length()*1e3:.1f} mm')
-
-        bpu.remove_fig_text(self.fig)
-        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.35)
-
-        return
+        return graphs
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
         plt.close(FIGURE_NAME)
 
-        beam_row=["beam"] * 2
-
-       # fig, axes = plt.subplot_mosaic(
-       #     [
-       #         ["text"] + wavefront_row,
-       #         ["delay"] + wavefront_row,
-       #         ["."] + wavefront_row,
-       #         ["logo"] + wavefront_row,
-       #     ],
-       #     figsize=(16, 6),
-       #     layout="constrained",
-       #     num=FIGURE_NAME,
-       # )
-
-        fig, axes=plt.subplot_mosaic(
+        beam_row = ["beam"] * 3
+        fig, axes = plt.subplot_mosaic(
             [
-                ["."] + beam_row,
+                ["text"] + beam_row,
+                ["text"] + beam_row,
+                ["text"] + beam_row,
                 ["logo"] + beam_row,
             ],
             figsize=(14, 6),
@@ -368,12 +357,11 @@ class Transducer():
             num=FIGURE_NAME,
         )
 
-        # Axial beam plot
-
-        graphs=self._create_beam_plot(axes["beam"])
+        graphs = self._create_beam_plot(axes["beam"])
+        graphs["text"] = self._create_resulttextbox(axes["text"])
         self._create_logo(axes["logo"])
 
-        return axes, fig
+        return fig, axes, graphs
 
     def _create_logo(self, ax):
         """
@@ -387,15 +375,15 @@ class Transducer():
         ax.set_axis_off()
 
         try:
-            base_path=Path(__file__).resolve().parent
+            base_path = Path(__file__).resolve().parent
         except NameError:
             # Running in Jupyter
-            base_path=Path.cwd()
+            base_path = Path.cwd()
 
-        logo_path=(base_path / ".." / "figs" / LOGOFILE).resolve()
+        logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
 
         if logo_path.exists():
-            img=mpimg.imread(logo_path)
+            img = mpimg.imread(logo_path)
             ax.imshow(img)
         else:
             ax.text(
@@ -407,78 +395,91 @@ class Transducer():
                 transform=ax.transAxes,
             )
 
-    def _remove_old_artists(self):
-        for ax in self.axes.values():
-            bpu.remove_artists(ax)
+    # Callback functions
+    def _refresh(self):
+        self.update_lines()
+        self.update_resulttext()
+        self.fig.canvas.draw_idle()
 
-        try:
-            self.cbar.remove()
-        except Exception:
-            pass
+    def _frequency_change_callback(self, change):
+        self.frequency = float(change["new"]) * 1e6
+        self._refresh()
 
-        return 0
+    def _diameter_change_callback(self, change):
+        self.diameter = float(change["new"]) / 1e3
+        self._refresh()
+
+    def _focal_length_change_callback(self, change):
+        self.focal_length = float(change["new"]) / 1e3
+        self._refresh()
 
     # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
-        title='Beam-profile from Focused Transducer. Simple Estimate'
-        title_widget=widgets.Label(title, style=dict(font_weight='bold'))
+        title = "Beam-profile from Focused Transducer. Simple Estimate"
+        title_widget = widgets.Label(title, style=dict(font_weight="bold"))
 
-        left_layout={'continuous_update': True,
-                       'layout': widgets.Layout(width='95%'),
-                       'style': {'description_width': '50%'}}
+        slider_layout = {
+            "continuous_update": True,
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "30%"},
+        }
 
-        right_layout={'continuous_update': True,
-                        'layout': widgets.Layout(width='95%'),
-                        'style': {'description_width': '30%'}}
+        right_width = "95%"
 
-        left_width='25%'
-        right_width='75%'
+        frequency_widget = widgets.FloatSlider(
+            min=0.1,
+            max=10.0,
+            value=self.frequency / 1e6,
+            step=0.1,
+            readout_format="3.1f",
+            description="Frequency [MHz]",
+            **slider_layout,
+        )
+        frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
 
-        # Left column widgets (Dropboxes, number boxes)
-        soundspeed_widget=widgets.BoundedFloatText(
-            value=1540, min=1000, max=2000, step=1,
-            description='Speed of sound [m/s]',
-            **left_layout)
+        diameter_widget = widgets.FloatSlider(
+            min=1,
+            max=50,
+            value=self.diameter * 1e3,
+            step=1,
+            readout_format=".0f",
+            description="Diameter [mm]",
+            **slider_layout,
+        )
+        diameter_widget.observe(
+            self._diameter_change_callback,
+            names="value",
+        )
 
-        frequency_widget=widgets.BoundedFloatText(
-            min=0.1, max=30.0, value=3.0, step=0.1,
-            readout_format='3.1f',
-            description='Frequency [MHz]',
-            **left_layout)
+        focal_length_widget = widgets.FloatSlider(
+            min=1,
+            max=150,
+            value=self.focal_length * 1e3,
+            step=1,
+            readout_format=".0f",
+            description="Focal length [mm]",
+            **slider_layout,
+        )
+        focal_length_widget.observe(
+            self._focal_length_change_callback,
+            names="value",
+        )
 
-        left_col=widgets.VBox([soundspeed_widget,
-                                 frequency_widget],
-                                layout=widgets.Layout(width=left_width))
+        widget_layout = widgets.VBox(
+            [frequency_widget, diameter_widget, focal_length_widget],
+            layout=widgets.Layout(width=right_width),
+        )
 
-        # Right column widgets (Sliders)
-        diameter_widget=widgets.FloatSlider(
-            min=1, max=50, value=20, step=1,
-            readout_format='.0f',
-            description='Diameter [mm]',
-            **right_layout)
+        widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        focal_length_widget=widgets.FloatSlider(
-            min=1, max=150, value=50, step=1,
-            readout_format='.0f',
-            description='Focal length [mm]',
-            **right_layout)
+        widget = {
+            "diameter": diameter_widget,
+            "frequency": frequency_widget,
+            "focal_length": focal_length_widget,
+        }
 
-        right_col=widgets.VBox([diameter_widget,
-                                  focal_length_widget],
-                                 layout=widgets.Layout(width=right_width))
-
-        widget_layout=widgets.HBox([left_col, right_col],
-                                     layout=widgets.Layout(width='80%'))
-
-        widget_layout=widgets.VBox([title_widget, widget_layout])
-
-        widget={'diameter': diameter_widget,
-                  'frequency': frequency_widget,
-                  'focal_length': focal_length_widget,
-                  'c': soundspeed_widget,
-                  }
-
-        w=WidgetLayout(widget_layout, widget)
-
-        return w
+        return widget_layout, widget

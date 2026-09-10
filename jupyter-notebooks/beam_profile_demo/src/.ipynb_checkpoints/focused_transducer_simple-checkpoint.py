@@ -3,35 +3,11 @@
 # Libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+from matplotlib.gridspec import GridSpec
 import ipywidgets as widgets
-from pathlib import Path
 
 # Internal libraries
 import beamplot_utilities as bpu
-
-COLOR = {
-    "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
-    "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
-    "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
-    "text_edge": "#7AA6B8",
-    "background": "#EAF6FF",  # DDF2FF, E6F7FA F0FBFF
-}
-
-LINEFORMAT = {
-    "aperture": {
-        "color": COLOR["transducer"],
-        "linestyle": "solid",
-        "linewidth": 3,
-    },
-    "marker": {"color": "C1", "linestyle": "solid"},
-    "helper": {"color": "darkgrey", "linestyle": "dashed"},
-    "beam": {"color": "C0", "linestyle": "dashed"},
-}
-
-
-LOGOFILE = "usn-logo-purple.png"
-FIGURE_NAME = "Transducer Focusing"
 
 
 class WidgetLayout():
@@ -60,6 +36,12 @@ class Transducer():
         self.z_min = -3e-3
 
         # Colors and markers
+        self.aperture_color = 'crimson'
+
+        self.aperture_line = {'color': self.aperture_color,
+                              'linestyle': 'solid',
+                              'linewidth': 3}
+
         self.helper_line = {'color': 'darkgrey',
                             'linestyle': 'dashed'}
 
@@ -167,8 +149,9 @@ class Transducer():
         self._remove_old_artists()
         ax = self.axes['beam']
 
-        graph = {}
-        graph["aperture"] = ax.plot([], [], **LINEFORMAT["aperture"])
+        # Draw aperture and baffle
+        z_a, x_a = self.aperture_curve()
+        ax.plot(z_a*1e3, x_a*1e3, **self.aperture_line)
 
         xlim = ax.get_xlim()
         ax.axvspan(xmin=xlim[0], xmax=0, **self.baffle_fill)
@@ -244,67 +227,12 @@ class Transducer():
         return
 
     # === Non-public methods ==========================================
-    def _create_beam_plot(self, ax):
-        """Display beam pattern in graphs."""
-
-        x_max_mm = self.x_max * 1e3
-        z_lim_mm = np.array([self.z_min, self.z_max]) * 1e3
-
-        ax.set(aspect='equal',
-               xlabel='Depth (z) [mm]',
-               ylabel='Lateral (x) [mm]',
-               xlim=(-x_max_mm, x_max_mm),
-               ylim=z_lim_mm,
-               )
-
-        ax.grid(visible='True', which='both')
-
-        graph = {}
-
-        # Aperture and baffle
-        graph["aperture"] = ax.plot([], [], **LINEFORMAT["aperture"])
-        graph["baffle"] = ax.axvspan(
-            xmin=z_lim_mm[0],
-            xmax=0,
-            **self.baffle_fill)
-
-        xlim = ax.get_xlim()
-        graph["aperture_fill"] = ax.fill_betweenx(
-            y=[],
-            x1=[],
-            color=COLOR["aperture"],
-        )
-
-        # Mark focal length and Rayleigh distances
-        graph["focus"] = ax.axvline([, **self.marker_line)
-        ax.axvline(x=self.z_r()*1e3, **self.helper_line)
-
-        # Draw beam limits
-        z=self.z()*1e3
-        x_d=self.diffraction_curve() * 1e3
-        x_f=self.focusing_curve() * 1e3
-        x_b=self.beam_curve() * 1e3
-
-        ax.plot(z, x_d, z, -x_d, **self.helper_line)
-        ax.plot(z, x_f, z, -x_f, **self.helper_line)
-        ax.plot(z, x_b, z, -x_b, **self.beam_line)
-
-        # Mark focal zone
-        z_fz, x_fz=self.focalzone()
-        z_fz=np.concatenate((z_fz, np.flip(z_fz)))
-        x_fz=np.concatenate((x_fz, np.flip(-x_fz)))
-        ax.fill(z_fz*1e3, x_fz*1e3, **self.focalzone_fill)
-
-        self._resulttext()
-
-        return
 
     # Graphs and results
-
     def _resulttext(self):
         """Text box for lateral profile results."""
-        z_f, x_f=self.focalzone()
-        result_text=(f'Frequency  $f$ = {self.frequency/1e6:.1f} MHz'
+        z_f, x_f = self.focalzone()
+        result_text = (f'Frequency  $f$ = {self.frequency/1e6:.1f} MHz'
                        '\n'
                        fr'Wavelength  $\lambda$ = '
                        fr'{self.wavelength()*1e3:.2f} mm'
@@ -342,70 +270,22 @@ class Transducer():
 
     def _initialise_graphs(self):
         """Initialise result graphs."""
-        plt.close(FIGURE_NAME)
+        plt.close('all')
+        fig = plt.figure(figsize=[12, 4],
+                         constrained_layout=True,
+                         num='Beam-Profile')
+        bpu.add_logo(fig)
 
-        beam_row=["beam"] * 2
-
-       # fig, axes = plt.subplot_mosaic(
-       #     [
-       #         ["text"] + wavefront_row,
-       #         ["delay"] + wavefront_row,
-       #         ["."] + wavefront_row,
-       #         ["logo"] + wavefront_row,
-       #     ],
-       #     figsize=(16, 6),
-       #     layout="constrained",
-       #     num=FIGURE_NAME,
-       # )
-
-        fig, axes=plt.subplot_mosaic(
-            [
-                ["."] + beam_row,
-                ["logo"] + beam_row,
-            ],
-            figsize=(14, 6),
-            layout="constrained",
-            num=FIGURE_NAME,
-        )
+        gs = GridSpec(1, 5, figure=fig)
+        ax = {'beam': fig.add_subplot(gs[0, 2:])}
 
         # Axial beam plot
+        ax['beam'].set(aspect='equal',
+                       xlabel='Depth (z) [mm]',
+                       ylabel='Lateral (x) [mm]')
+        ax['beam'].grid(visible='True', which='both')
 
-        graphs=self._create_beam_plot(axes["beam"])
-        self._create_logo(axes["logo"])
-
-        return axes, fig
-
-    def _create_logo(self, ax):
-        """
-        Load logo file and place in specified axis.
-
-        Parameters
-        ----------
-        ax : Axis object
-            Axis where logo image is shown
-        """
-        ax.set_axis_off()
-
-        try:
-            base_path=Path(__file__).resolve().parent
-        except NameError:
-            # Running in Jupyter
-            base_path=Path.cwd()
-
-        logo_path=(base_path / ".." / "figs" / LOGOFILE).resolve()
-
-        if logo_path.exists():
-            img=mpimg.imread(logo_path)
-            ax.imshow(img)
-        else:
-            ax.text(
-                0.5,
-                0.5,
-                "USN",
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-            )
+        return ax, fig
 
     def _remove_old_artists(self):
         for ax in self.axes.values():
@@ -421,64 +301,64 @@ class Transducer():
     # Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
-        title='Beam-profile from Focused Transducer. Simple Estimate'
-        title_widget=widgets.Label(title, style=dict(font_weight='bold'))
+        title = 'Beam-profile from Focused Transducer. Simple Estimate'
+        title_widget = widgets.Label(title, style=dict(font_weight='bold'))
 
-        left_layout={'continuous_update': True,
+        left_layout = {'continuous_update': True,
                        'layout': widgets.Layout(width='95%'),
                        'style': {'description_width': '50%'}}
 
-        right_layout={'continuous_update': True,
+        right_layout = {'continuous_update': True,
                         'layout': widgets.Layout(width='95%'),
                         'style': {'description_width': '30%'}}
 
-        left_width='25%'
-        right_width='75%'
+        left_width = '25%'
+        right_width = '75%'
 
         # Left column widgets (Dropboxes, number boxes)
-        soundspeed_widget=widgets.BoundedFloatText(
+        soundspeed_widget = widgets.BoundedFloatText(
             value=1540, min=1000, max=2000, step=1,
             description='Speed of sound [m/s]',
             **left_layout)
 
-        frequency_widget=widgets.BoundedFloatText(
+        frequency_widget = widgets.BoundedFloatText(
             min=0.1, max=30.0, value=3.0, step=0.1,
             readout_format='3.1f',
             description='Frequency [MHz]',
             **left_layout)
 
-        left_col=widgets.VBox([soundspeed_widget,
+        left_col = widgets.VBox([soundspeed_widget,
                                  frequency_widget],
                                 layout=widgets.Layout(width=left_width))
 
         # Right column widgets (Sliders)
-        diameter_widget=widgets.FloatSlider(
+        diameter_widget = widgets.FloatSlider(
             min=1, max=50, value=20, step=1,
             readout_format='.0f',
             description='Diameter [mm]',
             **right_layout)
 
-        focal_length_widget=widgets.FloatSlider(
+        focal_length_widget = widgets.FloatSlider(
             min=1, max=150, value=50, step=1,
             readout_format='.0f',
             description='Focal length [mm]',
             **right_layout)
 
-        right_col=widgets.VBox([diameter_widget,
+        right_col = widgets.VBox([diameter_widget,
                                   focal_length_widget],
                                  layout=widgets.Layout(width=right_width))
 
-        widget_layout=widgets.HBox([left_col, right_col],
+        widget_layout = widgets.HBox([left_col, right_col],
                                      layout=widgets.Layout(width='80%'))
 
-        widget_layout=widgets.VBox([title_widget, widget_layout])
+        widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        widget={'diameter': diameter_widget,
+        widget = {'diameter': diameter_widget,
                   'frequency': frequency_widget,
                   'focal_length': focal_length_widget,
                   'c': soundspeed_widget,
                   }
 
-        w=WidgetLayout(widget_layout, widget)
+        w = WidgetLayout(widget_layout, widget)
 
         return w

@@ -9,7 +9,7 @@ from pathlib import Path
 
 COLOR = {
     "aperture": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
-    "baffle": "#202020",
+    "baffle": "#B0B3B8",
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
 }
 
@@ -46,7 +46,7 @@ class Transducer:
         # Display scale
         self.x_max = 50e-3
         self.z_max = 200e-3
-        self.z_min = -2e-3
+        self.z_min = -5e-3
 
         self.z_axis = np.linspace(0, self.z_max, 300)
 
@@ -99,7 +99,7 @@ class Transducer:
         """Find depth limits of the focal zone."""
         c = self.opening_angle * self.f_number
         if c >= 1:
-            return np.full((4, 2), np.nan)
+            return np.nan, np.nan
 
         z1 = self.focal_length / (1 + c)
         z2 = self.focal_length / (1 - c)
@@ -114,6 +114,9 @@ class Transducer:
 
         """
         z1, z2 = self.focalzone_depth
+        
+        if np.isnan(z1) or np.isnan(z2):
+            return np.full((4, 2), np.nan)
 
         x1 = z1 * self.opening_angle / 2
         x2 = z2 * self.opening_angle / 2

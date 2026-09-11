@@ -9,7 +9,7 @@ from pathlib import Path
 
 COLOR = {
     "aperture": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
-    "baffle": "lightgrey",
+    "baffle": "#202020",
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
 }
 
@@ -95,20 +95,27 @@ class Transducer:
         return self.opening_angle * self.focal_length
 
     @property
+    def focalzone_depth(self):
+        """Find depth limits of the focal zone."""
+        c = self.opening_angle * self.f_number
+        if c >= 1:
+            return np.full((4, 2), np.nan)
+
+        z1 = self.focal_length / (1 + c)
+        z2 = self.focal_length / (1 - c)
+
+        return z1, z2
+
+    @property
     def focalzone(self):
         """
         Find limits of the focal zone.
         Returns results as corners of ploygon
 
         """
-        c = self.opening_angle * self.f_number
-        if c >= 1:
-            return np.full((4, 2), np.nan)
+        z1, z2 = self.focalzone_depth
 
-        z1 = self.focal_length / (1 + c)
         x1 = z1 * self.opening_angle / 2
-
-        z2 = self.focal_length / (1 - c)
         x2 = z2 * self.opening_angle / 2
 
         z = np.array([z1, z2, z2, z1])
@@ -192,6 +199,8 @@ class Transducer:
     def update_resulttext(self):
         """Update text box with array parameters."""
 
+        z1, z2 = self.focalzone_depth
+
         value_lines = [
             f"{self.frequency/1e6:.2f} MHz",
             rf"{self.wavelength*1e6:.0f} $\mu$m",
@@ -201,8 +210,8 @@ class Transducer:
             f"{self.rayleigh_distance*1e3:.0f} mm",
             rf"{np.degrees(self.opening_angle):.1f}$^\circ$",
             f"{self.beamwidth*1e3:.1f} mm",
-            "",
-            "",
+            f"{z1*1e3:.1f} mm",
+            f"{z2*1e3:.1f} mm",
             f"{self.focalzone_length*1e3:.1f} mm",
         ]
 

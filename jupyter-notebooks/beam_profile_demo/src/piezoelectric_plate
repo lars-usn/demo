@@ -1,0 +1,106 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+# Opprett en ny figur og et koordinatsystem
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# --- KOORDINATER ---
+# Voltmeteret til venstre
+v_x, v_y = 2.5, 3.5
+v_radius = 1.2
+
+# Den vannrette platen til høyre
+plate_x, plate_y = 6.0, 3.0
+plate_bredde, plate_hoyde = 3.0, 1.0
+
+# De to venstre hjørnene på plata
+ovre_venstre_x, ovre_venstre_y = plate_x, plate_y + plate_hoyde
+nedre_venstre_x, nedre_venstre_y = plate_x, plate_y
+
+# --- 1. TEGN VOLTMETER-HUSINGET ---
+voltmeter_sirkel = plt.Circle((v_x, v_y), v_radius, color='#f0f4f8', ec='black', lw=2.5, zorder=3)
+ax.add_patch(voltmeter_sirkel)
+
+# --- 2. TEGN MÅLESKALA (ANALOG BUE) ---
+vinkel_grader = np.linspace(150, 30, 20)
+vinkel_rad = np.radians(vinkel_grader)
+skala_radius = 0.9
+
+skala_x = v_x + skala_radius * np.cos(vinkel_rad)
+skala_y = v_y + skala_radius * np.sin(vinkel_rad)
+ax.plot(skala_x, skala_y, color='black', lw=1.5, zorder=4)
+
+# Tikkmerker på skalaen
+for rad in vinkel_rad[::3]:
+    tx_start = v_x + (skala_radius - 0.08) * np.cos(rad)
+    ty_start = v_y + (skala_radius - 0.08) * np.sin(rad)
+    tx_end = v_x + (skala_radius + 0.05) * np.cos(rad)
+    ty_end = v_y + (skala_radius + 0.05) * np.sin(rad)
+    ax.plot([tx_start, tx_end], [ty_start, ty_end], color='black', lw=1.5, zorder=4)
+
+# --- 3. TEGN VISEREN (PILEN) ---
+viser_vinkel_deg = 70 
+viser_vinkel_rad = np.radians(viser_vinkel_deg)
+viser_lengde = 0.85
+
+pil_x = v_x + viser_lengde * np.cos(viser_vinkel_rad)
+pil_y = v_y + viser_lengde * np.sin(viser_vinkel_rad)
+
+ax.annotate('', xy=(pil_x, pil_y), xytext=(v_x, v_y),
+            arrowprops=dict(arrowstyle="->", lw=3, color='crimson', mutation_scale=15),
+            zorder=5)
+
+senter_prikk = plt.Circle((v_x, v_y), 0.08, color='black', zorder=6)
+ax.add_patch(senter_prikk)
+
+
+# --- 4. TEGN DEN GRÅBRUNE PLATEN ---
+grabrune_plate = patches.Rectangle((plate_x, plate_y), plate_bredde, plate_hoyde, 
+                                  facecolor='#8B8580', edgecolor='black', lw=2, zorder=3)
+ax.add_patch(grabrune_plate)
+
+# Tekst på platen
+ax.text(plate_x + plate_bredde/2, plate_y + plate_hoyde/2, 'Plate', 
+        fontsize=14, fontweight='bold', color='white', ha='center', va='center', zorder=4)
+
+
+# --- 5. TEGN LEDNINGENE (TIL VENSTRE HJØRNER AV PLATA) ---
+# Rød ledning fra øvre venstre hjørne til toppen av voltmeteret
+rod_x = [ovre_venstre_x, ovre_venstre_x - 1.0, v_x, v_x]
+rod_y = [ovre_venstre_y, ovre_venstre_y + 1.0, ovre_venstre_y + 1.0, v_y + v_radius]
+ax.plot(rod_x, rod_y, color='red', lw=3, label='Øvre ledning')
+
+# Blå ledning fra nedre venstre hjørne til bunnen av voltmeteret
+bla_x = [nedre_venstre_x, nedre_venstre_x - 1.0, v_x, v_x]
+bla_y = [nedre_venstre_y, nedre_venstre_y - 1.0, nedre_venstre_y - 1.0, v_y - v_radius]
+ax.plot(bla_x, bla_y, color='blue', lw=3, label='Nedre ledning')
+
+# Koblingspunkter (på voltmeteret og på hjørnene av platen)
+ax.scatter([v_x, v_x], [v_y + v_radius, v_y - v_radius], color='black', s=60, zorder=5)
+ax.scatter([ovre_venstre_x, nedre_venstre_x], [ovre_venstre_y, nedre_venstre_y], color='black', s=50, zorder=5)
+
+
+# --- 6. TEGN DE VERTIKALE PILENE ---
+midt_x = plate_x + (plate_bredde / 2)
+
+# Pil over platen som peker NEDOVER mot toppen (fra y=5.0 ned til y=plate_y + plate_hoyde + 0.1)
+ax.annotate('', xy=(midt_x, plate_y + plate_hoyde + 0.1), xytext=(midt_x, 5.0),
+            arrowprops=dict(facecolor='darkred', edgecolor='darkred', width=4, headwidth=12, shrink=0.05),
+            zorder=4)
+
+# Pil under platen som peker UPPOVER mot bunnen (fra y=2.0 opp til y=plate_y - 0.1)
+ax.annotate('', xy=(midt_x, plate_y - 0.1), xytext=(midt_x, 2.0),
+            arrowprops=dict(facecolor='darkblue', edgecolor='darkblue', width=4, headwidth=12, shrink=0.05),
+            zorder=4)
+
+
+# --- 7. FORMATERING AV DIAGRAMMET ---
+ax.set_title('Voltmeter koblet til plate med retningspiler', fontsize=14, fontweight='bold', pad=15)
+ax.set_xlim(0, 11)
+ax.set_ylim(1, 6.5)
+ax.legend(loc='upper right')
+ax.axis('off')
+
+plt.tight_layout()
+plt.show()

@@ -1,151 +1,263 @@
+from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.patches import FancyArrowPatch
 
 FIGURE_NAME = "Piezoelectric Plate Demo"
 
 
-def draw_voltmeter():
-    """Draw voltmeter with pointer."""
-    voltmeter_circle = plt.Circle(
-        (voltmeter_x, voltmeter_y),
-        voltmeter_radius,
-        color='#f0f4f8',
-        ec='black',
-        lw=2.5,
-        zorder=3)
+class Voltmeter:
+    """Define and draw a voltmeter."""
 
-    ax.add_patch(voltmeter_circle)
+    def __init__(self, radius=1.0, x=2.0, y=0.0, value=0.0):
+        self.radius = radius
+        self.x = x
+        self.y = y
+        self.value = np.clip(value, -1.0, 1.0)
+        self.max_angle = 3 * pi / 4
+        self.pointer = None
 
-    scale_angle = np.radians(np.linspace(225, -45, 40))
-    scale_radius = 0.8 * voltmeter_radius
+    @property
+    def pointer_angle(self):
+        return pi / 2 - self.value * self.max_angle
 
-    scale_x = voltmeter_x + scale_radius * np.cos(scale_angle)
-    scale_y = voltmeter_y + scale_radius * np.sin(scale_angle)
-    ax.plot(
-        scale_x,
-        scale_y,
-        color='black',
-        lw=1.5,
-        zorder=4)
+    @property
+    def top(self):
+        return self.y + self.radius
 
-    for rad in scale_angle[::3]:
-        tx_start = voltmeter_x + (scale_radius - 0.08) * np.cos(rad)
-        ty_start = voltmeter_y + (scale_radius - 0.08) * np.sin(rad)
-        tx_end = voltmeter_x + (scale_radius + 0.05) * np.cos(rad)
-        ty_end = voltmeter_y + (scale_radius + 0.05) * np.sin(rad)
+    @property
+    def centre(self):
+        return self.x, self.y
 
-        ax.plot(
-            [tx_start, tx_end],
-            [ty_start, ty_end],
-            color='black',
-            lw=1.5,
+    @property
+    def bottom(self):
+        return self.y - self.radius
+
+    def draw(self, ax):
+        """Draw voltmeter with pointer."""
+        self.ax = ax
+
+        circle = plt.Circle(
+            self.centre,
+            self.radius,
+            color="#F4F1E1",  # "#F4F1E1", "#EDE7D1","#F0EAD6"
+            ec="black",
+            lw=1.0,
+            zorder=3,
+        )
+
+        ax.add_patch(circle)
+
+        scale_angle = np.linspace(
+            pi / 2 + self.max_angle, pi / 2 - self.max_angle, 31
+        )
+
+        scale_radius = 0.80 * self.radius
+
+        scale_x = self.x + scale_radius * np.cos(scale_angle)
+        scale_y = self.y + scale_radius * np.sin(scale_angle)
+        ax.plot(scale_x, scale_y, color="black", lw=1.0, zorder=4)
+
+        tick_length = 0.16 * self.radius
+        for rad in scale_angle:
+            tx_start = self.x + (scale_radius - tick_length) * np.cos(rad)
+            tx_end = self.x + scale_radius * np.cos(rad)
+            ty_start = self.y + (scale_radius - tick_length) * np.sin(rad)
+            ty_end = self.y + scale_radius * np.sin(rad)
+
+            ax.plot(
+                [tx_start, tx_end],
+                [ty_start, ty_end],
+                color="black",
+                lw=0.7,
+                zorder=4,
+            )
+
+        self.pointer = FancyArrowPatch(
+            self.centre,
+            self.centre,
+            arrowstyle="-|>",
+            color="crimson",
+            lw=3,
+            mutation_scale=15,
+            zorder=5,
+        )
+
+        ax.add_patch(self.pointer)
+
+        ax.plot(self.x, self.y, "o", color="black", markersize=8, zorder=6)
+
+        self.update_pointer(self.value)
+
+    def update_pointer(self, value):
+        if self.pointer is None:
+            return
+
+        self.value = value
+        pointer_length = 0.8 * self.radius
+        x = self.x + pointer_length * np.cos(self.pointer_angle)
+        y = self.y + pointer_length * np.sin(self.pointer_angle)
+
+        self.pointer.set_positions(
+            self.centre,
+            (x, y),
+        )
+
+
+class Plate:
+    """Define and draw a piezoelectric plate."""
+
+    def __init__(self, x=6.0, y=0.0, width=4.0, thickness=1.0):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.thickness = thickness
+
+    @property
+    def center_x(self):
+        return self.x + self.width / 2
+
+    @property
+    def top(self):
+        return self.y + self.thickness / 2
+
+    @property
+    def bottom(self):
+        return self.y - self.thickness / 2
+
+    def draw(self, ax):
+        self.plate = patches.Rectangle(
+            (self.x, -self.thickness / 2),
+            self.width,
+            self.thickness,
+            facecolor="#8B8580",
+            lw=2,
+            zorder=3,
+        )
+
+        ax.add_patch(self.plate)
+
+        self.electrodes = []
+        for y in (self.top, self.bottom):
+            (line,) = ax.plot(
+                [self.x, self.x + self.width],
+                [y, y],
+                linewidth=8.0,
+                color="#CD7F32",  # "#8B8580", "#CD7F32", "#C97A40"
+            )
+            self.electrodes.append(line)
+
+    def update_thickness(self, thickness):
+
+        self.thickness = thickness
+
+        for electrode, y in zip(self.electrodes, (self.top, self.bottom)):
+            electrode.set_ydata([y, y])
+
+        self.plate.set_y(self.bottom)
+        self.plate.set_height(self.thickness)
+
+
+# Draw connections
+class Connections:
+
+    def draw(self, ax, voltmeter):
+        """Draw conections between voltmeter and plate."""
+        dx = voltmeter.radius * 1.5
+        dy = 0.5
+        self.wire_x = [
+            voltmeter.x,
+            voltmeter.x,
+            voltmeter.x + dx,
+            voltmeter.x + dx,
+            voltmeter.x + 2 * dx,
+        ]
+
+        upper = (
+            voltmeter.top,
+            voltmeter.top + dy,
+            voltmeter.top - dy,
+        )
+        lower = (
+            voltmeter.bottom,
+            voltmeter.bottom - dy,
+            voltmeter.bottom + dy,
+        )
+
+        self.wire_y = []
+
+        for start_y, mid_y, end_y in (upper, lower):
+            self.wire_y.append([start_y, mid_y, mid_y, end_y, end_y])
+
+        for y in self.wire_y:
+            ax.plot(self.wire_x, y, color="black", lw=1)
+
+
+class Arrow:
+    def __init__(self, x, y, length=1, down=False):
+        self.x = x
+        self.y = y
+        self.length = length
+        self.down = down
+
+    def draw(self):
+        if self.down:
+            y_length = self.length
+        else:
+            y_length = -self.length
+
+        ax.annotate(
+            "",
+            xy=(self.x, self.y),
+            xytext=(self.x, self.y + y_length),
+            arrowprops=dict(
+                facecolor="darkred",
+                edgecolor="darkred",
+                width=6,
+                headwidth=20,
+                shrink=0.05,
+            ),
             zorder=4,
         )
 
-    pointer_length = 0.95 * scale_radius
-    pointer_angle = np.radians(voltmeter_value)
-    pointer_x = voltmeter_x + pointer_length * np.cos(pointer_angle)
-    pointer_y = voltmeter_y + pointer_length * np.sin(pointer_angle)
 
-    ax.annotate('',
-                xy=(pointer_x, pointer_y),
-                xytext=(voltmeter_x, voltmeter_y),
-                arrowprops=dict(
-                    arrowstyle="->",
-                    lw=6,
-                    color='crimson',
-                    mutation_scale=15),
-                zorder=5)
+# --- Main program ------------------------------------------------
+plt.close("Piezoelectric Plate Demo")
+drawing_row = ["drawing"] * 4
 
-    center_marker = plt.Circle(
-        (voltmeter_x, voltmeter_y),
-        0.08,
-        color='black',
-        zorder=6
-    )
-    ax.add_patch(center_marker)
-
-
-fig, ax = plt.subplots(
+fig, axes = plt.subplot_mosaic(
+    [
+        ["text"] + drawing_row,
+        ["logo"] + drawing_row,
+    ],
     figsize=(12, 8),
     layout="constrained",
     num=FIGURE_NAME,
 )
+ax = axes["drawing"]
 
+# --- Draw objects --------------------------------------------------
+voltmeter = Voltmeter(value=0.0)
+voltmeter.draw(ax)
 
-# --- Main progrem ------------------------------------------------
-# Sizes and positions
-voltmeter_radius = 1.0
-voltmeter_x = 2.0
-voltmeter_y = 0
-voltmeter_value = 90
+plate = Plate()
+plate.draw(ax)
 
-plate_x = 6.0
-plate_y = 0.0
-plate_width = 4.0
-plate_thickness = 2.0
+connection = Connections()
+connection.draw(ax, voltmeter)
 
-plate_top = plate_y + plate_thickness / 2
-plate_bottom = plate_y - plate_thickness / 2
+top_arrow = Arrow(plate.center_x, plate.top, length=1, down=True)
+top_arrow.draw()
 
-draw_voltmeter()
+bottom_arrow = Arrow(plate.center_x, plate.bottom, length=1, down=False)
+bottom_arrow.draw()
 
-# --- 4. TEGN DEN GRÅBRUNE PLATEN ---
-grabrune_plate = patches.Rectangle((plate_x, plate_y), plate_width, plate_thickness,
-                                   facecolor='#8B8580', edgecolor='black', lw=2, zorder=3)
-ax.add_patch(grabrune_plate)
-
-# Tekst på platen
-ax.text(plate_x + plate_width/2, plate_y + plate_thickness/2, 'Piezoelectric plate',
-        fontsize=14, fontweight='bold', color='white', ha='center', va='center', zorder=4)
-
-
-# --- 5. TEGN LEDNINGENE (TIL VENSTRE HJØRNER AV PLATA) ---
-# Rød ledning fra øvre venstre hjørne til toppen av voltmeteret
-rod_x = [plate_x, plate_x - 1.0,
-         plate_x - 1.0, voltmeter_x, voltmeter_x]
-rod_y = [plate_top, plate_top, plate_top +
-         1.0, plate_top + 1.0, voltmeter_y + voltmeter_radius]
-ax.plot(rod_x, rod_y, color='red', lw=3, label='Øvre ledning')
-
-# Blå ledning fra nedre venstre hjørne til bunnen av voltmeteret
-bla_x = [plate_x, plate_x - 1.0, voltmeter_x, voltmeter_x]
-bla_y = [plate_bottom, plate_bottom -
-         1.0, plate_bottom - 1.0, voltmeter_y - voltmeter_radius]
-ax.plot(bla_x, bla_y, color='blue', lw=3, label='Nedre ledning')
-
-# Koblingspunkter (på voltmeteret og på hjørnene av platen)
-ax.scatter([voltmeter_x, voltmeter_x], [voltmeter_y + voltmeter_radius, voltmeter_y - voltmeter_radius],
-           color='black', s=60, zorder=5)
-ax.scatter([plate_x, plate_x], [plate_top,
-           plate_bottom], color='black', s=50, zorder=5)
-
-
-# --- 6. TEGN DE VERTIKALE PILENE ---
-midt_x = plate_x + (plate_width / 2)
-
-# Pil over platen som peker NEDOVER mot toppen (fra y=5.0 ned til y=plate_y + plate_thickness + 0.1)
-ax.annotate('', xy=(midt_x, plate_y + plate_thickness), xytext=(midt_x, 6.0),
-            arrowprops=dict(facecolor='darkred', edgecolor='darkred',
-                            width=6, headwidth=12, shrink=0.05),
-            zorder=4)
-
-# Pil under platen som peker UPPOVER mot bunnen (fra y=2.0 opp til y=plate_y - 0.1)
-ax.annotate('', xy=(midt_x, plate_y - 0.1), xytext=(midt_x, 2.0),
-            arrowprops=dict(facecolor='darkblue', edgecolor='darkblue',
-                            width=4, headwidth=12, shrink=0.05),
-            zorder=4)
-
-
-# --- 7. FORMATERING AV DIAGRAMMET ---
-ax.set_title('Voltmeter koblet til plate med retningspiler',
-             fontsize=14, fontweight='bold', pad=15)
+# Format axes -------------------------------------------------------
 ax.set_xlim(0, 12)
 ax.set_ylim(-4, 4)
-ax.legend(loc='upper right')
-
-ax.axis('on')
+ax.axis("off")
+ax.axis("equal")
 
 plt.tight_layout()
 plt.show()

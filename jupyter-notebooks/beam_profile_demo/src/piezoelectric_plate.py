@@ -18,7 +18,7 @@ class Voltmeter:
     The arrow position can be changes after the voltmeter is drawn
     """
 
-    def __init__(self, x=2.0, y=0.0, width=2.5, height=1.5, value=0.0):
+    def __init__(self, x=2.0, y=0.0, width=2.8, height=1.6, value=0.0):
         """
         Draw the voltmeter with specified size, position , and value
 
@@ -27,7 +27,7 @@ class Voltmeter:
         x : float , optional
             Voltmeter x-position. The default is 2.0.
         y : float, optional
-            Voltmeter x-position. The default is 0.0.
+            Voltmeter y-position. The default is 0.0.
         value : float, optional
             Voltmeter reading, full scale is +/-1.0. The default is 0.0.
 
@@ -65,7 +65,7 @@ class Voltmeter:
 
     @property
     def right(self):
-        """x-coordinate of voltmeter left."""
+        """x-coordinate of voltmeter right."""
         return self.x + self.width / 2
 
     @property
@@ -87,9 +87,7 @@ class Voltmeter:
         -------
         None
         """
-        self.ax = ax
-
-        rectangle = plt.Rectangle(
+        rectangle = patches.Rectangle(
             xy=(self.x - self.width / 2, self.y - self.height / 2),
             width=self.width,
             height=self.height,
@@ -102,15 +100,16 @@ class Voltmeter:
         ax.add_patch(rectangle)
 
         # Draw scale
+        n_ticks = 15
         scale_angle = np.linspace(
-            pi / 2 + self.max_angle, pi / 2 - self.max_angle, 15
+            pi / 2 + self.max_angle, pi / 2 - self.max_angle, n_ticks
         )
 
         scale_centre_x = self.x
         scale_centre_y = self.y - 0.4 * self.height
         self.scale_centre = (scale_centre_x, scale_centre_y)
 
-        scale_radius = 0.80 * self.height
+        scale_radius = 0.70 * self.height
         scale_x = scale_centre_x + scale_radius * np.cos(scale_angle)
         scale_y = scale_centre_y + scale_radius * np.sin(scale_angle)
         ax.plot(
@@ -121,8 +120,21 @@ class Voltmeter:
             zorder=4,
         )
 
+        indices = [0, (n_ticks - 1) // 2, n_ticks - 1]
+        labels = ["-1", "0", "+1"]
+        positions = ["right", "center", "left"]
+        for label, idx, pos in zip(labels, indices, positions):
+            ax.text(
+                scale_x[idx],
+                scale_y[idx],
+                label,
+                ha=pos,
+                va="bottom",
+                size="large",
+            )
+
         # Draw scale markers
-        tick_length = 0.16 * self.height
+        tick_length = 0.08
         for rad in scale_angle:
             tx_start = scale_centre_x + (scale_radius - tick_length) * np.cos(
                 rad
@@ -166,7 +178,7 @@ class Voltmeter:
         # Text
         ax.text(
             self.x,
-            self.y,
+            self.y - 0.1 * self.height,
             "Volts",
             ha="center",
             va="top",
@@ -174,9 +186,9 @@ class Voltmeter:
             zorder=6,
         )
 
-        self.update_pointer(self.value)
+        self.update(self.value)
 
-    def update_pointer(self, value):
+    def update(self, value):
         """
         Update voltmeter pointer to show specified value
 
@@ -192,8 +204,8 @@ class Voltmeter:
         if self.pointer is None:
             return
 
-        self.value = value
-        pointer_length = 0.8 * self.height
+        self.value = np.clip(value, -1.0, 1.0)
+        pointer_length = 0.75 * self.height
         x = self.scale_centre[0] + pointer_length * np.cos(self.pointer_angle)
         y = self.scale_centre[1] + pointer_length * np.sin(self.pointer_angle)
 
@@ -232,7 +244,7 @@ class Plate:
         self.expansion = 0
 
     @property
-    def expanded(self):
+    def current_thickness(self):
         return (1 + self.expansion) * self.thickness
 
     @property
@@ -245,19 +257,19 @@ class Plate:
 
     @property
     def top(self):
-        return self.y + self.expanded / 2
+        return self.y + self.current_thickness / 2
 
     @property
     def bottom(self):
-        return self.y - self.expanded / 2
+        return self.y - self.current_thickness / 2
 
     def draw(self, ax):
 
-        # Recatngular plate
+        # Rectangular plate
         self.plate = patches.Rectangle(
             (self.left, self.bottom),
             self.width,
-            self.expanded,
+            self.current_thickness,
             facecolor="#8B8580",
             linewidth=0,
             zorder=3,
@@ -277,9 +289,9 @@ class Plate:
             )
             self.electrodes.append(line)
 
-    def update_thickness(self, expansion):
+    def update(self, expansion):
         """
-                Update plate thicknessto specified value
+                Update plate thickness to specified value
         .
                 Parameters
                 ----------
@@ -290,7 +302,7 @@ class Plate:
                 -------
                 None
         """
-        self.expansion = expansion
+        self.expansion = np.clip(expansion, -0.9, 3.0)
 
         for electrode, y in zip(self.electrodes, (self.top, self.bottom)):
             electrode.set_ydata([y, y])
@@ -303,11 +315,17 @@ class Plate:
 class Wires:
     """Wires from voltmeter."""
 
+    @property
+    def endpoints(self):
+        upper = self.x[-1], self.y[0][-1]
+        lower = self.x[-1], self.y[1][-1]
+        return (upper, lower)
+
     def draw(self, ax, voltmeter):
-        """Draw conections to voltmeter."""
+        """Draw connections to voltmeter."""
         self.x = [
             voltmeter.right,
-            voltmeter.right + 0.7 * voltmeter.width,
+            voltmeter.right + 0.5 * voltmeter.width,
         ]
 
         upper = (
@@ -336,26 +354,25 @@ class Connection:
         self.y = []
         self.lines = []
 
-    def draw(self, ax, wires, plate):
+    def draw(self, ax, endpoints, plate):
 
-        self.x = [wires.x[-1], plate.left]
-        y_top = [wires.y[0][-1], plate.top]
-        y_bottom = [wires.y[1][-1], plate.bottom]
+        upper, lower = endpoints
+        self.x = [upper[0], plate.left]
+        y_top = [upper[1], plate.top]
+        y_bottom = [lower[1], plate.bottom]
 
         self.lines = ax.plot(self.x, y_top, self.x, y_bottom, color="black")
         self.y = [y_top, y_bottom]
 
     def update(self, endpoints):
         """Update last connection points y-values."""
-        for k, (line, y, new_y) in enumerate(
-            zip(self.lines, self.y, endpoints)
-        ):
+        for line, y, new_y in zip(self.lines, self.y, endpoints):
             y[-1] = new_y
             line.set_ydata(y)
 
 
 class Forces:
-    def __init__(self, length=0.5):
+    def __init__(self, length=2.0):
         self.length = length
 
     def draw(self, ax, plate, value):
@@ -400,8 +417,10 @@ class Forces:
         -------
         None
         """
+        length = (0.2 + 0.5 * abs(value)) * self.length
+
         end_ys = (plate.top, plate.bottom)
-        start_ys = (plate.top + self.length, plate.bottom - self.length)
+        start_ys = (plate.top + length, plate.bottom - length)
 
         for arrow, end_y, start_y in zip(self.arrows, end_ys, start_ys):
             if arrow is None:
@@ -443,18 +462,21 @@ class PiezoelectricPlate:
         self.wires.draw(ax, self.voltmeter)
 
         self.connection = Connection()
-        self.connection.draw(ax, self.wires, self.plate)
+        self.connection.draw(ax, self.wires.endpoints, self.plate)
 
         self.forces = Forces()
         self.forces.draw(ax, self.plate, self.value)
 
     def _initialise_graph(self):
-        drawing_row = ["drawing"] * 3
+        n_col = 4
+        drawing_row = ["drawing"] * n_col
 
         fig, axes = plt.subplot_mosaic(
             [
-                ["."] + drawing_row,
-                ["logo"] + drawing_row,
+                drawing_row,
+                drawing_row,
+                drawing_row,
+                ["logo"] + ["."] * (n_col - 1),
             ],
             figsize=(12, 6),
             layout="tight",
@@ -465,23 +487,22 @@ class PiezoelectricPlate:
 
         ax = axes["drawing"]
 
-        ax.set_xlim(0, 12)
+        ax.set_xlim(-1, 11)
         ax.set_ylim(-2, 2)
         ax.axis("off")
         ax.axis("equal")
 
         plt.tight_layout()
-        plt.show()
 
         return fig, axes
 
     def change_values(self, value):
         """Update system to new value."""
         value = np.clip(value, -1, 1)
-        self.voltmeter.update_pointer(value)
+        self.voltmeter.update(value)
 
         self.expansion = -0.5 * value
-        self.plate.update_thickness(self.expansion)
+        self.plate.update(self.expansion)
         self.connection.update([self.plate.top, self.plate.bottom])
 
         self.forces.update(self.plate, value)
@@ -534,7 +555,7 @@ class PiezoelectricPlate:
         widget_list : dict of widgets
             Widgets for use in Jupyter Notebook
         """
-        title = "llustration od the Piezoelectric Effect"
+        title = "Illustration of the Piezoelectric Effect"
         title_widget = widgets.Label(
             title,
             style=dict(font_weight="bold"),
@@ -542,8 +563,8 @@ class PiezoelectricPlate:
 
         layout = {
             "continuous_update": True,
-            "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "50%"},
+            "layout": widgets.Layout(width="50%"),
+            "style": {"description_width": "10%"},
         }
 
         force_widget = widgets.FloatSlider(

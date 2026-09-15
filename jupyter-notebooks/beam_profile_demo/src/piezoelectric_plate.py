@@ -372,7 +372,7 @@ class Connection:
 
 
 class Forces:
-    def __init__(self, length=2.0):
+    def __init__(self, length=1.0):
         self.length = length
 
     def draw(self, ax, plate, value):
@@ -417,7 +417,8 @@ class Forces:
         -------
         None
         """
-        length = (0.2 + 0.5 * abs(value)) * self.length
+        # length = (0.2 + 0.5 * abs(value)) * self.length
+        length = self.length
 
         end_ys = (plate.top, plate.bottom)
         start_ys = (plate.top + length, plate.bottom - length)

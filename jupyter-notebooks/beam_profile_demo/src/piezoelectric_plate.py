@@ -18,7 +18,7 @@ class Voltmeter:
     The arrow position can be changes after the voltmeter is drawn
     """
 
-    def __init__(self, x=2.0, y=0.0, width=2.8, height=1.6, value=0.0):
+    def __init__(self, x=2.0, y=0.0, width=2.4, height=1.0, value=0.0):
         """
         Draw the voltmeter with specified size, position , and value
 
@@ -40,7 +40,7 @@ class Voltmeter:
         self.x = x
         self.y = y
         self.value = np.clip(value, -1.0, 1.0)
-        self.max_angle = pi / 3  # Angle corresponding to value=1.0
+        self.max_angle = 0.20 * pi  # Angle corresponding to value=1.0
         self.pointer = None
 
     @property
@@ -91,9 +91,9 @@ class Voltmeter:
             xy=(self.x - self.width / 2, self.y - self.height / 2),
             width=self.width,
             height=self.height,
-            color="#F4F1E1",  # "#F4F1E1", "#EDE7D1","#F0EAD6"
-            ec="black",
-            linewidth=1.0,
+            color="#FAF8F0",  # "#F2F0E6", "#FAF8F0","#E9EEF2"
+            ec="darkgrey",
+            linewidth=1.5,
             zorder=3,
         )
 
@@ -106,10 +106,10 @@ class Voltmeter:
         )
 
         scale_centre_x = self.x
-        scale_centre_y = self.y - 0.4 * self.height
+        scale_centre_y = self.y - 1.2 * self.height
         self.scale_centre = (scale_centre_x, scale_centre_y)
 
-        scale_radius = 0.70 * self.height
+        scale_radius = 1.5 * self.height
         scale_x = scale_centre_x + scale_radius * np.cos(scale_angle)
         scale_y = scale_centre_y + scale_radius * np.sin(scale_angle)
         ax.plot(
@@ -165,23 +165,13 @@ class Voltmeter:
         )
         ax.add_patch(self.pointer)
 
-        # Hub for pointer
-        ax.plot(
-            scale_centre_x,
-            scale_centre_y,
-            "o",
-            color="black",
-            markersize=8,
-            zorder=6,
-        )
-
         # Text
         ax.text(
             self.x,
-            self.y - 0.1 * self.height,
+            self.bottom + self.height * 0.1,
             "Volts",
             ha="center",
-            va="top",
+            va="bottom",
             size="large",
             zorder=6,
         )
@@ -205,20 +195,29 @@ class Voltmeter:
             return
 
         self.value = np.clip(value, -1.0, 1.0)
-        pointer_length = 0.75 * self.height
-        x = self.scale_centre[0] + pointer_length * np.cos(self.pointer_angle)
-        y = self.scale_centre[1] + pointer_length * np.sin(self.pointer_angle)
+        pointer_length = 1.5 * self.height
+
+        x0, y0 = self.scale_centre
+        pointer_start = 0.70 * pointer_length
+        cp = np.cos(self.pointer_angle)
+        sp = np.sin(self.pointer_angle)
+
+        x_start = x0 + pointer_start * cp
+        y_start = y0 + pointer_start * sp
+
+        x_end = x0 + pointer_length * cp
+        y_end = y0 + pointer_length * sp
 
         self.pointer.set_positions(
-            self.scale_centre,
-            (x, y),
+            (x_start, y_start),
+            (x_end, y_end),
         )
 
 
 class Plate:
     """Define and draw a piezoelectric plate."""
 
-    def __init__(self, x=7.5, y=0.0, width=4.0, thickness=1.0):
+    def __init__(self, x=6.0, y=0.0, width=3.0, thickness=0.5):
         """
         Draw the piezoelectric plate with specified size and position.
 
@@ -325,7 +324,7 @@ class Wires:
         """Draw connections to voltmeter."""
         self.x = [
             voltmeter.right,
-            voltmeter.right + 0.5 * voltmeter.width,
+            voltmeter.right + 0.3 * voltmeter.width,
         ]
 
         upper = (
@@ -338,9 +337,6 @@ class Wires:
         )
 
         self.y = [upper, lower]
-
-        # for start_y, mid_y, end_y in (upper, lower):
-        #     self.y.append([start_y, mid_y, mid_y, end_y, end_y])
 
         for y in self.y:
             ax.plot(self.x, y, color="black", lw=1)
@@ -372,35 +368,57 @@ class Connection:
 
 
 class Forces:
-    def __init__(self, length=1.0):
+    """Arrows illustrating the the forces on top and bottom of the plate."""
+
+    def __init__(self, length=0.3):
         self.length = length
+        self.arrows = ([], [])
+
+    def _x_pos(self, plate):
+        """Determine lateral positions (x) of force/pressure arrows."""
+        n_arrows = 6
+        x_offset = plate.x - plate.width / 2
+        x = np.arange(1, n_arrows) / n_arrows * plate.width + x_offset
+
+        return x
 
     def draw(self, ax, plate, value):
 
         force_style = {
             "arrowstyle": "-|>",
-            "color": "#641E16",  # "#1C2833" "#0B5345" "#641E16" "#1F618D"
-            "linewidth": 4,
-            "mutation_scale": 40,
+            "color": "#1F618D",  # "#1C2833" "#0B5345" "#641E16" "#1F618D"
+            "linewidth": 2,
+            "mutation_scale": 28,
             "zorder": 5,
         }
 
-        top_arrow = FancyArrowPatch(
-            (plate.x, plate.top),
-            (plate.x, plate.top + self.length),
-            **force_style,
-        )
+        x_pos = self._x_pos(plate)
 
-        bottom_arrow = FancyArrowPatch(
-            (plate.x, plate.bottom - self.length),
-            (plate.x, plate.bottom),
-            **force_style,
-        )
+        top_arrows = []
+        bottom_arrows = []
+        for x in x_pos:
+            top_arrows.append(
+                FancyArrowPatch(
+                    (x, plate.top),
+                    (x, plate.top + self.length),
+                    **force_style,
+                )
+            )
 
-        self.arrows = (top_arrow, bottom_arrow)
+            bottom_arrows.append(
+                FancyArrowPatch(
+                    (x, plate.bottom - self.length),
+                    (x, plate.bottom),
+                    **force_style,
+                )
+            )
 
-        for arrow in self.arrows:
+        for arrow in top_arrows:
             ax.add_patch(arrow)
+        for arrow in bottom_arrows:
+            ax.add_patch(arrow)
+
+        self.arrows = (top_arrows, bottom_arrows)
 
         self.update(plate, value)
 
@@ -417,25 +435,27 @@ class Forces:
         -------
         None
         """
-        # length = (0.2 + 0.5 * abs(value)) * self.length
         length = self.length
 
+        x_pos = self._x_pos(plate)
         end_ys = (plate.top, plate.bottom)
         start_ys = (plate.top + length, plate.bottom - length)
 
-        for arrow, end_y, start_y in zip(self.arrows, end_ys, start_ys):
-            if arrow is None:
-                return
+        for arrow_group, end_y, start_y in zip(self.arrows, end_ys, start_ys):
+            for x, arrow in zip(x_pos, arrow_group):
 
-            end = (plate.x, end_y)
-            start = (plate.x, start_y)
+                if arrow is None:
+                    return
 
-            if value < 0:
-                start, end = end, start
-            if value == 0:
-                end = start
+                end = (x, end_y)
+                start = (x, start_y)
 
-            arrow.set_positions(start, end)
+                if value < 0:
+                    start, end = end, start
+                if value == 0:
+                    end = start
+
+                arrow.set_positions(start, end)
 
 
 class PiezoelectricPlate:
@@ -479,7 +499,7 @@ class PiezoelectricPlate:
                 drawing_row,
                 ["logo"] + ["."] * (n_col - 1),
             ],
-            figsize=(12, 6),
+            figsize=(12, 4),
             layout="tight",
             num=FIGURE_NAME,
         )
@@ -488,12 +508,10 @@ class PiezoelectricPlate:
 
         ax = axes["drawing"]
 
-        ax.set_xlim(-1, 11)
-        ax.set_ylim(-2, 2)
         ax.axis("off")
-        ax.axis("equal")
-
-        plt.tight_layout()
+        ax.set_xlim(0.5, 8.7)
+        ax.set_ylim(-0.7, 0.7)
+        ax.set_aspect("equal", adjustable="box")
 
         return fig, axes
 

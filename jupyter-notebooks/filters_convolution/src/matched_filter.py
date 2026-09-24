@@ -18,6 +18,30 @@ LOGOFILE = "usn-logo-purple.png"
 FIGURE_NAME = "Matched Filter Demo"
 
 
+LINEFORMAT = {
+    "pulse": {
+        "color": "C0",
+        "linestyle": "solid",
+        "linewidth": 1.0,
+    },
+    "received": {
+        "color": "C1",
+        "linestyle": "solid",
+        "linewidth": 1.0,
+    },
+    "correlated": {
+        "color": "C0",
+        "linestyle": "solid",
+        "linewidth": 1.0,
+    },
+    "envelope": {
+        "color": "C0",
+        "linestyle": "solid",
+        "linewidth": 1.0,
+    },
+}
+
+
 class Chirp:
     """Create and demonstrate linear chirp."""
 
@@ -211,7 +235,7 @@ class Chirp:
         # Create figure and axes
         plt.close(FIGURE_NAME)
 
-        n = 5
+        n = 6
         fig, axes = plt.subplot_mosaic(
             [
                 ["."] + ["pulse"] * n,
@@ -233,32 +257,56 @@ class Chirp:
         zero_correlation = np.zeros_like(tc_us)
 
         graphs = {}
-        (graphs["pulse_def"],) = axes["pulse"].plot(t_us, zero_pulse, "C0")
-        (graphs["transmitted"],) = axes["received"].plot(
-            t_us, zero_pulse, "C0"
+        (graphs["pulse_def"],) = axes["pulse"].plot(
+            t_us,
+            zero_pulse,
+            **LINEFORMAT["pulse"],
         )
-        (graphs["received"],) = axes["received"].plot(t_us, zero_pulse, "C1")
+        (graphs["transmitted"],) = axes["received"].plot(
+            t_us,
+            zero_pulse,
+            **LINEFORMAT["pulse"],
+        )
+        (graphs["received"],) = axes["received"].plot(
+            t_us,
+            zero_pulse,
+            **LINEFORMAT["received"],
+        )
         (graphs["multiplied"],) = axes["multiplied"].plot(
-            t_us, zero_pulse, "C0"
+            t_us,
+            zero_pulse,
+            **LINEFORMAT["correlated"],
         )
         (graphs["correlated"],) = axes["correlated"].plot(
-            tc_us, zero_correlation, "C0"
+            tc_us,
+            zero_correlation,
+            **LINEFORMAT["correlated"],
         )
         (graphs["envelope"],) = axes["correlated"].plot(
-            tc_us, zero_correlation, color="C0", linestyle="solid"
+            tc_us,
+            zero_correlation,
+            **LINEFORMAT["correlated"],
         )
         graphs["referenceline"] = axes["correlated"].axvline(
-            x=self.reference_time * 1e6, color="C1"
+            x=self.reference_time * 1e6,
+            **LINEFORMAT["received"],
         )
 
         # Scale and format axes
         for name in ["pulse", "received", "multiplied", "correlated"]:
             axes[name].axhline(y=0, color="gray")
+            axes[name].grid(True, axis='x')
+            if name != "correlated":
+                axes[name].tick_params(labelbottom=False)
 
-        axes["pulse"].set_title("Pulse $x(n)$")
-        axes["received"].set_title("Shifted pulse $y(n+k)$")
-        axes["multiplied"].set_title("Multiplied pulses. $x(n) y(n+k)$ ")
-        axes["correlated"].set_title("Correlated pulses. $\sum x(n) y(n+k)$ ")
+        axes["pulse"].set_title("Pulse", loc='left')
+        axes["pulse"].set_title("$x(n)$", loc='right')
+        axes["received"].set_title("Shifted pulse", loc='left')
+        axes["received"].set_title("$y(n+k)$ and $x(n)$", loc='right')
+        axes["multiplied"].set_title("Multiplied pulses", loc='left')
+        axes["multiplied"].set_title("$x(n) y(n+k)$ ", loc='right')
+        axes["correlated"].set_title("Correlated pulses", loc='left')
+        axes["correlated"].set_title(r"$\sum x(n) y(n+k)$ ", loc='right')
         axes["correlated"].set_xlabel(r"Time [$\mu$s] ")
 
         return fig, axes, graphs
@@ -387,19 +435,6 @@ class Chirp:
         title = "Matched Filter: Correlation of chirps (FM pulses)"
         title_widget = ipywidgets.Label(title, style=dict(font_weight="bold"))
 
-        # Layouts definitions
-        text_layout = {
-            "continuous_update": False,
-            # 'style': {'description_width': '120px'}
-        }
-
-        slider_layout = {
-            "continuous_update": True,
-            # 'style': {'description_width': '120px'}
-        }
-
-        checkbox_layout = {"style": {"description_width": "120px"}}
-
         # Individual widgets
         start_frequency_widget = ipywidgets.BoundedFloatText(
             min=10,
@@ -408,7 +443,6 @@ class Chirp:
             value=self.start_frequency / 1e3,
             description="Start freq. [kHz]",
             readout_format=".0f",
-            **text_layout
         )
 
         start_frequency_widget.observe(
@@ -449,7 +483,7 @@ class Chirp:
             max=250,
             step=1.0,
             value=self.reference_time * 1e6,
-            description="Ref. position [$\mu$s]",
+            description=r"Ref. position [$\mu$s]",
             readout_format=".0f",
         )
 
@@ -458,8 +492,10 @@ class Chirp:
             names="value",
         )
 
-        magnitude_widget = ipywidgets.Checkbox(
-            value=self.magnitude, description="Magnitude", **checkbox_layout
+        magnitude_widget = ipywidgets.Dropdown(
+            options=[('Signed', False), ('Magnitude', True)],
+            value=False,
+            description='Correlation',
         )
 
         magnitude_widget.observe(
@@ -483,23 +519,34 @@ class Chirp:
             noise_widget,
             magnitude_widget,
         ]:
-            w.layout.width = "220px"
+            w.layout.width = "200px"
 
-        text_column = ipywidgets.VBox(
+        frequency_column = ipywidgets.VBox(
             [
                 start_frequency_widget,
                 end_frequency_widget,
+            ]
+        )
+
+        extras_column = ipywidgets.VBox(
+            [
                 noise_widget,
                 magnitude_widget,
             ]
         )
 
-        text_column.layout = ipywidgets.Layout(width="300px")
-        shift_widget.layout.width = "900px"
+        frequency_column.layout = ipywidgets.Layout(width="220px")
+        extras_column.layout = ipywidgets.Layout(width="220px")
+        shift_widget.layout.width = "750px"
 
         widget_layout = ipywidgets.HBox(
-            [text_column, shift_widget],
+            [frequency_column, shift_widget, extras_column],
             layout=ipywidgets.Layout(width="100%", align_items="center"),
+        )
+
+        widget_layout = ipywidgets.VBox(
+            [title_widget, widget_layout],
+            layout=ipywidgets.Layout(width="100%",),
         )
 
         # Export as dictionary

@@ -19,14 +19,6 @@ LOGOFILE = "usn-logo-purple.png"
 FIGURE_NAME = "Matched Filter Demo"
 
 
-class WidgetLayout():
-    """Container for widgets and layout."""
-
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
-
-
 class Chirp():
     """Create and demonstrate linear chirp."""
 
@@ -58,7 +50,7 @@ class Chirp():
 
         # Initialisation
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-       # self.scale_axes()
+        self.scale_axes()
 
         if create_widgets:
             self.widget_layout, self.widgets = self._create_widgets()
@@ -200,12 +192,13 @@ class Chirp():
         # Create figure and axes
         plt.close(FIGURE_NAME)
 
+        n = 4
         fig, axes = plt.subplot_mosaic(
             [
-                [".", "pulse"],
-                [".", "received"],
-                [".", "multiplied"],
-                ["logo", "correlated"],
+                ["."] + ["pulse"] * n,
+                ["."] + ["received"] * n,
+                ["."] + ["multiplied"] * n,
+                ["logo"] + ["correlated"] * n,
             ],
             figsize=(14, 6),
             layout="constrained",
@@ -317,8 +310,8 @@ class Chirp():
 
         tlim_us = np.array([t_min, t_max])*1e6
 
-        for ax in self.axes["pulse", "received", "multiplied"]:
-            ax.set(
+        for name in ["pulse", "received", "multiplied"]:
+            self.axes[name].set(
                 xlim=tlim_us,
                 ylim=[-1.5, 1.5],
             )
@@ -349,6 +342,7 @@ class Chirp():
             base_path = Path.cwd()
 
         logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
+        print(logo_path)
 
         if logo_path.exists():
             img = mpimg.imread(logo_path)
@@ -379,6 +373,22 @@ class Chirp():
         self.display()
 
         return
+
+    def _frequency_change_callback(self):
+        self.update_pulse()
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+
+    def _noise_change_callback(self):
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+
+    def _shift_change_callback(self):
+        self.update_received()
+        self.update_multiplied()
+        self.update_startline()
 
     # --- Interactive widgets
     def _create_widgets(self):
@@ -411,10 +421,10 @@ class Chirp():
             readout_format='.0f',
             **text_layout)
 
-        # start_frequency_widget.observe(
-        #     self._frequency_change_callback,
-        #     names="value",
-        # )
+        start_frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
 
         end_frequency_widget = ipywidgets.BoundedFloatText(
             min=10,
@@ -423,6 +433,11 @@ class Chirp():
             description='End [kHz]',
             readout_format='.0f',
             **text_layout)
+
+        end_frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
 
         noise_widget = ipywidgets.BoundedFloatText(
             min=0.0,
@@ -433,6 +448,11 @@ class Chirp():
             readout_format='.2f',
             **text_layout)
 
+        noise_widget.observe(
+            self._noise_change_callback,
+            names="value",
+        )
+
         shift_widget = ipywidgets.FloatSlider(
             min=-250,
             max=250,
@@ -442,10 +462,20 @@ class Chirp():
             readout_format='.1f',
             **slider_layout)
 
+        shift_widget.observe(
+            self._shift_change_callback,
+            names="value",
+        )
+
         magnitude_widget = ipywidgets.Checkbox(
             value=self.magnitude,
             description='Magnitude',
             **checkbox_layout)
+
+        magnitude_widget.observe(
+            self._magnitude_change_callback,
+            names="value",
+        )
 
         # Arrange in columns and lines
         widget_f_layout = ipywidgets.VBox([start_frequency_widget,
@@ -469,6 +499,4 @@ class Chirp():
                   'magnitude_widget': magnitude_widget
                   }
 
-        w = WidgetLayout(widget_layout, widget)
-
-        return w
+        return widget_layout, widget

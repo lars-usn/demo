@@ -25,25 +25,24 @@ class Chirp():
     """Create and demonstrate linear chirp."""
 
     def __init__(self):
-        self.start_frequency = 125e3    # Start frequencvy
-        self.end_frequency = 200e3      # End frequency
-        self.sample_rate = 10e6
+        self.f1 = 125e3          # Start frequencvy
+        self.f2 = 200e3          # End frequency
+        self.fs = 10e6
         self.chirp_dur = 200e-6  # Chirp duration
         self.window = 'tukey'    # Tapering window
         self.window_par = 0.2    # Parameter to window function
 
-        self.start = -200e-6     # Start of received signal
+        self.start = -200e-6     # Start of received signal, rel. reference
 
-        # No. of points in chirp
-        n_chirp = int(self.chirp_dur * self.sample_rate)
         pad = 2
-        self.n_pad = int(pad*n_chirp)          # No. of points to pad ends
-        self.n_points = int(n_chirp + 2*self.n_pad)
+        n_chirp = int(self.chirp_dur*self.fs)  # No. of points in chirp
+        self.n_pad = int(pad*n_chirp)               # No. of points to pad ends
+        self.n_pts = int(n_chirp + 2*self.n_pad)
 
-        self.t = np.arange(0, self.n_points) / self.sample_rate
+        self.t = np.arange(0, self.n_pts) / self.fs
 
         rng = np.random.default_rng()
-        self.noise_base = rng.standard_normal(self.n_points)
+        self.noise_base = rng.standard_normal(self.n_pts)
         self.noise_level = 0.0
 
         self.magnitude = False
@@ -54,50 +53,29 @@ class Chirp():
 
         return
 
-    @property
     def chirp(self):
-        """
-        Create linear chirp.
+        """Create linear chirp."""
+        n_p = self.chirp_dur * self.fs
+        ts = np.arange(0, n_p) / self.fs
+        mu = (self.f2-self.f1) / (2 * self.chirp_dur)
+        psi = 2 * pi*(mu*ts**2 + self.f1*ts)
+        p = np.sin(psi)
 
-        Returns
-        -------
-        ndarray
-            Pulse, frequency sweep inside envelope
+        w = signal.windows.get_window((self.window, self.window_par), len(p))
+        p = w*p
 
-        """
-        n_points = self.chirp_dur * self.sample_rate
-        t = np.arange(0, n_points) / self.sample_rate
-        mu = (self.end_frequency-self.start_frequency) / (2 * self.chirp_dur)
-        psi = 2 * pi*(mu * t**2 + self.start_frequency * t)
-        pulse = np.cos(psi)
+        return p
 
-        envelope = signal.windows.get_window(
-            (self.window, self.window_par),
-            len(pulse)
-        )
-        pulse = envelope * pulse
-
-        return pulse
-
-    @property
     def signal(self):
-        """
-        Create full signal as chirp with zeres padded.
+        """Signal, chirp with zeres padded."""
+        c = self.chirp()
 
-        Returns
-        -------
-        ndarray
-            Signal, frequency sweep with padded ends
+        idx = self.n_pad + np.arange(len(c))
 
-        """
-        pulse = self.chirp
+        s = np.zeros(self.n_pts)
+        s[idx] = c
 
-        idx = self.n_pad + np.arange(len(pulse))  # Shift index by n_pad
-
-        signal = np.zeros(self.n_points)
-        signal[idx] = pulse
-
-        return signal
+        return s
 
     def initialise_graphs(self):
         """Initialise graphs for signals and spectra.
@@ -117,7 +95,7 @@ class Chirp():
         ax[0].set_title('Pulse $x(n)$')
         ax[1].set_title('Shifted pulse $y(n+k)$')
         ax[2].set_title('Product $x(n) y(n+k)$ ')
-        ax[3].set_title(r'Correlation $\sum x(n) y(n+k)$ ')
+        ax[3].set_title('Correlation $\sum x(n) y(n+k)$ ')
         ax[3].set_xlabel(r'Time [$\mu$s] ')
 
         for a in ax[0:3]:
@@ -147,9 +125,9 @@ class Chirp():
                 art.remove()
 
         ax = self.ax
-        n_start = int(self.start*self.sample_rate)
+        n_start = int(self.start*self.fs)
 
-        s = self.signal    # Clean signal
+        s = self.signal()    # Clean signal
         rng = np.random.default_rng()
         noise = self.noise_level * rng.standard_normal(len(s))
 
@@ -169,7 +147,7 @@ class Chirp():
         # Cross-correlation, clean with noisy signal
         ac = signal.correlate(s, sn)
         n = len(s)
-        tc = signal.correlation_lags(n, n) / self.sample_rate
+        tc = signal.correlation_lags(n, n) / self.fs
         if self.magnitude:
             ac = abs(ac)
         ax[3].plot(tc*1e6, ac, color='C0')
@@ -178,7 +156,7 @@ class Chirp():
         return 0
 
     def scale_axes(self):
-        t0 = self.n_pad / self.sample_rate
+        t0 = self.n_pad / self.fs
         t_pad = 1.0*self.chirp_dur
         t_min = t0 - t_pad
         t_max = t0 + self.chirp_dur + t_pad
@@ -193,14 +171,14 @@ class Chirp():
 
         return
 
-    def interact(self, start=None, start_frequency=None, end_frequency=None,
+    def interact(self, start=None, f1=None, f2=None,
                  noise_level=None, magnitude=None):
         if start is not None:
             self.start = 1e-6*start
-        if start_frequency is not None:
-            self.start_frequency = 1e3*start_frequency
-        if end_frequency is not None:
-            self.end_frequency = 1e3*end_frequency
+        if f1 is not None:
+            self.f1 = 1e3*f1
+        if f2 is not None:
+            self.f2 = 1e3*f2
         if noise_level is not None:
             self.noise_level = noise_level
         if magnitude is not None:
@@ -233,23 +211,18 @@ class Chirp():
             'style': {'description_width': '10%'}}
 
         # Individual widgets
-        start_frequency_widget = ipywidgets.BoundedFloatText(
+        f1_widget = ipywidgets.BoundedFloatText(
             min=10,
             max=300,
-            value=self.start_frequency/1e3,
+            value=self.f1/1e3,
             description='Start [kHz]',
             readout_format='.0f',
             **text_layout)
 
-        # start_frequency_widget.observe(
-        #     self._frequency_change_callback,
-        #     names="value",
-        # )
-
-        end_frequency_widget = ipywidgets.BoundedFloatText(
+        f2_widget = ipywidgets.BoundedFloatText(
             min=10,
             max=300,
-            value=self.end_frequency/1e3,
+            value=self.f2/1e3,
             description='End [kHz]',
             readout_format='.0f',
             **text_layout)
@@ -278,12 +251,12 @@ class Chirp():
             **checkbox_layout)
 
         # Arrange in columns and lines
-        widget_f_layout = ipywidgets.VBox([start_frequency_widget,
-                                           end_frequency_widget,
+        widget_f_layout = ipywidgets.VBox([f1_widget,
+                                           f2_widget,
                                            noise_widget])
 
-        widget_par_layout = ipywidgets.VBox([noise_widget,
-                                             magnitude_widget])
+        widget_par_layout = ipywidgets.VBox([ noise_widget,
+                                           magnitude_widget])
 
         widget_layout = ipywidgets.HBox([widget_f_layout,
                                          shift_widget,
@@ -292,12 +265,12 @@ class Chirp():
         widget_layout = ipywidgets.VBox([title_widget, widget_layout])
 
         # Export as dictionary
-        widget = {'start_frequency_widget': start_frequency_widget,
-                  'end_frequency_widget': end_frequency_widget,
+        widget = {'f1_widget': f1_widget,
+                  'f2_widget': f2_widget,
                   'shift_widget': shift_widget,
                   'noise_widget': noise_widget,
                   'magnitude_widget': magnitude_widget
-                  }
+                 }
 
         w = WidgetLayout(widget_layout, widget)
 

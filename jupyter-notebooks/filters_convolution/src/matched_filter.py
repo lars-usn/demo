@@ -19,14 +19,6 @@ LOGOFILE = "usn-logo-purple.png"
 FIGURE_NAME = "Matched Filter Demo"
 
 
-class WidgetLayout():
-    """Container for widgets and layout."""
-
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
-
-
 class Chirp():
     """Create and demonstrate linear chirp."""
 
@@ -58,12 +50,16 @@ class Chirp():
 
         # Initialisation
         self.fig, self.axes, self.graphs = self._initialise_graphs()
-       # self.scale_axes()
+        self.scale_axes()
+
+        self.update_pulse()
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+        self.update_startline()
 
         if create_widgets:
             self.widget_layout, self.widgets = self._create_widgets()
-
-        return
 
     @property
     def start_index(self):
@@ -200,14 +196,15 @@ class Chirp():
         # Create figure and axes
         plt.close(FIGURE_NAME)
 
+        n = 5
         fig, axes = plt.subplot_mosaic(
             [
-                [".", "pulse"],
-                [".", "received"],
-                [".", "multiplied"],
-                ["logo", "correlated"],
+                ["."] + ["pulse"] * n,
+                ["."] + ["received"] * n,
+                ["."] + ["multiplied"] * n,
+                ["logo"] + ["correlated"] * n,
             ],
-            figsize=(14, 6),
+            figsize=(12, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
@@ -264,61 +261,18 @@ class Chirp():
         t0 = self.start*1e6
         self.graphs["startline"].set_xdata([t0, t0])
 
-    def display(self):
-        """Plot all signals and spectra."""
-        # Clear old graphs, add indicators
-        for ax in self.axes:
-            for art in list(ax.lines):
-                art.remove()
-            for art in list(ax.collections):
-                art.remove()
-            for art in list(ax.patches):
-                art.remove()
-
-        ax = self.axes
-        shifted_signal = np.roll(
-            self.noisy_pulse,
-            self.start_index
-        )
-
-        multiplied = self.pulse * shifted_signal
-
-        t_us = self.t * 1e6
-        ax[0].plot(t_us, self.pulse, 'C0')
-
-        ax[1].plot(t_us, self.pulse, 'C0',
-                   t_us, self.shifted_pulse, 'C1')
-
-        ax[2].plot(t_us, multiplied, 'C0')
-
-        for a in ax[0:4]:
-            a.axhline(y=0, color='gray')
-
-        # Cross-correlation
-        correlated = self.correlated_pulses
-        tc = self.correlated_time
-
-        correlated = self.correlated_pulses
-        if self.magnitude:
-            correlated = abs(correlated)
-
-        ax[3].plot(tc*1e6, correlated, color='C0')
-        ax[3].axvline(x=self.start*1e6, color='C1')
-
-        return
-
     def scale_axes(self):
         """Set axes scales to fixed scales."""
         t_pulse_start = self.n_pad / self.sample_rate
         t_pad = 1.0*self.chirp_duration
-        t_min = t_pulse_start - t_pad
+        t_min = t_pulse_start - self.chirp_duration
         t_max = t_pulse_start + self.chirp_duration + t_pad
         t_span = t_max - t_min
 
         tlim_us = np.array([t_min, t_max])*1e6
 
-        for ax in self.axes["pulse", "received", "multiplied"]:
-            ax.set(
+        for name in ["pulse", "received", "multiplied"]:
+            self.axes[name].set(
                 xlim=tlim_us,
                 ylim=[-1.5, 1.5],
             )
@@ -326,7 +280,7 @@ class Chirp():
         tspan_us = np.array([-t_span, t_span])/2*1e6
         self.axes["correlated"].set(
             xlim=tspan_us,
-            ylim=[-1, 1],
+            ylim=[-1.5, 1.5],
         )
 
         return
@@ -349,6 +303,7 @@ class Chirp():
             base_path = Path.cwd()
 
         logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
+        print(logo_path)
 
         if logo_path.exists():
             img = mpimg.imread(logo_path)
@@ -380,6 +335,47 @@ class Chirp():
 
         return
 
+    def _start_frequency_change_callback(self, change):
+        self.start_frequency = change["new"] * 1e3
+
+        self.update_pulse()
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+        self.fig.canvas.draw_idle()
+
+    def _end_frequency_change_callback(self, change):
+        self.end_frequency = change["new"] * 1e3
+
+        self.update_pulse()
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+        self.fig.canvas.draw_idle()
+
+    def _noise_change_callback(self, change):
+        self.noise_level = change["new"]
+
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+        self.fig.canvas.draw_idle()
+
+    def _shift_change_callback(self, change):
+        self.start = change["new"] * 1e-6
+
+        self.update_received()
+        self.update_multiplied()
+        self.update_correlated()
+        self.update_startline()
+        self.fig.canvas.draw_idle()
+
+    def _magnitude_change_callback(self, change):
+        self.magnitude = change["new"]
+
+        self.update_correlated()
+        self.fig.canvas.draw_idle()
+
     # --- Interactive widgets
     def _create_widgets(self):
         """Create widgets for interactive operation."""
@@ -390,76 +386,117 @@ class Chirp():
         # Layouts definitions
         text_layout = {
             'continuous_update': False,
-            'layout': ipywidgets.Layout(width='90%'),
-            'style': {'description_width': '60%'}}
+            # 'style': {'description_width': '120px'}
+        }
 
         slider_layout = {
             'continuous_update': True,
-            'layout': ipywidgets.Layout(width='60%'),
-            'style': {'description_width': '15%'}}
+            # 'style': {'description_width': '120px'}
+        }
 
-        checkbox_layout = {
-            'layout': ipywidgets.Layout(width='20%'),
-            'style': {'description_width': '10%'}}
+        checkbox_layout = {'style': {'description_width': '120px'}}
 
         # Individual widgets
         start_frequency_widget = ipywidgets.BoundedFloatText(
             min=10,
             max=300,
+            step=1.0,
             value=self.start_frequency/1e3,
-            description='Start [kHz]',
+            description='Start freq. [kHz]',
             readout_format='.0f',
             **text_layout)
 
-        # start_frequency_widget.observe(
-        #     self._frequency_change_callback,
-        #     names="value",
-        # )
+        start_frequency_widget.observe(
+            self._start_frequency_change_callback,
+            names="value",
+        )
 
         end_frequency_widget = ipywidgets.BoundedFloatText(
             min=10,
             max=300,
+            step=1.0,
             value=self.end_frequency/1e3,
-            description='End [kHz]',
-            readout_format='.0f',
-            **text_layout)
+            description='End freq. [kHz]',
+            readout_format='.0f')
+
+        end_frequency_widget.observe(
+            self._end_frequency_change_callback,
+            names="value",
+        )
 
         noise_widget = ipywidgets.BoundedFloatText(
             min=0.0,
             max=2.0,
-            step=0.01,
+            step=0.05,
             value=self.noise_level,
             description='Noise level',
-            readout_format='.2f',
-            **text_layout)
+            readout_format='.2f')
+
+        noise_widget.observe(
+            self._noise_change_callback,
+            names="value",
+        )
 
         shift_widget = ipywidgets.FloatSlider(
             min=-250,
             max=250,
-            step=0.5,
+            step=1.0,
             value=self.start*1e6,
             description='Ref. position [$\mu$s]',
-            readout_format='.1f',
-            **slider_layout)
+            readout_format='.1f')
+
+        shift_widget.observe(
+            self._shift_change_callback,
+            names="value",
+        )
 
         magnitude_widget = ipywidgets.Checkbox(
             value=self.magnitude,
             description='Magnitude',
             **checkbox_layout)
 
+        magnitude_widget.observe(
+            self._magnitude_change_callback,
+            names="value",
+        )
+
         # Arrange in columns and lines
-        widget_f_layout = ipywidgets.VBox([start_frequency_widget,
-                                           end_frequency_widget,
-                                           noise_widget])
+        for w in [
+                start_frequency_widget,
+                end_frequency_widget,
+                noise_widget,
+                shift_widget,
+                magnitude_widget,
+        ]:
+            w.style.description_width = '120px'
 
-        widget_par_layout = ipywidgets.VBox([noise_widget,
-                                             magnitude_widget])
+        for w in [
+                start_frequency_widget,
+                end_frequency_widget,
+                noise_widget,
+                magnitude_widget,
+        ]:
+            w.layout.width = '220px'
 
-        widget_layout = ipywidgets.HBox([widget_f_layout,
-                                         shift_widget,
-                                         magnitude_widget])
+        text_column = ipywidgets.VBox(
+            [
+                start_frequency_widget,
+                end_frequency_widget,
+                noise_widget,
+                magnitude_widget
+            ]
+        )
 
-        widget_layout = ipywidgets.VBox([title_widget, widget_layout])
+        text_column.layout = ipywidgets.Layout(width='300px')
+        shift_widget.layout.width = '900px'
+
+        widget_layout = ipywidgets.HBox(
+            [text_column, shift_widget],
+            layout=ipywidgets.Layout(
+                width='100%',
+                align_items='center'
+            )
+        )
 
         # Export as dictionary
         widget = {'start_frequency_widget': start_frequency_widget,
@@ -469,6 +506,4 @@ class Chirp():
                   'magnitude_widget': magnitude_widget
                   }
 
-        w = WidgetLayout(widget_layout, widget)
-
-        return w
+        return widget_layout, widget

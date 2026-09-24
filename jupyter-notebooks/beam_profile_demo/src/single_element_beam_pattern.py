@@ -6,7 +6,6 @@ import scipy.special as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.image as mpimg
-from matplotlib.offsetbox import AnchoredText
 import ipywidgets as widgets
 from pathlib import Path
 
@@ -635,8 +634,8 @@ class Transducer:
             cell.set_text_props(fontfamily="DejaVu Sans")
 
         table.auto_set_font_size(False)
-        table.set_fontsize(10)
-        table.scale(1.0, 1.1)
+        table.set_fontsize(9)
+        table.scale(1.0, 1.5)
 
         for r in range(len(resulttext)):
             table[(r, 1)].set_text_props(ha="center")

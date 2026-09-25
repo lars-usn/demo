@@ -16,9 +16,9 @@ The Matlab and LabVIEW programs will need access to all files in their folders t
 #  Ultrasound / Acoustics
 These demo program are written for courses in acoustics  ultrasound technology at at USN. They are presently used in courses at MSc and PhD-level, such as the course *SPE5950 Specialisation Topic - Acoustics and Ultrasound Technology*.
 
-| Description  | | File Name | 
-| -- | -- | -- |
-| **Jupyter Notebooks with interactive demos** | | |
+| Description  | File Name | 
+| -- | -- |
+| **Jupyter Notebooks with interactive demos** | | 
 | Radiated field from a single-element transducer    |   `single_element_demo.ipynb` |
 | Illustration the piezoelectric effect  |  `piezoelectric_plate.ipynb` |
 | Simplified illustration of a focused a transducer  |  `focused_transducer_simple.ipynb` |

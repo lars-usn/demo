@@ -5,7 +5,7 @@
 This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 
 The programs were written over several years using different tools for the courses 'TSE2280 Measurement Technology and Signal Processing' and 'SPE590 Specialisation Topic (Acoustics and Ultrasound Technology)'.
 
-New developments are done in Python and Jupyter Notebook. The Matlab apps are still in use and maintained, the LabVIEW files are no longer maintained but still available .
+New developments are done in Python and Jupyter Notebook. The Matlab apps and LabVIEW files are no longer maintained but still available .
 
 The Jupyter Notebook *.ipynb*-files can be run interactively in JupyterLab or Jupyter Notebook.
  Matlab-apps (.mlapp)  and LabVIEW VIs (.vi) are stand-alone programs with a graphical user interface.

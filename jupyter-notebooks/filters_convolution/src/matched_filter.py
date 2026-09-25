@@ -5,7 +5,7 @@ Created on Thu Dec 18 16:21:59 2025
 @author: larsh
 """
 
-# Illustration of the convolution operation, applied to FIR filtering
+# Illustration of matched filter using cross-correlation of linear chirps
 from math import pi
 import numpy as np
 from scipy import signal
@@ -49,15 +49,16 @@ class Chirp:
 
         # Normally fixed parameters
         self.sample_rate = 10e6
-        self.chirp_duration = 200e-6  # Chirp duration
-        self.window = "tukey"  # Tapering window
-        self.window_par = 0.2  # Parameter to window function
+        self.chirp_duration = 200e-6
+        self.window = "tukey"
+        self.window_par = 0.2
 
         # Changed during runtime
-        self.start_frequency = 125e3  # Start frequencvy
-        self.end_frequency = 200e3  # End frequency
-        self.reference_time = -200e-6  # Start of received signal
+        self.start_frequency = 125e3
+        self.end_frequency = 200e3
+        self.selected_lag = -200e-6
         self.noise_level = 0.0
+        self.magnitude = False
 
         # No. of points in chirp
         n_chirp = int(self.chirp_duration * self.sample_rate)
@@ -66,28 +67,25 @@ class Chirp:
         self.n_points = int(n_chirp + 2 * self.n_pad)
 
         self.t = np.arange(0, self.n_points) / self.sample_rate
-
         self.noise_base = self.create_noise()
-
-        self.magnitude = False
 
         # Initialisation
         self.fig, self.axes, self.graphs = self._initialise_graphs()
         self.scale_axes()
 
-        self.update_pulse()
-        self.update_received()
-        self.update_multiplied()
-        self.update_correlated()
         self.update_referenceline()
+        self.redraw(
+            pulse_changed=True,
+            correlation_changed=True,
+        )
 
         if create_widgets:
             self.widget_layout, self.widgets = self._create_widgets()
 
     @property
-    def reference_index(self):
+    def lag_index(self):
         """Calculate shifted start index."""
-        return int(self.reference_time * self.sample_rate)
+        return int(self.selected_lag * self.sample_rate)
 
     @property
     def correlated_time(self):
@@ -156,67 +154,35 @@ class Chirp:
 
         return pulse
 
-    @property
-    def noisy_pulse(self):
+    def shift_signal(self, x, k):
         """
-        Create noisy signal
+        Shift signal in time
+
+        Parameters
+        ----------
+        x : ndarray
+            Signal to shift
+        k : int
+            No. of sample to shift pulse, positive or negative
 
         Returns
         -------
         ndarray
-            Frequency sweep with padded ends and noise
-
+            Signal x shifted k samples
         """
-        return self.pulse + self.noise_level * self.noise_base
+        y = np.zeros_like(x)
 
-    @property
-    def shifted_pulse(self):
-        """
-        Shift returned noisy pulse.
+        if abs(k) >= len(y):
+            return y
 
-        Returns
-        -------
-        ndarray
-            Noisy pulse shifted in time,
-        """
-        y = np.zeros_like(self.noisy_pulse)
-        k = self.reference_index
-
-        if k >= 0:
-            y[k:] = self.noisy_pulse[:-k] if k else self.noisy_pulse
+        if k > 0:
+            y[k:] = x[:-k]
+        elif k < 0:
+            y[:k] = x[-k:]
         else:
-            y[:k] = self.noisy_pulse[-k:]
+            y[:] = x
 
         return y
-
-    @property
-    def multiplied_pulses(self):
-        """
-        Shift returned noisy pulse.
-
-        Returns
-        -------
-        ndarray
-            Noisy pulse shifted in time,
-        """
-        return self.pulse * self.shifted_pulse
-
-    @property
-    def correlation_output(self):
-        """
-        Correlate original pulse with returned noisy pulse
-
-        Returns
-        -------
-        ndarray
-            Correlation result
-        """
-        corr = signal.correlate(
-            self.pulse,
-            self.noisy_pulse,
-            mode="full",
-        )
-        return corr / np.max(np.abs(corr))
 
     def envelope(self, x):
         """Calculate envelope of signal x."""
@@ -235,13 +201,13 @@ class Chirp:
         # Create figure and axes
         plt.close(FIGURE_NAME)
 
-        n = 6
+        n_columns = 6
         fig, axes = plt.subplot_mosaic(
             [
-                ["."] + ["pulse"] * n,
-                ["."] + ["received"] * n,
-                ["."] + ["multiplied"] * n,
-                ["logo"] + ["correlated"] * n,
+                ["."] + ["pulse"] * n_columns,
+                ["."] + ["received"] * n_columns,
+                ["."] + ["multiplied"] * n_columns,
+                ["logo"] + ["correlated"] * n_columns,
             ],
             figsize=(12, 6),
             layout="constrained",
@@ -285,59 +251,62 @@ class Chirp:
         (graphs["envelope"],) = axes["correlated"].plot(
             tc_us,
             zero_correlation,
-            **LINEFORMAT["correlated"],
+            **LINEFORMAT["envelope"],
         )
         graphs["referenceline"] = axes["correlated"].axvline(
-            x=self.reference_time * 1e6,
+            x=self.selected_lag * 1e6,
             **LINEFORMAT["received"],
         )
 
         # Scale and format axes
         for name in ["pulse", "received", "multiplied", "correlated"]:
             axes[name].axhline(y=0, color="gray")
-            axes[name].grid(True, axis='x')
+            axes[name].grid(True, axis="x")
             if name != "correlated":
                 axes[name].tick_params(labelbottom=False)
 
-        axes["pulse"].set_title("Pulse", loc='left')
-        axes["pulse"].set_title("$x(n)$", loc='right')
-        axes["received"].set_title("Shifted pulse", loc='left')
-        axes["received"].set_title("$y(n+k)$ and $x(n)$", loc='right')
-        axes["multiplied"].set_title("Multiplied pulses", loc='left')
-        axes["multiplied"].set_title("$x(n) y(n+k)$ ", loc='right')
-        axes["correlated"].set_title("Correlated pulses", loc='left')
-        axes["correlated"].set_title(r"$\sum x(n) y(n+k)$ ", loc='right')
+        axes["pulse"].set_title("Pulse", loc="left")
+        axes["pulse"].set_title("$x(n)$", loc="right")
+        axes["received"].set_title("Shifted pulse", loc="left")
+        axes["received"].set_title("$y(n+k)$ and $x(n)$", loc="right")
+        axes["multiplied"].set_title("Multiplied pulses", loc="left")
+        axes["multiplied"].set_title("$x(n) y(n+k)$ ", loc="right")
+        axes["correlated"].set_title("Correlated pulses", loc="left")
+        axes["correlated"].set_title(r"$\sum x(n) y(n+k)$ ", loc="right")
         axes["correlated"].set_xlabel(r"Time [$\mu$s] ")
 
         return fig, axes, graphs
 
-    def update_pulse(self):
-        """Update graph showing original pulse."""
-        self.graphs["pulse_def"].set_ydata(self.pulse)
-        self.graphs["transmitted"].set_ydata(self.pulse)
+    def update_pulse(self, pulse):
+        """Update graphs showing the original pulse."""
+        self.graphs["pulse_def"].set_ydata(pulse)
+        self.graphs["transmitted"].set_ydata(pulse)
 
-    def update_received(self):
-        """Update graph showing received pulse."""
-        self.graphs["received"].set_ydata(self.shifted_pulse)
+    def update_received(self, shifted_pulse):
+        """Update graph showing the shifted received pulse."""
+        self.graphs["received"].set_ydata(shifted_pulse)
 
-    def update_multiplied(self):
-        """Update graph showing product of transmitted and received pulses."""
-        self.graphs["multiplied"].set_ydata(self.multiplied_pulses)
+    def update_multiplied(self, multiplied_pulses):
+        """Update graph showing the pointwise product."""
+        self.graphs["multiplied"].set_ydata(multiplied_pulses)
 
-    def update_correlated(self):
-        """Update correlation graph."""
-        x = self.correlation_output
-        envelope = self.envelope(x)
+    def update_correlated(self, pulse, noisy_pulse):
+        """Update the correlation graph."""
+        corr = signal.correlate(
+            pulse,
+            noisy_pulse,
+            mode="full",
+        )
+        corr = corr / np.sum(pulse**2)
+        envelope = self.envelope(corr)
 
-        if self.magnitude:
-            x = np.abs(x)
-
-        self.graphs["correlated"].set_ydata(x)
+        plotted_corr = np.abs(corr) if self.magnitude else corr
+        self.graphs["correlated"].set_ydata(plotted_corr)
         self.graphs["envelope"].set_ydata(envelope)
 
     def update_referenceline(self):
         """Update line showing shifted pulse time."""
-        t0 = self.reference_time * 1e6
+        t0 = self.selected_lag * 1e6
         self.graphs["referenceline"].set_xdata([t0, t0])
 
     def scale_axes(self):
@@ -361,8 +330,6 @@ class Chirp:
             xlim=tspan_us,
             ylim=[-1.5, 1.5],
         )
-
-        return
 
     def _create_logo(self, ax):
         """
@@ -396,37 +363,48 @@ class Chirp:
                 transform=ax.transAxes,
             )
 
-    def redraw(self, pulse=False):
-        if pulse:
-            self.update_pulse()
+    def redraw(self, pulse_changed=False, correlation_changed=False):
+        pulse = self.pulse
+        noisy_pulse = pulse + self.noise_level * self.noise_base
+        shifted_pulse = self.shift_signal(noisy_pulse, self.lag_index)
 
-        self.update_received()
-        self.update_multiplied()
-        self.update_correlated()
+        if pulse_changed:
+            self.update_pulse(pulse)
+
+        self.update_received(shifted_pulse)
+        self.update_multiplied(pulse * shifted_pulse)
+
+        if correlation_changed:
+            self.update_correlated(pulse, noisy_pulse)
 
         self.fig.canvas.draw_idle()
 
     def _start_frequency_change_callback(self, change):
         self.start_frequency = change["new"] * 1e3
-        self.redraw(pulse=True)
+        self.redraw(
+            pulse_changed=True,
+            correlation_changed=True,
+        )
 
     def _end_frequency_change_callback(self, change):
         self.end_frequency = change["new"] * 1e3
-        self.redraw(pulse=True)
+        self.redraw(
+            pulse_changed=True,
+            correlation_changed=True,
+        )
 
     def _noise_change_callback(self, change):
         self.noise_level = change["new"]
-        self.redraw(pulse=False)
+        self.redraw(correlation_changed=True)
 
     def _shift_change_callback(self, change):
-        self.reference_time = change["new"] * 1e-6
+        self.selected_lag = change["new"] * 1e-6
         self.update_referenceline()
-        self.redraw(pulse=False)
+        self.redraw()
 
     def _magnitude_change_callback(self, change):
         self.magnitude = change["new"]
-        self.update_correlated()
-        self.fig.canvas.draw_idle()
+        self.redraw(correlation_changed=True)
 
     # --- Interactive widgets
     def _create_widgets(self):
@@ -482,7 +460,7 @@ class Chirp:
             min=-250,
             max=250,
             step=1.0,
-            value=self.reference_time * 1e6,
+            value=self.selected_lag * 1e6,
             description=r"Ref. position [$\mu$s]",
             readout_format=".0f",
         )
@@ -493,9 +471,9 @@ class Chirp:
         )
 
         magnitude_widget = ipywidgets.Dropdown(
-            options=[('Signed', False), ('Magnitude', True)],
+            options=[("Signed", False), ("Magnitude", True)],
             value=False,
-            description='Correlation',
+            description="Correlation",
         )
 
         magnitude_widget.observe(
@@ -519,7 +497,7 @@ class Chirp:
             noise_widget,
             magnitude_widget,
         ]:
-            w.layout.width = "200px"
+            w.layout.width = "220px"
 
         frequency_column = ipywidgets.VBox(
             [
@@ -535,9 +513,9 @@ class Chirp:
             ]
         )
 
-        frequency_column.layout = ipywidgets.Layout(width="220px")
-        extras_column.layout = ipywidgets.Layout(width="220px")
-        shift_widget.layout.width = "750px"
+        frequency_column.layout = ipywidgets.Layout(width="230px")
+        extras_column.layout = ipywidgets.Layout(width="230px")
+        shift_widget.layout.width = "850px"
 
         widget_layout = ipywidgets.HBox(
             [frequency_column, shift_widget, extras_column],
@@ -546,7 +524,9 @@ class Chirp:
 
         widget_layout = ipywidgets.VBox(
             [title_widget, widget_layout],
-            layout=ipywidgets.Layout(width="100%",),
+            layout=ipywidgets.Layout(
+                width="100%",
+            ),
         )
 
         # Export as dictionary

@@ -18,10 +18,13 @@ These demo program are written for courses in acoustics  ultrasound technology a
 
 | Description  | | File Name | 
 | -- | -- | -- |
-| **Jupyter Notebook widgets and Python** | | |
-| Radiated field from a single-element transducer    | Notebook with interactive demo  |  `single_element_demo.ipynb` |
-| Radiated field from a single-element transducer    | Python code           | `single_element_beam_pattern.py`     |
-| Simple illustration of pulse length and bandwidth  | Notebook with interactive demo  | `pulse-length-and-bandwidth.ipynb` |
+| **Jupyter Notebooks with interactive demos** | | |
+| Radiated field from a single-element transducer    |   `single_element_demo.ipynb` |
+| Illustration the piezoelectric effect  |  `piezoelectric_plate.ipynb` |
+| Simplified illustration of a focused a transducer  |  `focused_transducer_simple.ipynb` |
+| Illustration wavefronts from a linear transducer array  | `array_wavefield.ipynb` |
+| Radiated field from a linear transducer array  | `array_demo.ipynb` |
+
 |  **Matlab** | | |
 | Beam profile from a single-element ultrasound transducer | Matlab app  | `element_beamprofile.mlapp` |
 | Beam profile from an ultrasound transducer array         | Matlab app  | `array_beamprofile.mlapp`  |

@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep 28 13:16:45 2026
+
+@author: lars-hoff
+"""
+
+import numpy as np
+from numpy import pi
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.patches import FancyArrowPatch
+import ipywidgets as widgets
+import usdemo
+
+FIGURE_NAME = "Reflection - Refraction Demo"
+
+
+def draw_arrow(self, ax, length, angle, color="crimson"):
+    phi = np.radians(angle)
+    x_start = -length * np.sin(phi)
+    y_start = length * np.cos(phi)
+
+    self.pointer = FancyArrowPatch(
+        (x_start, y_start),
+        (0, 0),
+        arrowstyle="->",
+        color="color",
+        linewidth=4,
+        mutation_scale=20,
+        zorder=5,
+    )
+    ax.add_patch(self.pointer)

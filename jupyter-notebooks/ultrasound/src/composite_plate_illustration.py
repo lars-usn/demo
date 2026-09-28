@@ -8,8 +8,13 @@ Created on Fri Sep 25 12:13:42 2026
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import pi
+import ipywidgets as widgets
 
 COLOR = {"piezo": "#8B3A1A"}
+
+
+FIGURE_NAME = "Composite Plate Demo"
+LOGOFILE = "usn-logo-purple.png"
 
 
 class Composite:
@@ -134,5 +139,50 @@ class Composite:
             color="0.9",
         )
 
+    def _strain_change_callback(self, change):
+        self.strain = float(change["new"])
+        self.update.plate()
 
-# ax.set_axis_off()
+    # === Interactive widgets ======================================
+    def _create_widgets(self):
+        """
+        Create widgets for interactive operation.
+
+        Returns
+        -------
+        widget_layout : ipywidgets widget box
+            Widget layout for use in Jupyter Notebook
+        widget_list : dict of widgets
+            Widgets for use in Jupyter Notebook
+        """
+        title = "Illustration of the Piezo-composite"
+        title_widget = widgets.Label(
+            title,
+            style=dict(font_weight="bold"),
+        )
+
+        layout = {
+            "continuous_update": True,
+            "layout": widgets.Layout(width="50%"),
+            "style": {"description_width": "10%"},
+        }
+
+        strain_widget = widgets.FloatSlider(
+            value=0,
+            min=-0.5,
+            max=0.5,
+            step=0.05,
+            readout_format=".2f",
+            description="Strain",
+            **layout,
+        )
+        strain_widget.observe(
+            self._strain_change_callback,
+            names="value",
+        )
+
+        widget_layout = widgets.VBox([title_widget, strain_widget])
+
+        widget_list = {"strain": strain_widget}
+
+        return widget_layout, widget_list

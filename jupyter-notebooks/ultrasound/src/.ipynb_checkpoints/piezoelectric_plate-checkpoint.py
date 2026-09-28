@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import FancyArrowPatch
 import ipywidgets as widgets
+from pathlib import Path
+import matplotlib.image as mpimg
 import usdemo
 
 FIGURE_NAME = "Piezoelectric Plate Demo"
@@ -16,7 +18,7 @@ class Voltmeter:
     The arrow position can be changes after the voltmeter is drawn
     """
 
-    def __init__(self, x=2.0, y=0.0, width=2.4, height=1.2, value=0.0):
+    def __init__(self, x=2.0, y=0.0, width=2.4, height=1.0, value=0.0):
         """
         Draw the voltmeter with specified size, position , and value
 
@@ -38,7 +40,7 @@ class Voltmeter:
         self.x = x
         self.y = y
         self.value = np.clip(value, -1.0, 1.0)
-        self.max_angle = 0.18 * pi  # Angle corresponding to value=1.0
+        self.max_angle = 0.20 * pi  # Angle corresponding to value=1.0
         self.pointer = None
 
     @property
@@ -215,7 +217,7 @@ class Voltmeter:
 class Plate:
     """Define and draw a piezoelectric plate."""
 
-    def __init__(self, x=6.0, y=0.0, width=3.0, thickness=1.0):
+    def __init__(self, x=6.0, y=0.0, width=3.0, thickness=0.5):
         """
         Draw the piezoelectric plate with specified size and position.
 
@@ -267,7 +269,7 @@ class Plate:
             (self.left, self.bottom),
             self.width,
             self.current_thickness,
-            facecolor=usdemo.COLORS["piezo"],
+            facecolor="#8B8580",
             linewidth=0,
             zorder=3,
         )
@@ -281,7 +283,7 @@ class Plate:
                 [self.left, self.left + self.width],
                 [y, y],
                 linewidth=6,
-                color=usdemo.COLORS["electrodes"],
+                color=usdemo.COLORS["electrrodes"],
                 zorder=4,
             )
             self.electrodes.append(line)
@@ -384,7 +386,7 @@ class Forces:
 
         force_style = {
             "arrowstyle": "-|>",
-            "color": usdemo.COLORS["force"],
+            "color": "#1F618D",  # "#1C2833" "#0B5345" "#641E16" "#1F618D"
             "linewidth": 2,
             "mutation_scale": 28,
             "zorder": 5,
@@ -497,19 +499,18 @@ class PiezoelectricPlate:
                 drawing_row,
                 ["logo"] + ["."] * (n_col - 1),
             ],
-            figsize=(12, 6),
+            figsize=(12, 4),
             layout="tight",
             num=FIGURE_NAME,
         )
 
-        usdemo.usn_logo(axes["logo"])
+        self._create_logo(axes["logo"])
 
         ax = axes["drawing"]
 
         ax.axis("off")
-        ylim = 1.2
         ax.set_xlim(0.5, 8.7)
-        ax.set_ylim(-ylim, ylim)
+        ax.set_ylim(-0.7, 0.7)
         ax.set_aspect("equal", adjustable="box")
 
         return fig, axes
@@ -524,6 +525,38 @@ class PiezoelectricPlate:
         self.connection.update([self.plate.top, self.plate.bottom])
 
         self.forces.update(self.plate, value)
+
+    def _create_logo(self, ax):
+        """
+        Load logo file and place in specified axis.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where logo image is shown
+        """
+        ax.set_axis_off()
+
+        try:
+            base_path = Path(__file__).resolve().parent
+        except NameError:
+            # Running in Jupyter
+            base_path = Path.cwd()
+
+        logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
+
+        if logo_path.exists():
+            img = mpimg.imread(logo_path)
+            ax.imshow(img)
+        else:
+            ax.text(
+                0.5,
+                0.5,
+                "USN",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
 
     def _force_change_callback(self, change):
         self.value = float(change["new"])

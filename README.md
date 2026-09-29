@@ -1,8 +1,7 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
-## Note -- Work in Progress ---
-The programs are currently being updated for upcoming courses.
-The content is mostly fine, but the structure of the site is a bit messy
+## Work in Progress ---
+The programs are currently being updated for upcoming courses. This may cause the site to appear a bit messy, and programs are frequently changed, hopefully to the better.
 
 ## Ultrasound and Signal Processing
 

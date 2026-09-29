@@ -21,6 +21,7 @@ class Direction(Enum):
 
     @property
     def color(self) -> str:
+        """Colors associated with each direction."""
         color_map = {
             Direction.INCOMING: "#000080",
             Direction.REFLECTED: "#800000",
@@ -30,6 +31,7 @@ class Direction(Enum):
 
     @property
     def angle_radius(self):
+        """Radius of angle arc, avoid overlap."""
         radius_map = {
             Direction.INCOMING: 0.30,
             Direction.REFLECTED: 0.35,
@@ -38,6 +40,7 @@ class Direction(Enum):
         return radius_map[self]
 
     def start_end(self, x, y):
+        """Start end end coordinates of arrows, depending on direction."""
         if self is Direction.INCOMING:
             return (x, y), (0, 0)
 
@@ -50,6 +53,7 @@ class Direction(Enum):
         raise ValueError(f"Unknown direction: {self}")
 
     def arc_angles(self, angle):
+        """Define start and end of angle arc, depending on direction."""
         if self is Direction.INCOMING:
             return 90, 90 + angle
 

@@ -1,5 +1,9 @@
 # Demo Programs for Courses at the University of South-Eastern Norway
 
+## Note -- Work in Progress ---
+The programs are currently being updated for upcoming courses.
+The content is mostly fine, but the structure of the site is a bit messy
+
 ## Ultrasound and Signal Processing
 
 This repository contains small applications written to illustrate phenomena taught in courses, either for classroom demonstration or for use by students on their own. 

@@ -15,7 +15,7 @@ COLOR = {
     "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
     "text_edge": "#7AA6B8",
-    "orientation_line": "#2A6FBB",  # "#1F77B4",  # "#1F77B4" "#006BA4" "#2A6FBB" "#0072B2"
+    "orientation_line": "#2A6FBB",  # "#1F77B4" "#006BA4" "#2A6FBB" "#0072B2"
     "intensity_background": "black",
 }
 
@@ -887,27 +887,27 @@ class Transducer:
             Widgets for use in Jupyter Notebook
         """
         title = "Beam-profile from Single Element Transducer"
-        title_widget = widgets.Label(
-            title,
-            style=dict(font_weight="bold"),
+        title_widget = widgets.HTML(
+            f"<div style='font-weight:bold; font-size:120%;'>{title}</div>"
         )
 
-        left_layout = {
-            "continuous_update": True,
+        dropdown_layout = {
             "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "50%"},
+            "style": {"description_width": "80px"},
         }
 
-        right_layout = {
-            "continuous_update": True,
+        textbox_layout = {
             "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "30%"},
+            "style": {"description_width": "80px"},
         }
 
-        left_width = "25%"
-        right_width = "75%"
+        slider_layout = {
+            "continuous_update": True,
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "160px"},
+        }
 
-        # Left column widgets (Dropboxes, number boxes)
+        # Left column of dropdown: Shape and orientation
         shape_widget = widgets.Dropdown(
             options=[
                 ("Rectangular", False),
@@ -915,7 +915,7 @@ class Transducer:
             ],
             value=True,
             description="Shape",
-            **left_layout,
+            **dropdown_layout,
         )
         shape_widget.observe(
             self._shape_change_callback,
@@ -929,20 +929,21 @@ class Transducer:
             ],
             value=True,
             description="Orientation",
-            **left_layout,
+            **dropdown_layout,
         )
         orientation_widget.observe(
             self._orientation_change_callback,
             names="value",
         )
 
+        # Last column of widgets: Scaling
         db_range_widget = widgets.BoundedFloatText(
             value=self.db_range,
             min=6,
             max=120,
             step=6,
             description="Range [dB]",
-            **left_layout,
+            **textbox_layout,
         )
         db_range_widget.observe(
             self._db_range_change_callback,
@@ -955,38 +956,14 @@ class Transducer:
             max=120,
             step=6,
             description="Gain [dB]",
-            **left_layout,
+            **textbox_layout,
         )
         db_gain_widget.observe(
             self._db_gain_change_callback,
             names="value",
         )
 
-        left_col = widgets.VBox(
-            [
-                shape_widget,
-                orientation_widget,
-                db_range_widget,
-                db_gain_widget,
-            ],
-            layout=widgets.Layout(width=left_width),
-        )
-
-        # Right column widgets (Sliders)
-        frequency_widget = widgets.FloatSlider(
-            value=self.frequency / 1e3,
-            min=1,
-            max=400,
-            step=1,
-            readout_format=".0f",
-            description="Frequency [kHz]",
-            **right_layout,
-        )
-        frequency_widget.observe(
-            self._frequency_change_callback,
-            names="value",
-        )
-
+        # First column of sliders: Dimensions
         width_widget = widgets.FloatSlider(
             value=self.width * 1e3,
             min=10,
@@ -994,7 +971,7 @@ class Transducer:
             step=5,
             readout_format=".0f",
             description="Width / Diameter [mm]",
-            **right_layout,
+            **slider_layout,
         )
         width_widget.observe(
             self._width_change_callback,
@@ -1008,10 +985,25 @@ class Transducer:
             step=10,
             readout_format=".0f",
             description="Height [mm]",
-            **right_layout,
+            **slider_layout,
         )
         height_widget.observe(
             self._height_change_callback,
+            names="value",
+        )
+
+        # Second column of sliders: Frequency and depth
+        frequency_widget = widgets.FloatSlider(
+            value=self.frequency / 1e3,
+            min=1,
+            max=400,
+            step=1,
+            readout_format=".0f",
+            description="Frequency [kHz]",
+            **slider_layout,
+        )
+        frequency_widget.observe(
+            self._frequency_change_callback,
             names="value",
         )
 
@@ -1022,25 +1014,71 @@ class Transducer:
             step=1.0,
             readout_format=".0f",
             description="Distance [m]",
-            **right_layout,
+            **slider_layout,
         )
         distance_widget.observe(
             self._distance_change_callback,
             names="value",
         )
 
-        right_col = widgets.VBox(
+        dropdown_col = widgets.VBox(
             [
-                frequency_widget,
-                width_widget,
-                height_widget,
-                distance_widget,
-            ],
-            layout=widgets.Layout(width=right_width),
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Shape</b></div>"
+                ),
+                shape_widget,
+                orientation_widget,
+            ]
         )
 
+        left_sliders = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Dimensions</b></div>"
+                ),
+                width_widget,
+                height_widget,
+            ],
+        )
+
+        right_sliders = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Frequency and Distance</b></div>"
+                ),
+                frequency_widget,
+                distance_widget,
+            ],
+        )
+
+        textbox_col = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Display</b></div>"
+                ),
+                db_range_widget,
+                db_gain_widget,
+            ]
+        )
+
+        dropdown_col.layout = widgets.Layout(width="240px")
+        textbox_col.layout = widgets.Layout(width="180px")
+        left_sliders.layout = widgets.Layout(flex="1")
+        right_sliders.layout = widgets.Layout(flex="1")
+
         widget_layout = widgets.HBox(
-            [left_col, right_col], layout=widgets.Layout(width="80%")
+            [
+                dropdown_col,
+                left_sliders,
+                right_sliders,
+                textbox_col,
+            ],
+            layout=widgets.Layout(
+                width="100%",
+                display="flex",
+                gap="20px",
+                align_items="flex-start",
+            ),
         )
 
         widget_layout = widgets.VBox([title_widget, widget_layout])

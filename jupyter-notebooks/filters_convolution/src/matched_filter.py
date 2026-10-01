@@ -189,6 +189,7 @@ class Chirp:
         hx = signal.hilbert(x)
         return np.abs(hx)
 
+    # --- Define axes -----------------------------------------------
     def _initialise_graphs(self):
         """
         Initialise graphs for signals and spectra.
@@ -379,6 +380,7 @@ class Chirp:
 
         self.fig.canvas.draw_idle()
 
+    # --- Callbacks -------------------------------------------------
     def _start_frequency_change_callback(self, change):
         self.start_frequency = change["new"] * 1e3
         self.redraw(
@@ -406,7 +408,7 @@ class Chirp:
         self.magnitude = change["new"]
         self.redraw(correlation_changed=True)
 
-    # --- Interactive widgets
+    # --- Widget layout ---------------------------------------------
     def _create_widgets(self):
         """Create widgets for interactive operation."""
         # Title

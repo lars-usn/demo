@@ -61,7 +61,7 @@ class Transducer:
 
         # Grid and display settings, normally fixed
         self.z_max = 100.0  # m    Max. depth to calculate
-        self.x_max = 20.0  # m    Max. lateral dimension to calculate
+        self.x_max = 25.0  # m    Max. lateral dimension to calculate
         self.d_max = 200e-3  # m    Max. dimension on element display
         self.colormap = "inferno"
 
@@ -327,7 +327,7 @@ class Transducer:
 
         return p
 
-    # === Commands =============================
+    # --- Update values ---------------------------------------------
     def update_transducer_illustration(self):
         """Update aperture illustration, shape and dimensions."""
         w_mm = self.width * 1e3
@@ -473,47 +473,6 @@ class Transducer:
 
         ax["beamprofile"].set(xlim=lateral_max)
 
-    # === Non-public methods ==========================================
-    def _create_transducer_illustration(self, ax):
-        """
-        Create colored patch to illustrate transducer.
-
-        Parameters
-        ----------
-        ax : Axis object
-            Axis where transducer image is shown
-
-        Returns
-        -------
-        Matplotlib patch
-            Illustration of transducer element
-        """
-
-        ax.set(
-            title="Transducer shape",
-            facecolor=COLOR["transducer_background"],
-            box_aspect=1,
-            xlabel="Azimuth [mm]",
-            ylabel="Elevation [mm]",
-        )
-        transducer_fill = {"fill": True, "color": COLOR["transducer"]}
-        if self.circular:
-            patch = patches.Circle(
-                (0, 0),
-                radius=0,
-                **transducer_fill,
-            )
-        else:
-            patch = patches.Rectangle(
-                (0, 0),
-                width=0,
-                height=0,
-                **transducer_fill,
-            )
-
-        ax.add_patch(patch)
-        return patch
-
     def _set_cell_table(self, table, row, col, text):
         """Insert text at (row, col) in a table."""
         table[(row, col)].get_text().set_text(text)
@@ -572,6 +531,56 @@ class Transducer:
                 wavelength_text,
             )
 
+    # --- Create axes------------------------------------------------
+    def _initialise_graphs(self):
+        """Initialise result graphs."""
+        plt.close(FIGURE_NAME)
+
+        fig, axes = plt.subplot_mosaic(
+            [
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["logo", "beamprofile", "axial"],
+            ],
+            figsize=(12, 6),
+            layout="constrained",
+            num=FIGURE_NAME,
+        )
+
+        graphs = {}
+        self._create_logo(axes["logo"])
+        graphs["transducer"] = self._create_transducer_illustration(
+            axes["transducer"]
+        )
+        graphs["text"] = self._create_resulttextbox(axes["text"])
+        graphs["axial"] = self._create_axial_plot(axes["axial"])
+        graphs["lateral"] = self._create_lateral_plot(axes["lateral"])
+        graphs["beamprofile"] = self._create_beamprofile_plot(
+            axes["beamprofile"]
+        )
+
+        graphs["azimuth"], graphs["elevation"] = (
+            self._create_orientation_lines(
+                (axes["transducer"], axes["lateral"])
+            )
+        )
+
+        # Reference line for distance
+        graphs["refline"] = axes["axial"].axhline(
+            y=self.reference_distance,
+            **LINE["orientation"],
+        )
+
+        # Colorbar for intensity plots
+        graphs["colorbar"] = fig.colorbar(
+            graphs["axial"], ax=axes["axial"], label="dB re. max"
+        )
+
+        return fig, axes, graphs
+
     def _create_resulttextbox(self, ax):
         """
         Create and attach a formatted results text box to an Axes.
@@ -625,6 +634,46 @@ class Transducer:
             table[(r, 2)].set_text_props(ha="left")
 
         return table
+
+    def _create_transducer_illustration(self, ax):
+        """
+        Create colored patch to illustrate transducer.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where transducer image is shown
+
+        Returns
+        -------
+        Matplotlib patch
+            Illustration of transducer element
+        """
+
+        ax.set(
+            title="Transducer shape",
+            facecolor=COLOR["transducer_background"],
+            box_aspect=1,
+            xlabel="Azimuth [mm]",
+            ylabel="Elevation [mm]",
+        )
+        transducer_fill = {"fill": True, "color": COLOR["transducer"]}
+        if self.circular:
+            patch = patches.Circle(
+                (0, 0),
+                radius=0,
+                **transducer_fill,
+            )
+        else:
+            patch = patches.Rectangle(
+                (0, 0),
+                width=0,
+                height=0,
+                **transducer_fill,
+            )
+
+        ax.add_patch(patch)
+        return patch
 
     def _create_logo(self, ax):
         """
@@ -694,6 +743,36 @@ class Transducer:
 
         return graph
 
+    def _create_beamprofile_plot(self, ax):
+        """
+        Create axis for beam profile graphs.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
+
+        Returns
+        -------
+            Matplotlib Line2D
+        """
+        ax.set(
+            box_aspect=0.9,
+            xlabel="Distance [m]",
+            ylabel="Power [dB re. max]",
+            title="Lateral beam profile",
+        )
+
+        ax.grid(
+            visible=True,
+            which="major",
+            axis="x",
+        )
+
+        (graph,) = ax.plot([], [], **LINE["main"])
+
+        return graph
+
     def _create_lateral_plot(self, ax):
         """Create axis for lateral intensity plots.
 
@@ -759,85 +838,7 @@ class Transducer:
             )
         return azimuth_lines, elevation_lines
 
-    def _create_beamprofile_plot(self, ax):
-        """
-        Create axis for beam profile graphs.
-
-        Parameters
-        ----------
-        ax : Axis object
-            Axis where lateral intensity image is shown
-
-        Returns
-        -------
-            Matplotlib Line2D
-        """
-        ax.set(
-            xlabel="Distance [m]",
-            ylabel="Power [dB re. max]",
-            title="Lateral beam profile",
-        )
-
-        ax.grid(
-            visible=True,
-            which="major",
-            axis="x",
-        )
-
-        (graph,) = ax.plot([], [], **LINE["main"])
-
-        return graph
-
-    def _initialise_graphs(self):
-        """Initialise result graphs."""
-        plt.close(FIGURE_NAME)
-
-        fig, axes = plt.subplot_mosaic(
-            [
-                ["transducer", "lateral", "axial"],
-                ["transducer", "lateral", "axial"],
-                ["transducer", "lateral", "axial"],
-                ["text", "beamprofile", "axial"],
-                ["text", "beamprofile", "axial"],
-                ["logo", "beamprofile", "axial"],
-            ],
-            figsize=(14, 6),
-            layout="constrained",
-            num=FIGURE_NAME,
-        )
-
-        graphs = {}
-        self._create_logo(axes["logo"])
-        graphs["transducer"] = self._create_transducer_illustration(
-            axes["transducer"]
-        )
-        graphs["text"] = self._create_resulttextbox(axes["text"])
-        graphs["axial"] = self._create_axial_plot(axes["axial"])
-        graphs["lateral"] = self._create_lateral_plot(axes["lateral"])
-        graphs["beamprofile"] = self._create_beamprofile_plot(
-            axes["beamprofile"]
-        )
-
-        graphs["azimuth"], graphs["elevation"] = (
-            self._create_orientation_lines(
-                (axes["transducer"], axes["lateral"])
-            )
-        )
-
-        # Reference line for distance
-        graphs["refline"] = axes["axial"].axhline(
-            y=self.reference_distance,
-            **LINE["orientation"],
-        )
-
-        # Colorbar for intensity plots
-        graphs["colorbar"] = fig.colorbar(
-            graphs["axial"], ax=axes["axial"], label="dB re. max"
-        )
-
-        return fig, axes, graphs
-
-    # === Widget callbacks =========================================
+    # --- Callbacks -------------------------------------------------
     def _frequency_change_callback(self, change):
         self.frequency = float(change["new"]) * 1e3
         self.update_values()
@@ -874,7 +875,8 @@ class Transducer:
         self.db_range = change["new"]
         self.update_intensity_scale()
 
-    # === Interactive widgets ======================================
+    # --- Widget layout ---------------------------------------------
+
     def _create_widgets(self):
         """
         Create widgets for interactive operation.

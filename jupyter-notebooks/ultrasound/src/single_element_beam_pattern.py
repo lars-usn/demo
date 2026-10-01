@@ -15,18 +15,11 @@ COLOR = {
     "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
     "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
     "text_edge": "#7AA6B8",
-    "contour": "white",
-    "orientation_line": "#1F77B4",  # "#1F77B4" "#006BA4" "#2A6FBB" "#0072B2"
+    "orientation_line": "#2A6FBB",  # "#1F77B4",  # "#1F77B4" "#006BA4" "#2A6FBB" "#0072B2"
     "intensity_background": "black",
 }
 
 LINE = {
-    "contour": {
-        "colors": COLOR["contour"],
-        "linestyles": "dotted",
-        "alpha": 0.7,
-    },
-    "angle": {"color": COLOR["contour"], "linestyle": "dotted", "alpha": 0.7},
     "orientation": {
         "color": COLOR["orientation_line"],
         "linestyle": "dotted",

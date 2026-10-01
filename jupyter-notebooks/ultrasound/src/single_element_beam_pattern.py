@@ -8,9 +8,7 @@ import matplotlib.patches as patches
 import matplotlib.image as mpimg
 import ipywidgets as widgets
 from pathlib import Path
-
-# Internal libraries
-import beamplot_utilities as bpu
+import usdemo
 
 COLOR = {
     "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
@@ -59,7 +57,7 @@ class Transducer:
 
         # Parameters used in calculations
         self.distance = 20.0  # m    Reference distance
-        self.y_lim = 0.5  # Relative limit for beamwidth
+        self.bw_lim = -3.0  # Relative limit for beamwidth, dB
         self.lim_text = "-6 dB"  # Text for markers
 
         # To be calculated during runtime
@@ -70,7 +68,7 @@ class Transducer:
 
         # Grid and display settings, normally fixed
         self.z_max = 100.0  # m    Max. depth to calculate
-        self.x_max = 12.0  # m    Max. lateral dimension to calculate
+        self.x_max = 20.0  # m    Max. lateral dimension to calculate
         self.d_max = 200e-3  # m    Max. dimension on element display
         self.colormap = "inferno"
 
@@ -141,19 +139,9 @@ class Transducer:
 
     @property
     def opening_angle(self):
-        """Calculate opening angle from theory, two-sided, -6 dB."""
-        if self.circular:
-            x_6 = 0.705  # 6 dB limit, circular aperture
-        else:
-            x_6 = 0.603  # 6 dB limit, line (rectangular) aperture
+        """Calculate opening angle in radians from estimated beamwidth."""
 
-        if self.azimuth or self.circular:
-            d = self.width
-        else:
-            d = self.height
-
-        arg = np.clip(x_6 * self.wavelength / d, -1, 1)
-        return 2 * np.arcsin(arg)
+        return 2 * np.arctan(1 / 2 * self.beamwidth / self.reference_distance)
 
     @property
     def rayleigh_distance(self):
@@ -408,9 +396,10 @@ class Transducer:
         p_axial = p_az if self.azimuth else p_el
 
         p_db = self.db(p_axial, reference=p_max)
-        self.graphs["axial"].set_array(p_db.ravel())
+        p_display = p_db.transpose()
+        self.graphs["axial"].set_array(p_display.ravel())
 
-        self.graphs["refline"].set_xdata(
+        self.graphs["refline"].set_ydata(
             [self.reference_distance, self.reference_distance]
         )
 
@@ -426,14 +415,15 @@ class Transducer:
         z = self.z_axis
         k_ref = np.argmin(abs(z - self.reference_distance))
         p = p_axial[:, k_ref]
-        p_db = self.db(p, reference=p_max)
+        p_db = self.db(p, reference=p_max, power=False)
         self.graphs["beamprofile"].set_data(x, p_db)
 
         # Find reference values
-        curve_analysis = bpu.AnalyseCurve(argument=x, value=p)
+        curve_analysis = usdemo.AnalyseCurve(argument=x, value=p)
         xl, _ = curve_analysis.ref_values(
-            y_rel=self.y_lim
+            y_rel=self.bw_lim, db=True
         )  # Beam width limits
+
         self.beamwidth = xl[1] - xl[0]
 
         self.x_sidelobe, self.y_sidelobe = curve_analysis.sidelobe()
@@ -479,8 +469,8 @@ class Transducer:
 
         lateral_max = self.x_max * np.array([-1, 1])
         ax["axial"].set(
-            ylim=lateral_max,
-            xlim=[0, self.z_max],
+            xlim=lateral_max,
+            ylim=[self.z_max, 0],
         )
 
         ax["lateral"].set(
@@ -614,8 +604,8 @@ class Transducer:
             ["Width", "$w$", "-", "-"],
             ["Height", "$h$", "-", "-"],
             ["Rayleigh distance ", r"$z_R$", "-", ""],
-            ["Opening angle (-6 dB)", r"$\theta_0$", "-", ""],
-            ["Beam width (-6 dB)", "$D_z$", "-", ""],
+            [f"Opening angle ({self.bw_lim} dB)", r"$\theta_0$", "-", ""],
+            [f"Beam width ({self.bw_lim} dB)", "$D_z$", "-", ""],
             ["Highest sidelobe", "$PSL$", "-", ""],
         ]
 
@@ -623,14 +613,14 @@ class Transducer:
             cellText=resulttext,
             loc="upper left",
             cellLoc="left",
-            colWidths=[0.40, 0.20, 0.25, 0.25],
+            colWidths=[0.40, 0.15, 0.25, 0.10],
         )
 
         for cell in table.get_celld().values():
             cell.set_linewidth(0.2)
             cell.visible_edges = "TB"
             cell.set_facecolor(COLOR["text_face"])
-            cell.PAD = 0.05
+            cell.PAD = 0.03
             cell.set_text_props(fontfamily="DejaVu Sans")
 
         table.auto_set_font_size(False)
@@ -697,8 +687,8 @@ class Transducer:
             facecolor=COLOR["intensity_background"],
         )
 
-        x_coords = self.z_axis
-        y_coords = self.x_axis
+        x_coords = self.x_axis
+        y_coords = self.z_axis
         dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
         graph = ax.pcolormesh(
             x_coords,
@@ -811,14 +801,12 @@ class Transducer:
 
         fig, axes = plt.subplot_mosaic(
             [
-                ["transducer", "axial", "axial"],
-                ["transducer", "axial", "axial"],
-                ["transducer", "axial", "axial"],
-                ["transducer", "axial", "axial"],
-                ["text", "lateral", "beamprofile"],
-                ["text", "lateral", "beamprofile"],
-                ["text", "lateral", "beamprofile"],
-                ["logo", "lateral", "beamprofile"],
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["logo", "beamprofile", "axial"],
             ],
             figsize=(14, 6),
             layout="constrained",
@@ -844,8 +832,8 @@ class Transducer:
         )
 
         # Reference line for distance
-        graphs["refline"] = axes["axial"].axvline(
-            x=self.reference_distance,
+        graphs["refline"] = axes["axial"].axhline(
+            y=self.reference_distance,
             **LINE["orientation"],
         )
 
@@ -1010,7 +998,7 @@ class Transducer:
             value=self.width * 1e3,
             min=10,
             max=400,
-            step=10,
+            step=5,
             readout_format=".0f",
             description="Width / Diameter [mm]",
             **right_layout,
@@ -1022,7 +1010,7 @@ class Transducer:
 
         height_widget = widgets.FloatSlider(
             value=self.height * 1e3,
-            min=10,
+            min=5,
             max=400,
             step=10,
             readout_format=".0f",

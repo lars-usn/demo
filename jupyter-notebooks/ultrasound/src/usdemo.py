@@ -217,13 +217,15 @@ class AnalyseCurve:
 
         return x, y
 
-    def ref_values(self, y_rel=0.5):
+    def ref_values(self, y_rel=0.5, db=False):
         """Find positions of reference values.
 
         Arguments
         ---------
         y_rel: float
             Reference value relative max
+        db : bool
+            Intertpret limit as dB in Intensity
 
         Returns
         -------
@@ -234,6 +236,8 @@ class AnalyseCurve:
         """
         idx_max = self.idx_max()
         x_max, y_max = self.main_peak()
+        if db:
+            y_rel = 10 ** (y_rel / 10)
         y_lim = abs(y_max * y_rel)
 
         # Start at peak, look up and down until limit is passed

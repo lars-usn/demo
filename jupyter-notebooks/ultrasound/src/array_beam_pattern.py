@@ -87,7 +87,7 @@ class Array:
         self.scale_intensity_plot()
 
         if create_widgets:
-            self.widget_layout, self.widgets = self._create_widgets()
+            self.widget_layout = self._create_widgets()
 
     # === Calculated parameters ===========================
     def calculate_axial_distance_angle(self):
@@ -385,7 +385,7 @@ class Array:
             ["Array width", "$D$", "-", ""],
             ["Steering angle", r"$\theta_s$", "-", ""],
             ["Element delay", r"$\tau$", "-", ""],
-            ["Rayleigh distance ", r"$z_R$", "-", ""],
+            ["Rayleigh dist.", r"$z_R$", "-", ""],
         ]
 
         table = ax.table(
@@ -537,11 +537,11 @@ class Array:
         # works better with polar plot
         ax.text(
             0.5,
-            0.90,
+            0.95,
             "Radiation Diagram [dB re. max]",
             transform=ax.transAxes,
             ha="center",
-            va="top",
+            va="baseline",
         )
 
         (array_graph,) = ax.plot([], [], **LINEFORMAT["main"])
@@ -562,7 +562,7 @@ class Array:
                 ["logo", "beamprofile", "axial", "axial"],
             ],
             per_subplot_kw={"beamprofile": {"projection": "polar"}},
-            figsize=(16, 6),
+            figsize=(12, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
@@ -612,49 +612,48 @@ class Array:
 
     # === Interactive widgets ========================================
     def _create_widgets(self):
-        """Create widgets for interactive operation."""
-        title = "Beam-profile from Transducer Array"
-        title_widget = widgets.Label(title, style=dict(font_weight="bold"))
+        """
+        Create widgets for interactive operation.
 
-        text_layout = {
+        Returns
+        -------
+        widget_layout : ipywidgets widget box
+            Widget layout for use in Jupyter Notebook
+        """
+        title = "Beam-profile from Transducer Array"
+        title_widget = widgets.HTML(
+            f"<div style='font-weight:bold; font-size:120%;'>{title}</div>"
+        )
+
+        # Widget layouts
+        dimension_layout = {
             "continuous_update": False,
             "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "50%"},
+            "style": {"description_width": "120px"},
+        }
+
+        db_layout = {
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "80px"},
         }
 
         slider_layout = {
             "continuous_update": True,
             "layout": widgets.Layout(width="95%"),
-            "style": {"description_width": "30%"},
+            "style": {"description_width": "160px"},
         }
 
-        text_width = "20%"
-        slider_width = "60%"
-
-        # Text widgets (Dropboxes, number boxes)
+        # Left column of dropdowns: Array geometry
         n_elements_widget = widgets.BoundedIntText(
             value=self.n_elements,
             min=1,
             max=256,
             step=1,
             description="No. of elements",
-            **text_layout,
+            **dimension_layout,
         )
         n_elements_widget.observe(
             self._n_elements_change_callback,
-            names="value",
-        )
-
-        frequency_widget = widgets.BoundedFloatText(
-            value=self.frequency / 1e3,
-            min=10,
-            max=400,
-            step=1,
-            description="Frequency [kHz]",
-            **text_layout,
-        )
-        frequency_widget.observe(
-            self._frequency_change_callback,
             names="value",
         )
 
@@ -664,20 +663,49 @@ class Array:
             max=100,
             step=0.1,
             description="Element pitch [mm]",
-            **text_layout,
+            **dimension_layout,
         )
         pitch_widget.observe(
             self._pitch_change_callback,
             names="value",
         )
 
+        # Middle column: Frequency, steering angle
+        frequency_widget = widgets.FloatSlider(
+            value=self.frequency / 1e3,
+            min=10,
+            max=400,
+            step=1,
+            description="Frequency [kHz]",
+            **slider_layout,
+        )
+        frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
+
+        steering_angle_widget = widgets.FloatSlider(
+            min=-90,
+            max=90,
+            value=np.degrees(self.steering_angle),
+            step=1,
+            readout_format=".0f",
+            description="Steering angle [Deg.]",
+            **slider_layout,
+        )
+        steering_angle_widget.observe(
+            self._steering_angle_change_callback,
+            names="value",
+        )
+
+        # Last column of widgets: Scaling
         db_range_widget = widgets.BoundedFloatText(
             value=self.db_range,
             min=6,
             max=120,
             step=6,
             description="Range [dB]",
-            **text_layout,
+            **db_layout,
         )
         db_range_widget.observe(
             self._db_range_change_callback,
@@ -690,68 +718,57 @@ class Array:
             max=120,
             step=6,
             description="Gain [dB]",
-            **text_layout,
+            **db_layout,
         )
         db_gain_widget.observe(
             self._db_gain_change_callback,
             names="value",
         )
 
-        steering_angle_widget = widgets.FloatSlider(
-            min=-90,
-            max=90,
-            value=0,
-            step=1,
-            readout_format=".0f",
-            description="Steering angle [Deg.]",
-            **slider_layout,
-        )
-        steering_angle_widget.observe(
-            self._steering_angle_change_callback,
-            names="value",
-        )
-
-        # === Widget layout ==========================================
+        # Arrange widgets
         array_parameter_column = widgets.VBox(
             [
-                frequency_widget,
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Arrar Dimensions</b></div>"
+                ),
                 n_elements_widget,
                 pitch_widget,
             ],
-            layout=widgets.Layout(width=text_width),
         )
 
         scaling_column = widgets.VBox(
             [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Display</b></div>"
+                ),
                 db_range_widget,
                 db_gain_widget,
             ],
-            layout=widgets.Layout(width=text_width),
         )
 
         slider_column = widgets.VBox(
-            [steering_angle_widget],
-            layout=widgets.Layout(width=slider_width),
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Frequency and Steering</b></div>"
+                ),
+                frequency_widget,
+                steering_angle_widget,
+            ],
         )
+
+        array_parameter_column.layout = widgets.Layout(width="220px")
+        scaling_column.layout = widgets.Layout(width="180px")
+        slider_column.layout = widgets.Layout(flex="1")
 
         widget_layout = widgets.HBox(
             [
                 array_parameter_column,
-                scaling_column,
                 slider_column,
+                scaling_column,
             ],
             layout=widgets.Layout(width="80%"),
         )
 
         widget_layout = widgets.VBox([title_widget, widget_layout])
 
-        widget = {
-            "n_elements": n_elements_widget,
-            "frequency": frequency_widget,
-            "pitch": pitch_widget,
-            "db_range": db_range_widget,
-            "db_gain": db_gain_widget,
-            "steering_angle": steering_angle_widget,
-        }
-
-        return widget_layout, widget
+        return widget_layout

@@ -82,7 +82,7 @@ class Transducer:
         self.scale_axes()
 
         if create_widgets:
-            self.widget_layout, self.widgets = self._create_widgets()
+            self.widget_layout = self._create_widgets()
 
     # === Calculated parameters ===========================
     def calculate_axial_distance_angle(self):
@@ -885,8 +885,6 @@ class Transducer:
         -------
         widget_layout : ipywidgets widget box
             Widget layout for use in Jupyter Notebook
-        widget_list : dict of widgets
-            Widgets for use in Jupyter Notebook
         """
         title = "Beam-profile from Single Element Transducer"
         title_widget = widgets.HTML(
@@ -909,7 +907,7 @@ class Transducer:
             "style": {"description_width": "160px"},
         }
 
-        # Left column of dropdown: Shape and orientation
+        # Left column of dropdowns: Shape and orientation
         shape_widget = widgets.Dropdown(
             options=[
                 ("Rectangular", False),
@@ -1023,6 +1021,7 @@ class Transducer:
             names="value",
         )
 
+        # Arrange widgets
         dropdown_col = widgets.VBox(
             [
                 widgets.HTML(
@@ -1083,17 +1082,4 @@ class Transducer:
             ),
         )
 
-        widget_layout = widgets.VBox([title_widget, widget_layout])
-
-        widget_list = {
-            "circular": shape_widget,
-            "azimuth": orientation_widget,
-            "db_range": db_range_widget,
-            "db_gain": db_gain_widget,
-            "frequency": frequency_widget,
-            "width": width_widget,
-            "height": height_widget,
-            "distance": distance_widget,
-        }
-
-        return widget_layout, widget_list
+        return widgets.VBox([title_widget, widget_layout])

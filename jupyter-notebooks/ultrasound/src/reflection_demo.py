@@ -33,9 +33,9 @@ class Direction(Enum):
     def angle_radius(self):
         """Radius of angle arc, avoid overlap."""
         radius_map = {
-            Direction.INCOMING: 0.30,
-            Direction.REFLECTED: 0.35,
-            Direction.TRANSMITTED: 0.30,
+            Direction.INCOMING: 0.25,
+            Direction.REFLECTED: 0.20,
+            Direction.TRANSMITTED: 0.25,
         }
         return radius_map[self]
 
@@ -81,6 +81,7 @@ class Reflection:
         self.arrow_length = 1.0
         self.angle_in = 30
         self.c = [1500, 2000]
+        self.z = [1.5, 1.6]
 
         self.fig, self.axes = self.initialise_graphs()
 
@@ -92,7 +93,7 @@ class Reflection:
         self.update_arrows()
 
         if create_widgets:
-            self.widget_layout, self.widgets = self._create_widgets()
+            self.widget_layout = self._create_widgets()
 
     def remove_artists(self, artists):
         """Remove Matplotlib artists and empty the supplied list."""
@@ -113,6 +114,40 @@ class Reflection:
         return np.degrees(np.arcsin(sin_angle))
 
     @property
+    def reflection(self):
+        """Pressure reflection coefficienbt."""
+        if self.angle_transmitted is None:
+            return 1.0
+
+        z = self.z
+        cos_i = np.cos(np.radians(self.angle_in))
+        cos_t = np.cos(np.radians(self.angle_transmitted))
+
+        return (z[1] * cos_i - z[0] * cos_t) / (z[1] * cos_i + z[0] * cos_t)
+
+    @property
+    def transmission(self):
+        """Pressure transmission coefficient."""
+        if self.angle_transmitted is None:
+            return 0.0
+
+        z = self.z
+        cos_i = np.cos(np.radians(self.angle_in))
+        cos_t = np.cos(np.radians(self.angle_transmitted))
+
+        return (2 * z[1] * cos_i) / (z[1] * cos_i + z[0] * cos_t)
+
+    @property
+    def reflection_power(self):
+        """Power reflection coefficient."""
+        return self.reflection**2
+
+    @property
+    def transmission_power(self):
+        """Power transmission coefficient."""
+        return 1 - self.reflection_power
+
+    @property
     def angles(self):
         return (self.angle_in, self.angle_in, self.angle_transmitted)
 
@@ -120,7 +155,15 @@ class Reflection:
     def directions(self):
         return (Direction.INCOMING, Direction.REFLECTED, Direction.TRANSMITTED)
 
-    def arrow_start_end(self, angle, direction):
+    @property
+    def lengths(self):
+        lengths = np.array(
+            [1.0, self.reflection_power, self.transmission_power]
+        )
+        lengths = np.clip(lengths, 0.10, 1.0)
+        return lengths
+
+    def arrow_start_end(self, angle, direction, length):
         """
         Find start and end positions of arrows.
 
@@ -130,6 +173,8 @@ class Reflection:
             Arrow angle in degrees
         direction : enum Direction
             Incoming, reflected or transmitted wave
+        length : float
+            Relative length of arrow
 
         Returns
         -------
@@ -138,7 +183,8 @@ class Reflection:
         end : tuple (x,y)
             End coordinates of arrow
         """
-        length = self.arrow_length
+
+        length = self.arrow_length * length
         phi = np.radians(angle)
         x = -length * np.sin(phi)
         y = length * np.cos(phi)
@@ -151,20 +197,19 @@ class Reflection:
         self.remove_artists(self.angle_artists)
         self.remove_artists(self.parameter_labels)
 
-        for arrow, angle, direction in zip(
-            self.arrows,
-            self.angles,
-            self.directions,
+        for arrow, angle, direction, length in zip(
+            self.arrows, self.angles, self.directions, self.lengths
         ):
 
             if angle is None:
                 arrow.set_visible(False)
             else:
                 arrow.set_visible(True)
-                start, end = self.arrow_start_end(angle, direction)
+                start, end = self.arrow_start_end(angle, direction, length)
                 arrow.set_positions(start, end)
 
-                self.draw_angle(angle, direction)
+                if direction != Direction.REFLECTED:
+                    self.draw_angle(angle, direction)
 
         self.annotate_graph()
         self.fig.canvas.draw_idle()
@@ -174,16 +219,34 @@ class Reflection:
 
         ax = self.axes["drawing"]
 
-        for k, (c, y) in enumerate(zip(self.c, (0.65, 0.35))):
+        for k, (c, z, y) in enumerate(zip(self.c, self.z, (0.65, 0.35))):
             label = ax.text(
                 0.05,
                 y,
-                rf"$c_{k+1} = {c:.0f}\, \mathrm{{m/s}}$",
+                (
+                    rf"$c_{k+1} = {c:.0f}\,\mathrm{{m/s}}$"
+                    "\n"
+                    rf"$z_{k+1} = {z:.1f}\,\mathrm{{MRayl}}$"
+                ),
                 transform=ax.transAxes,
                 ha="left",
                 va="center",
             )
             self.parameter_labels.append(label)
+
+        rt_values = [self.reflection_power, self.transmission_power]
+        rt_text = ["Reflected", "Transmitted"]
+
+        for rt, rt_text, y in zip(rt_values, rt_text, (0.97, 0.03)):
+            rt_label = ax.text(
+                0.51,
+                y,
+                rt_text + rf" power: {rt:.2f}",
+                transform=ax.transAxes,
+                ha="left",
+                va="center",
+            )
+            self.parameter_labels.append(rt_label)
 
         text = self.create_critical_angle_text()
         critical_label = ax.text(
@@ -199,7 +262,7 @@ class Reflection:
     def create_critical_angle_text(self):
         """Create a text block describing the critical angle."""
 
-        text = "Critical angle\n" r"$\sin\theta_c = c_1/c_2$" "\n\n"
+        text = "Critical angle\n" r"$\sin\theta_c = c_1/c_2$" "\n"
 
         if self.c[1] > self.c[0]:
             theta_crit = np.degrees(np.arcsin(self.c[0] / self.c[1]))
@@ -212,7 +275,7 @@ class Reflection:
             c2_critical = self.c[0] / np.sin(np.radians(self.angle_in))
 
             text += (
-                "\n"
+                "\n\n"
                 rf"$c_{{2,\mathrm{{crit}}}}"
                 rf" = {c2_critical:.0f}\, \mathrm{{m/s}}$"
             )
@@ -314,7 +377,7 @@ class Reflection:
                 end = (0, 0)
                 visible = False
             else:
-                start, end = self.arrow_start_end(angle, direction)
+                start, end = self.arrow_start_end(angle, direction, 1.0)
                 visible = True
 
             arrows.append(
@@ -360,6 +423,11 @@ class Reflection:
         self.c[index] = float(change["new"])
         self.update_arrows()
 
+    def _impedance_change_callback(self, change):
+        index = change["owner"].medium_index
+        self.z[index] = float(change["new"])
+        self.update_arrows()
+
     # === Interactive widgets ======================================
     def _create_widgets(self):
         """
@@ -372,16 +440,15 @@ class Reflection:
         widget_list : dict
             Dictionary containing the interactive widgets.
         """
-        title_widget = widgets.Label(
-            value="Illustration of Snell's Law",
-            style={"font_weight": "bold"},
-        )
 
-        slider_options = {
-            "continuous_update": True,
-            "layout": widgets.Layout(width="70%"),
-            "style": {"description_width": "30ch"},
-        }
+        panel_layout = widgets.Layout(width="95%", max_width="1000px")
+        column_slider_layout = widgets.Layout(width="90%")
+        angle_slider_layout = widgets.Layout(width="98%")
+
+        title_widget = widgets.HTML(
+            value="<h3>Illustration of Snell's Law</h3>",
+            layout=widgets.Layout(width="100%", margin="0 0 10px 0"),
+        )
 
         angle_widget = widgets.FloatSlider(
             value=self.angle_in,
@@ -390,7 +457,9 @@ class Reflection:
             step=1.0,
             readout_format=".0f",
             description="Angle of incoming wave [°]",
-            **slider_options,
+            continuous_update=True,
+            layout=angle_slider_layout,
+            style={"description_width": "160px"},
         )
 
         angle_widget.observe(
@@ -398,38 +467,144 @@ class Reflection:
             names="value",
         )
 
-        sound_speed_widgets = []
+        soundspeed_title_widget = widgets.HTML(
+            value="Speed of sound [m/s]",
+            layout=widgets.Layout(
+                width="100%",
+                margin="0 0 5px 0",
+            ),
+        )
+
+        impedance_title_widget = widgets.HTML(
+            value="Characteristic acoustic impedance [MRayl]",
+            layout=widgets.Layout(
+                width="100%",
+                margin="0 0 5px 0",
+            ),
+        )
+
+        medium_widgets = []
+        soundspeed_widgets = []
+        impedance_widgets = []
+
+        slider_style = {"description_width": "0px"}
 
         for k in range(2):
+            medium_widget = widgets.HTML(value=f"Medium {k+1}")
+            medium_widgets.append(medium_widget)
+
             speed_widget = widgets.FloatSlider(
                 value=self.c[k],
                 min=500,
                 max=3000,
                 step=10,
                 readout_format=".0f",
-                description=f"Speed of sound in medium {k + 1} [m/s]",
-                **slider_options,
+                description="",
+                continuous_update=True,
+                layout=column_slider_layout,
+                style=slider_style,
             )
+
             speed_widget.medium_index = k
             speed_widget.observe(
                 self._sound_speed_change_callback,
                 names="value",
             )
 
-            sound_speed_widgets.append(speed_widget)
+            soundspeed_widgets.append(speed_widget)
+
+            impedance_widget = widgets.FloatSlider(
+                value=self.z[k],
+                min=1.0,
+                max=4.0,
+                step=0.1,
+                readout_format=".1f",
+                description=f"",
+                continuous_update=True,
+                layout=column_slider_layout,
+                style=slider_style,
+            )
+            impedance_widget.medium_index = k
+            impedance_widget.observe(
+                self._impedance_change_callback,
+                names="value",
+            )
+
+            impedance_widgets.append(impedance_widget)
+
+        parameter_layout = widgets.GridBox(
+            children=[
+                widgets.HTML(value=""),
+                widgets.HTML(value="Speed of sound [m/s]"),
+                widgets.HTML(
+                    value="Characteristic acoustic impedance [MRayl]"
+                ),
+                medium_widgets[0],
+                soundspeed_widgets[0],
+                impedance_widgets[0],
+                medium_widgets[1],
+                soundspeed_widgets[1],
+                impedance_widgets[1],
+            ],
+            layout=widgets.Layout(
+                width="100%",
+                grid_template_columns="100px minmax(300px, 1fr) minmax(300px, 1fr)",
+                grid_template_rows="auto auto auto",
+                grid_gap="10px 25px",
+                align_items="center",
+            ),
+        )
 
         widget_layout = widgets.VBox(
             [
                 title_widget,
+                parameter_layout,
                 angle_widget,
-                *sound_speed_widgets,
-            ]
+            ],
+            layout=panel_layout,
         )
 
-        widget_list = {
-            "angle": angle_widget,
-            "speed_1": sound_speed_widgets[0],
-            "speed_2": sound_speed_widgets[1],
-        }
+        return widget_layout
 
-        return widget_layout, widget_list
+
+# =============================================================================
+#         medium_column = widgets.VBox(
+#             [soundspeed_title_widget, *medium_widgets]
+#         )
+#
+#         soundspeed_column = widgets.VBox(
+#             [soundspeed_title_widget, *soundspeed_widgets]
+#         )
+#
+#         impedance_column = widgets.VBox(
+#             [
+#                 impedance_title_widget,
+#                 *impedance_widgets,
+#             ]
+#         )
+#
+#         parameter_layout = widgets.HBox(
+#             [
+#                 medium_column,
+#                 soundspeed_column,
+#                 impedance_column,
+#             ],
+#             layout=widgets.Layout(
+#                 width="100%",
+#                 display="flex",
+#                 gap="40px",
+#                 align_items="flex-start",
+#             ),
+#         )
+#
+#         widget_layout = widgets.VBox(
+#             [
+#                 title_widget,
+#                 parameter_layout,
+#                 angle_widget,
+#             ]
+#         )
+#
+#         return widget_layout
+#
+# =============================================================================

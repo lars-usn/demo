@@ -217,7 +217,7 @@ class Composite:
             value=self.strain,
             min=-self.max_strain,
             max=self.max_strain,
-            step=0.05,
+            step=0.005,
             readout_format=".2f",
             description="Strain",
             **layout,

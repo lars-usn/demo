@@ -40,7 +40,7 @@ class Direction(Enum):
         return radius_map[self]
 
     def start_end(self, x, y):
-        """Start end end coordinates of arrows, depending on direction."""
+        """Start and end coordinates of arrows, depending on direction."""
         if self is Direction.INCOMING:
             return (x, y), (0, 0)
 
@@ -115,7 +115,7 @@ class Reflection:
 
     @property
     def reflection(self):
-        """Pressure reflection coefficienbt."""
+        """Pressure reflection coefficient."""
         if self.angle_transmitted is None:
             return 1.0
 
@@ -235,13 +235,13 @@ class Reflection:
             self.parameter_labels.append(label)
 
         rt_values = [self.reflection_power, self.transmission_power]
-        rt_text = ["Reflected", "Transmitted"]
+        rt_labels = ["Reflected", "Transmitted"]
 
-        for rt, rt_text, y in zip(rt_values, rt_text, (0.97, 0.03)):
+        for rt, label_text, y in zip(rt_values, rt_labels, (0.97, 0.03)):
             rt_label = ax.text(
                 0.51,
                 y,
-                rt_text + rf" power: {rt:.2f}",
+                label_text + rf" power: {rt:.2f}",
                 transform=ax.transAxes,
                 ha="left",
                 va="center",

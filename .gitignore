@@ -12,3 +12,5 @@ jupyter-notebooks/filters_convolution/.ipynb_checkpoints/fir_design_demo-checkpo
 /jupyter-notebooks/beam_profile_demo/src/.ipynb_checkpoints
 *.ipynb
 *.ipynb
+jupyter-notebooks/sampling_aliasing/.ipynb_checkpoints/sampling-checkpoint.py
+jupyter-notebooks/sampling_aliasing/.ipynb_checkpoints/aliasing_frequency-checkpoint.py

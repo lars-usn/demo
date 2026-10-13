@@ -2,598 +2,1084 @@
 
 # Libraries
 import numpy as np
+import scipy.special as sp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.gridspec import GridSpec
+import matplotlib.image as mpimg
 import ipywidgets as widgets
+from pathlib import Path
+import usdemo
 
-# Internal libraries
-import beamplot_utilities as bpu
-
-# Colours and lines
 COLOR = {
-    'element': 'crimson',
-    'element_background': 'whitesmoke',
-    'text_face': 'whitesmoke',
-    'contour': 'white',
-    'orientation_line': 'cornflowerblue',
-    'intensity_background': 'black',
+    "transducer": "#A63D1F",  # "#B64926"  "#A63D1F" "#B35A1F" "#8C2D19"
+    "transducer_background": "#F0FBFF",  # "#D6EFFC "#C2E7F7" "#E0F4FC"
+    "text_face": "#F0FBFF",  # "#E6F3F7", " # "#F0FBFF", "#EAF7FA"
+    "text_edge": "#7AA6B8",
+    "orientation_line": "#2A6FBB",  # "#1F77B4" "#006BA4" "#2A6FBB" "#0072B2"
+    "intensity_background": "black",
 }
 
 LINE = {
-    'contour': {'colors': COLOR['contour'],
-                'linestyles': 'dotted',
-                'alpha': 0.7},
-    'angle': {'color': COLOR['contour'],
-              'linestyle': 'dotted',
-              'alpha': 0.7},
-    'orientation': {'color': COLOR['orientation_line'],
-                    'linestyle': 'dotted',
-                    'alpha': 1.0},
-    'indicator': {'color': 'C1',
-                  'linestyle': 'solid'},
-    'main': {'color': 'C0',
-             'linestyle': 'solid'},
+    "orientation": {
+        "color": COLOR["orientation_line"],
+        "linestyle": "dotted",
+        "alpha": 1.0,
+    },
+    "indicator": {"color": "C1", "linestyle": "solid"},
+    "main": {"color": "C0", "linestyle": "solid"},
 }
 
-
-class WidgetLayout():
-    """Container for widgets and layout."""
-
-    def __init__(self, layout, widget):
-        self.layout = layout
-        self.widget = widget
+LOGOFILE = "usn-logo-purple.png"
+FIGURE_NAME = "Single Element Beamprofile"
 
 
-class Transducer():
-    """Define, calculate, and display transducer beam profile."""
+class Transducer:
+    """Define, calculate, and display a transducer beam profile."""
 
     def __init__(self, create_widgets=False):
 
         # Transducer definition
-        self.circular = False   # Circular or rectangular element
-        self.width = 100e-3     # m   Element width (azimuth, x) or diameter
-        self.height = 200e-3    # m   Element height (elevation, y)
+        self.circular = True  # Circular or rectangular element
+        self.azimuth = True  # Show azimuth (x) or elevation (y) profile
+        self.db_gain = 6  # dB   Max. on dB-scales
+        self.db_range = 60  # dB   Dynamic range on dB-scales
         self.frequency = 100e3  # Hz  Ultrasound frequency
-        self.c = 1500           # m/s Speed of soundin load medium
+        self.width = 100e-3  # m   Element width (azimuth, x) or diameter
+        self.height = 200e-3  # m   Element height (elevation, y)
+        self.c = 1500  # m/s Speed of sound in load medium
 
-        # Calculation settings
-        self.z_ref = 20.0        # m    Reference depth
-        self.y_lim = 0.5         # Relative limit for beamwidth
-        self.lim_text = '-6 dB'  # Text for markers
+        # Parameters used in calculations
+        self.distance = 20.0  # m    Reference distance
+        self.bw_lim = -3.0  # Relative limit for beamwidth, dB
+        self.lim_text = "-6 dB"  # Text for markers
+
+        # To be calculated during runtime
+        self.beamwidth = np.nan
         self.x_sidelobe = np.nan
+        self.y_sidelobe = np.nan
+        self.db_sidelobe = np.nan
 
-        self.azimuth = True    # Show azimuth (x) or elevation (y) profile
+        # Grid and display settings, normally fixed
+        self.z_max = 100.0  # m    Max. depth to calculate
+        self.x_max = 25.0  # m    Max. lateral dimension to calculate
+        self.d_max = 200e-3  # m    Max. dimension on element display
+        self.colormap = "inferno"
 
-        # Display settings
-        self.theta_max = 90    # deg  Max. angle to calculate
-        self.d_max = 200e-3    # m    Max. dimension on element display
-        self.x_max = 15.0      # m    Max. lateral dimension to calculate
-        self.z_max = 100.0     # m    Max. depth to calculate
-        self.db_range = 60     # dB   Dynamic gange on dB-scales
-        self.db_gain = 6       # dB   Max. on dB-scales
+        self.z_axis = np.linspace(1, self.z_max, 400)
+        self.x_axis = np.linspace(-self.x_max, self.x_max, 201)
 
-        self.colormap = 'inferno'
+        self.zx_plane = np.meshgrid(self.z_axis, self.x_axis)
+        self.r, self.theta = self.calculate_axial_distance_angle()
 
-        # Initialisation
+        self.xy_plane = np.meshgrid(self.x_axis, self.x_axis)
+        self.rho = self.calculate_lateral_distance()
+
+        # Initialise figures and values
         self.fig, self.axes, self.graphs = self._initialise_graphs()
+        self.update_transducer_illustration()
+        self.update_values()
+        self.update_intensity_scale()
         self.scale_axes()
 
         if create_widgets:
-            self.widget = self._create_widgets()
+            self.widget_layout = self._create_widgets()
 
     # === Calculated parameters ===========================
+    def calculate_axial_distance_angle(self):
+        """
+        Calculate distance and angles for axial plot.
+
+        Returns
+        -------
+        r : 2D array of float
+            Distance from origo to point (z,x) in the axial plane
+        theta : 2D array of float
+            Angle from origo to point (z,x) in the axial plane
+        """
+        z, x = self.zx_plane
+        r = np.hypot(z, x)
+        theta = np.arctan2(x, z)
+
+        return r, theta
+
+    def calculate_lateral_distance(self):
+        """
+        Lateral distance from axis.
+
+        Returns
+        -------
+        2D array of float
+            Distance from axis to point (x,y) in the lateral plane
+        """
+        x, y = self.xy_plane
+        return np.hypot(x, y)
+
+    # Simple parameters are properties
+    @property
     def wavelength(self):
-        """Calculate acoustic wavelenghth."""
-        return self.c/self.frequency
+        """Calculate acoustic wavelength."""
+        return self.c / self.frequency
 
-    def w_lambda(self):
+    @property
+    def width_lambda(self):
         """Aperture width relative to wavelength."""
-        return self.width / self.wavelength()
+        return self.width / self.wavelength
 
-    def h_lambda(self):
+    @property
+    def height_lambda(self):
         """Aperture height relative to wavelength."""
-        return self.height / self.wavelength()
+        return self.height / self.wavelength
 
-    def theta_0(self):
-        """Calculate opening angle from theory, two-sided, -6 dB."""
-        if self.circular:
-            x_6 = 0.705   # 6 dB limit, circular aperture
-        else:
-            x_6 = 0.603   # 6 dB limit, line (rectangular) aperture
+    @property
+    def opening_angle(self):
+        """Calculate opening angle in radians from estimated beamwidth."""
 
-        if self.azimuth or self.circular:
-            d = self.width
-        else:
-            d = self.height
+        return 2 * np.arctan(1 / 2 * self.beamwidth / self.reference_distance)
 
-        return 2*np.arcsin(x_6 * self.wavelength()/d)
-
-    def z_rayleigh(self):
+    @property
+    def rayleigh_distance(self):
         """Rayleigh distance, far-field limit."""
         if self.circular:
             d = self.width
         else:
-            d = np.max([self.width, self.height])
+            d = max(self.width, self.height)
 
-        return d**2/(2*self.wavelength())
+        return d**2 / (2 * self.wavelength)
 
-    def z_reference(self):
+    @property
+    def rayleigh_index(self):
+        """Find Rayleigh distance index."""
+        index = np.searchsorted(
+            self.z_axis,
+            self.rayleigh_distance,
+            side="right",
+        )
+        return index
+
+    @property
+    def reference_distance(self):
         """Limit reference distance to outside far-field limit."""
-        return np.max([self.z_ref, 1.1*self.z_rayleigh()])
+        return max(self.distance, 1.1 * self.rayleigh_distance)
+
+    @property
+    def db_scale(self):
+        """Calculate dB-scale limits from gain and dynamic range."""
+        return np.array([-self.db_range, 0]) - self.db_gain
+
+    @property
+    def db_ticks(self):
+        """Set major dB ticks at fixed intervals (6 dB)."""
+        db_sep = 6
+
+        vmin, vmax = self.db_scale
+        ticks = np.arange(
+            db_sep * np.floor(vmin / db_sep),
+            db_sep * np.ceil(vmax / db_sep) + db_sep,
+            db_sep,
+        )
+        return ticks
+
+    def db(self, x, reference=None, power=False):
+        """
+        Decibel from amplitude or power.
+
+        Parameters
+        ----------
+        x : array of float
+            Amplitude or power values
+        reference : float
+            Reference value for dB calculation
+        power : bool
+            Interpret x values as power (True) or amplitude (False)
+        """
+        x = np.asarray(x)
+
+        if reference is None:
+            reference = np.nanmax(x)
+
+        reference = np.clip(abs(reference), 1e-20, None)
+
+        scale = 20 if not power else 10
+        arg = np.clip(np.abs(x), 1e-20, None)
+
+        return scale * np.log10(arg / reference)
+
+    def jinc(self, x):
+        """jinc-function, Bessel-version of sinc, 2 J_1(pi x)/(pi x)."""
+        x = np.asarray(x)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            j = 2 * sp.j1(np.pi * x) / (np.pi * x)
+
+        return np.where(np.abs(x) > 1e-10, j, 1.0)
 
     # === Axial plane ===================
-    def x(self):
-        """Lateral dimension for axial plot (x or y)."""
-        return np.linspace(-self.x_max, self.x_max, 201)
-
-    def z(self):
-        """Axial dimension (depth) for axial plot (z)."""
-        return np.linspace(self.z_rayleigh(), self.z_max, 400)
-
-    def zx(self):
-        """Axial plane (zx or zy) to plot."""
-        pts = np.meshgrid(self.z(), self.x())
-        return pts
-
-    def r(self):
-        """Distance from aperture centre for axial plot."""
-        return np.sqrt(self.zx()[0]**2 + self.zx()[1]**2)
-
-    def theta(self):
-        """Azimuth(x) angle to point(z, x)."""
-        return np.arctan2(self.zx()[1], self.zx()[0])
-
     def p_azimuth(self):
-        """Calculate axial pressure field in the azimuth plane (zx)."""
+        """
+        Calculate pressure field in the azimuth plane.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x) in the azimuth plane
+        """
         if self.circular:
-            p = 1/self.r() * bpu.jinc(self.w_lambda() * np.sin(self.theta()))
+            return self.p_circular()
         else:
-            p = 1/self.r() * np.sinc(self.w_lambda() * np.sin(self.theta()))
-        return p
+            return self.p_line(self.width_lambda)
 
     def p_elevation(self):
-        """Calculate axial pressure field in the lateral plane (zy)."""
+        """
+        Calculate pressure field in the elevation plane.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,y) in the elevation plane
+        """
         if self.circular:
-            p = self.p_azimuth()
+            return self.p_circular()
         else:
-            p = 1/self.r() * np.sinc(self.h_lambda() * np.sin(self.theta()))
+            return self.p_line(self.height_lambda)
+
+    def p_circular(self):
+        """
+        Calculate pressure field from a circular aperture.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x) in the axial plane
+        """
+        r = self.r
+        theta = self.theta
+        arg = self.width_lambda * np.sin(theta)
+        p = 1 / r * self.jinc(arg)
+        p[:, : self.rayleigh_index] = np.nan
+        return p
+
+    def p_line(self, aperture_lambda):
+        """
+        Calculate pressure field from a line aperture.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (z,x)
+        """
+        r = self.r
+        theta = self.theta
+        arg = aperture_lambda * np.sin(theta)
+        p = np.sinc(arg) / r
+        p[:, : self.rayleigh_index] = np.nan
         return p
 
     # === Lateral plane ===================
-    def xy(self):
-        """Lateral region to plot, plane at fixed axial distance."""
-        pts = np.linspace(-self.x_max, self.x_max, 201)
-        return np.meshgrid(pts, pts)
+    def calculate_lateral_distance_angles(self):
+        """
+        Calculate geometrical properties for the lateral plane.
 
-    def theta_xy(self):
-        """Azimuth angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[0], self.z_reference())
+        Lateral coordinates are fixed, total distance and angles depend
+        on axial distance.
 
-    def phi_xy(self):
-        """Elevation angles for xy-positions at distance z."""
-        return np.arctan2(self.xy()[1], self.z_reference())
+        Returns
+        -------
+        r : 2D array of float
+            Distance from origo to point (x,y,z)
+        theta : 2D array of float
+            Azimuthal angle from origo to point (x,y,z)
+        phi : 2D array of float
+            Elevational angle from origo to point (x,y,z)
+        gamma : 2D array of float
+            Angle with acoustic axis from origo to point (x,y,z)
+        """
+        x, y = self.xy_plane
+        rho = self.rho
 
-    def theta_r(self):
-        """Angle with z-axis for (xyz)-positions."""
-        r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
-        return np.arctan2(r, self.z_reference())
+        r = np.hypot(rho, self.reference_distance)
+        theta = np.arctan2(x, self.reference_distance)  # Azimuth angle
+        phi = np.arctan2(y, self.reference_distance)  # Elevation angle
+        gamma = np.arctan2(rho, self.reference_distance)  # Angle with axis
 
-    def r_xy(self):
-        """Radial distances at lateral plane."""
-        r = np.sqrt(self.xy()[0]**2+self.xy()[1]**2)   # Radial distance
-        return np.sqrt(r**2 + self.z_reference()**2)
+        return r, theta, phi, gamma
 
     def p_lateral(self):
-        """Calculate lateral intensity at reference distance."""
+        """
+        Calculate lateral amplitude at reference distance.
+
+        Returns
+        -------
+        2D array of float
+            Pressure amplitude (signed) at point (x,y,z)
+        """
+        r, theta, phi, gamma = self.calculate_lateral_distance_angles()
+
         if self.circular:
-            p = 1/self.r_xy() \
-                * bpu.jinc(self.w_lambda() * np.sin(self.theta_r()))
+            arg = self.width_lambda * np.sin(gamma)
+            p = 1 / r * self.jinc(arg)
         else:
-            p = 1/self.r_xy()  \
-                * np.sinc(self.w_lambda() * np.sin(self.theta_xy())) \
-                * np.sinc(self.h_lambda() * np.sin(self.phi_xy()))
+            arg_az = self.width_lambda * np.sin(theta)
+            arg_el = self.height_lambda * np.sin(phi)
+
+            p_az = np.sinc(arg_az)
+            p_el = np.sinc(arg_el)
+            p = 1 / r * p_az * p_el
 
         return p
 
-    # === Commands =============================
+    # --- Update values ---------------------------------------------
+    def update_transducer_illustration(self):
+        """Update aperture illustration, shape and dimensions."""
+        w_mm = self.width * 1e3
+        h_mm = self.height * 1e3
+
+        patch_type = patches.Circle if self.circular else patches.Rectangle
+
+        # Redraw shape if changed
+        if not isinstance(self.graphs["transducer"], patch_type):
+            self.graphs["transducer"].remove()
+
+            if self.circular:
+                self.graphs["transducer"] = patches.Circle(
+                    (0, 0),
+                    w_mm / 2,
+                    fill=True,
+                    color=COLOR["transducer"],
+                )
+            else:
+                self.graphs["transducer"] = patches.Rectangle(
+                    (-w_mm / 2, -h_mm / 2),
+                    w_mm,
+                    h_mm,
+                    fill=True,
+                    color=COLOR["transducer"],
+                )
+
+            self.axes["transducer"].add_patch(self.graphs["transducer"])
+
+        # Update dimensions
+        if self.circular:
+            self.graphs["transducer"].set_radius(w_mm / 2)
+        else:
+            self.graphs["transducer"].set_xy((-w_mm / 2, -h_mm / 2))
+            self.graphs["transducer"].set_width(w_mm)
+            self.graphs["transducer"].set_height(h_mm)
+
+        # Turn on correct orientation lines
+        visible = self.azimuth
+
+        for g in self.graphs["azimuth"]:
+            g.set_visible(visible)
+        for g in self.graphs["elevation"]:
+            g.set_visible(not visible)
+
     def update_values(self):
         """Update graph values, no scale or other changes."""
 
-        # Element image
-        self._update_element()
-
         # Intensity plots
-        p_max = np.max([np.max(abs(self.p_azimuth())),
-                        np.max(abs(self.p_elevation()))])
+        p_az = self.p_azimuth()
+        p_el = self.p_elevation()
+
+        p_max = max(
+            np.nanmax(np.abs(p_az)),
+            np.nanmax(np.abs(p_el)),
+        )
 
         # Axial
-        p_axial = self.p_azimuth() if self.azimuth else self.p_elevation()
+        p_axial = p_az if self.azimuth else p_el
 
-        p_db = bpu.db(p_axial, p_ref=p_max)
-        self.graphs['axial'].set_array(p_db.ravel())
+        p_db = self.db(p_axial, reference=p_max)
+        p_display = p_db.transpose()
+        self.graphs["axial"].set_array(p_display.ravel())
 
-        self.graphs['refline'].set_xdata([self.z_reference(),
-                                          self.z_reference()])
+        self.graphs["refline"].set_ydata(
+            [self.reference_distance, self.reference_distance]
+        )
 
         # Lateral
-        p_db = bpu.db(self.p_lateral(), p_ref=p_max)
-        self.graphs['lateral'].set_array(p_db.ravel())
-        self.axes['lateral'].set_title(
-            f'Lateral plane at {self.z_reference():.1f} m')
+        p_db = self.db(self.p_lateral(), reference=p_max)
+        self.graphs["lateral"].set_array(p_db.ravel())
+        self.axes["lateral"].set_title(
+            f"Lateral plane at {self.reference_distance:.0f} m"
+        )
 
         # Lateral beam profile
-        x = self.x()
-        z = self.z()
-        k_ref = np.argmin(abs(z-self.z_reference()))
+        x = self.x_axis
+        z = self.z_axis
+        k_ref = np.argmin(abs(z - self.reference_distance))
         p = p_axial[:, k_ref]
-        p_db = bpu.db(p, p_ref=p_max)
-        self.graphs['beamprofile'].set_data(x, p_db)
+        p_db = self.db(p, reference=p_max, power=False)
+        self.graphs["beamprofile"].set_data(x, p_db)
 
         # Find reference values
-        ref = bpu.Refpoints(x=x, y=p)
-        xl, _ = ref.ref_values(y_rel=self.y_lim)   # Beam width limits
-        self.dx = xl[1] - xl[0]
+        curve_analysis = usdemo.AnalyseCurve(argument=x, value=p)
+        xl, _ = curve_analysis.ref_values(
+            y_rel=self.bw_lim, db=True
+        )  # Beam width limits
 
-        self.x_sidelobe, self.y_sidelobe = ref.sidelobe()
-        self.db_sidelobe = bpu.db(self.y_sidelobe, p_ref=p.max())
+        self.beamwidth = xl[1] - xl[0]
 
-        # Update scales and messages
-        self.update_intensity()
-        self._resulttext()
+        self.x_sidelobe, self.y_sidelobe = curve_analysis.sidelobe()
+
+        self.db_sidelobe = float(
+            self.db(
+                self.y_sidelobe,
+                reference=np.nanmax(p),
+            ),
+        )
+
+        # Update messages
+        self.update_resulttext()
+
+    def update_intensity_scale(self):
+        """Update intensity graph levels."""
+        for g in (self.graphs["axial"], self.graphs["lateral"]):
+            g.set_clim(self.db_scale)
+
+        self.graphs["colorbar"].set_ticks(self.db_ticks)
+
+        self.axes["beamprofile"].set(ylim=self.db_scale, yticks=self.db_ticks)
+
+        self.axes["beamprofile"].grid(
+            visible=True,
+            which="major",
+            axis="y",
+        )
 
     def scale_axes(self):
-        """Change scales of all graphs."""
+        """
+        Change scales of all graphs.
+
+        Normally fixed at start and not changed when parameters are changed.
+        """
         ax = self.axes
 
-        element_max = self.d_max * 1e3 * np.array([-1, 1])
-        ax["element"].set(xlim=element_max, ylim=element_max)
-
-        ax["axial"].set(ylim=self.x_max*np.array([-1, 1]),
-                        xlim=[0, self.z_max])
+        axis_max = self.d_max * 1e3 * np.array([-1, 1])
+        ax["transducer"].set(
+            xlim=axis_max,
+            ylim=axis_max,
+        )
 
         lateral_max = self.x_max * np.array([-1, 1])
-        ax["lateral"].set(xlim=lateral_max, ylim=lateral_max)
+        ax["axial"].set(
+            xlim=lateral_max,
+            ylim=[self.z_max, 0],
+        )
 
-        ax['beamprofile'].set(xlim=self.x_max*np.array([-1, 1]))
+        ax["lateral"].set(
+            xlim=lateral_max,
+            ylim=lateral_max,
+        )
 
-        bpu.db_axis(ax['beamprofile'], db_scale=self._db_scale(), db_sep=6)
+        ax["beamprofile"].set(xlim=lateral_max)
 
-    def update_intensity(self):
-        """Update intensity graph levels."""
-        for g in (self.graphs['axial'], self.graphs['lateral']):
-            g.set_clim(self._db_scale())
+    def _set_cell_table(self, table, row, col, text):
+        """Insert text at (row, col) in a table."""
+        table[(row, col)].get_text().set_text(text)
 
-    def interact(self,
-                 circular=None,
-                 azimuth=None,
-                 frequency=None,
-                 width=None,
-                 height=None,
-                 z_ref=None,
-                 db_range=None,
-                 db_gain=None,
-                 ):
-        """Scale inputs and  display results.
+    def update_resulttext(self):
+        """Update text box with array parameters."""
+        LEGEND_COL = 0
+        SYMBOL_COL = 1
+        VALUE_COL = 2
+        WAVELENGTH_COL = 3
+        WIDTH_ROW = 2
+        HEIGHT_ROW = 3
 
-        For interactive operation with  dimensions in mm and frequency in kHz.
-          Existing values are used if a parameter is omitted.
+        table = self.graphs["text"]
+
+        value_texts = [
+            f"{self.frequency/1e3:.0f} kHz",
+            f"{self.wavelength*1e3:.1f} mm",
+            f"{self.width*1e3:.0f} mm",
+            f"{self.height*1e3:.0f} mm",
+            f"{self.rayleigh_distance:.1f} m",
+            rf"{np.degrees(self.opening_angle):.1f}$^\circ$",
+            f"{self.beamwidth:.2f} m",
+            f"{self.db_sidelobe:.1f} dB",
+        ]
+
+        width_wavelength_text = rf"{self.width_lambda:.1f}$\lambda$"
+        height_wavelength_text = rf"{self.height_lambda:.1f}$\lambda$"
+
+        if self.circular:
+            shape_texts = (("Diameter", "D"), ("", ""))
+            wavelength_texts = (width_wavelength_text, "")
+            value_texts[HEIGHT_ROW] = ""
+        else:
+            shape_texts = (("Width", "w"), ("Height", "h"))
+            wavelength_texts = (width_wavelength_text, height_wavelength_text)
+
+        for line_no, value_text in enumerate(value_texts):
+            self._set_cell_table(table, line_no, VALUE_COL, value_text)
+
+        for line_no, (legend_text, symbol_text) in zip(
+            (WIDTH_ROW, HEIGHT_ROW),
+            shape_texts,
+        ):
+            self._set_cell_table(table, line_no, LEGEND_COL, legend_text)
+            self._set_cell_table(table, line_no, SYMBOL_COL, symbol_text)
+
+        for line_no, wavelength_text in zip(
+            (WIDTH_ROW, HEIGHT_ROW),
+            wavelength_texts,
+        ):
+            self._set_cell_table(
+                table,
+                line_no,
+                WAVELENGTH_COL,
+                wavelength_text,
+            )
+
+    # --- Create axes------------------------------------------------
+    def _initialise_graphs(self):
+        """Initialise result graphs."""
+        plt.close(FIGURE_NAME)
+
+        fig, axes = plt.subplot_mosaic(
+            [
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["transducer", "lateral", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["text", "beamprofile", "axial"],
+                ["logo", "beamprofile", "axial"],
+            ],
+            figsize=(16, 6),
+            layout="constrained",
+            num=FIGURE_NAME,
+        )
+
+        graphs = {}
+        self._create_logo(axes["logo"])
+        graphs["transducer"] = self._create_transducer_illustration(
+            axes["transducer"]
+        )
+        graphs["text"] = self._create_resulttextbox(axes["text"])
+        graphs["axial"] = self._create_axial_plot(axes["axial"])
+        graphs["lateral"] = self._create_lateral_plot(axes["lateral"])
+        graphs["beamprofile"] = self._create_beamprofile_plot(
+            axes["beamprofile"]
+        )
+
+        graphs["azimuth"], graphs["elevation"] = (
+            self._create_orientation_lines(
+                (axes["transducer"], axes["lateral"])
+            )
+        )
+
+        # Reference line for distance
+        graphs["refline"] = axes["axial"].axhline(
+            y=self.reference_distance,
+            **LINE["orientation"],
+        )
+
+        # Colorbar for intensity plots
+        graphs["colorbar"] = fig.colorbar(
+            graphs["axial"], ax=axes["axial"], label="dB re. max"
+        )
+
+        return fig, axes, graphs
+
+    def _create_resulttextbox(self, ax):
+        """
+        Create and attach a formatted results text box to an Axes.
+
+        The text box is anchored to an axis and remains fixed relative to
+        the axes if the figure is resized.
 
         Parameters
-            ----------
-            circular: boolean, optional
-                Circular (True) or rectangular (False) aperture
-            frequency: float, optional
-                Frequency in kHz
-            width: float, optional
-                Element width (azimuth, x) in mm
-            height: float, optional
-                Element height (elevation, y) in mm
-            z_ref: float, optional
-                Reference depth in m
-            db_range: float
-                Rangeon dB-axes
-            db_gain: float
-                Maximum on dB-axes
-            """
-        updates = {
-            "circular": circular,
-            "azimuth": azimuth,
-            "frequency": None if frequency is None else 1e3 * frequency,
-            "width": None if width is None else 1e-3 * width,
-            "height": None if height is None else 1e-3 * height,
-            "z_ref": None if z_ref is None else float(z_ref),
-            "db_range": db_range,
-            "db_gain": db_gain,
-        }
+        ----------
+        ax : Axis object
+            Axis where text is shown
 
-        for name, value in updates.items():
-            if value is not None:
-                setattr(self, name, value)
+        Returns
+        -------
+        matplotlib.table.Table
+            Handle to results table.
+        """
+        ax.axis("off")
 
-        self.update_values()
+        resulttext = [
+            ["Frequency", "$f$", "-", ""],
+            ["Wavelength", r"$\lambda$", "-", ""],
+            ["Width", "$w$", "-", "-"],
+            ["Height", "$h$", "-", "-"],
+            ["Rayleigh distance ", r"$z_R$", "-", ""],
+            [f"Opening angle ({self.bw_lim} dB)", r"$\theta_0$", "-", ""],
+            [f"Beam width ({self.bw_lim} dB)", "$D_z$", "-", ""],
+            ["Highest sidelobe", "$PSL$", "-", ""],
+        ]
 
-    # === Non-public methods ==========================================
-    # Graphs and results
-    def _db_scale(self):
-        db_lim = np.array([-self.db_range, 0]) - self.db_gain
-        return db_lim
+        table = ax.table(
+            cellText=resulttext,
+            loc="upper left",
+            cellLoc="left",
+            colWidths=[0.40, 0.15, 0.25, 0.10],
+        )
 
-    def _create_element(self, ax):
-        """Create aperture patch and return handle."""
+        for cell in table.get_celld().values():
+            cell.set_linewidth(0.2)
+            cell.visible_edges = "TB"
+            cell.set_facecolor(COLOR["text_face"])
+            cell.PAD = 0.03
+            cell.set_text_props(fontfamily="DejaVu Sans")
 
-        ax.set(title='Transducer shape',
-               facecolor=COLOR['element_background'],
-               box_aspect=1,
-               xlabel='Azimuth [mm]',
-               ylabel='Elevation [mm]')
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        table.scale(1.0, 1.5)
 
+        for r in range(len(resulttext)):
+            table[(r, 1)].set_text_props(ha="center")
+            table[(r, 2)].set_text_props(ha="left")
+
+        return table
+
+    def _create_transducer_illustration(self, ax):
+        """
+        Create colored patch to illustrate transducer.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where transducer image is shown
+
+        Returns
+        -------
+        Matplotlib patch
+            Illustration of transducer element
+        """
+
+        ax.set(
+            title="Transducer shape",
+            facecolor=COLOR["transducer_background"],
+            box_aspect=1,
+            xlabel="Azimuth [mm]",
+            ylabel="Elevation [mm]",
+        )
+        transducer_fill = {"fill": True, "color": COLOR["transducer"]}
         if self.circular:
             patch = patches.Circle(
                 (0, 0),
                 radius=0,
-                fill=True,
-                color=COLOR["element"],
+                **transducer_fill,
             )
         else:
             patch = patches.Rectangle(
                 (0, 0),
                 width=0,
                 height=0,
-                fill=True,
-                color=COLOR["element"],
+                **transducer_fill,
             )
 
         ax.add_patch(patch)
         return patch
 
-    def _update_element(self):
-        """Update aperture patch with current dimensions."""
-        w_mm = self.width * 1e3
-        h_mm = self.height * 1e3
+    def _create_logo(self, ax):
+        """
+        Load logo file and place in specified axis.
 
-        patch_type = patches.Circle if self.circular else patches.Rectangle
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where logo image is shown
+        """
+        ax.set_axis_off()
 
-        # Change shape if necessary
-        if not isinstance(self.graphs['element'], patch_type):
-            self.graphs['element'].remove()
+        try:
+            base_path = Path(__file__).resolve().parent
+        except NameError:
+            # Running in Jupyter
+            base_path = Path.cwd()
 
-            if self.circular:
-                self.graphs['element'] = patches.Circle(
-                    (0, 0), w_mm / 2,
-                    fill=True,
-                    color=COLOR["element"]
-                )
-            else:
-                self.graphs['element'] = patches.Rectangle(
-                    (-w_mm / 2, -h_mm / 2), w_mm, h_mm,
-                    fill=True,
-                    color=COLOR["element"]
-                )
+        logo_path = (base_path / ".." / "figs" / LOGOFILE).resolve()
 
-            self.axes['element'].add_patch(self.graphs['element'])
-            return
-
-        # Update geometry
-        if self.circular:
-            self.graphs['element'].set_radius(w_mm / 2)
+        if logo_path.exists():
+            img = mpimg.imread(logo_path)
+            ax.imshow(img)
         else:
-            self.graphs['element'].set_xy((-w_mm / 2, -h_mm / 2))
-            self.graphs['element'].set_width(w_mm)
-            self.graphs['element'].set_height(h_mm)
+            ax.text(
+                0.5,
+                0.5,
+                "USN",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
 
-        # Turn on and off orientation lines
-        for g in self.graphs['azimuth']:
-            g.set_visible(self.azimuth)
-        for g in self.graphs['elevation']:
-            g.set_visible(not self.azimuth)
+    def _create_axial_plot(self, ax):
+        """Create axis for axial intensity plot.
 
-    def _resulttext(self):
-        """Text box for lateral profile results."""
-        header = (f'Frequency  $f$ = {self.frequency/1e3:.0f} kHz\n'
-                  fr'Wavelength  $\lambda$ = {self.wavelength()*1e3:.1f} mm')
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where axial intensity image shown
 
-        if self.circular:    # Height dimension omitted
-            size_text = (f'Diameter $D$ = {self.width*1e3:.0f} mm = '
-                         fr'{self.w_lambda():.1f} $\lambda$')
-        else:
-            size_text = (f'Width $w$ = {self.width*1e3:.0f} mm = '
-                         fr'{self.w_lambda():.1f} $\lambda$'
-                         '\n'
-                         f'Heigth $h$ = {self.height*1e3:.0f} mm = '
-                         fr'{self.h_lambda():.1f} $\lambda$')
+        Returns
+        -------
+        Matplotlib QuadMesh
+            Handle to fill with intensity data
+        """
 
-        angle_text = (f'Opening angle ({self.lim_text})'
-                      r' $\theta_0$ = '
-                      fr'{np.degrees(self.theta_0()):.1f}$^\circ$')
+        ax.set(
+            aspect="equal",
+            xlabel="Depth (z) [m]",
+            ylabel="Azimuth / Elevation [m]",
+            title="Axial plane",
+            facecolor=COLOR["intensity_background"],
+        )
 
-        distance_text = (r'Rayleigh distance $z_R$ = '
-                         f'{self.z_rayleigh():.2f} m')
-        beamwidth_text = (f'Beam width ({self.lim_text}): '
-                          f'{self.dx:.2f} m')
-
-        if np.isnan(self.x_sidelobe):
-            sidelobe_text = ''
-        else:
-            sidelobe_text = ('Highest sidelobe '
-                             fr'$x$ = {self.x_sidelobe:.2f} m, '
-                             fr'{self.db_sidelobe:.1f} dB')
-
-        result_text = header + '\n' + size_text + '\n' +  \
-            '\n' + distance_text + '\n' + angle_text + '\n' + \
-            beamwidth_text + '\n' + sidelobe_text
-
-        bpu.set_fig_text(self.fig, result_text, xpos=0.02, ypos=0.15)
-
-        return
-
-    def _initialise_graphs(self):
-        """Initialise result graphs."""
-        plt.close('all')
-        fig = plt.figure(figsize=[10, 5],
-                         constrained_layout=True,
-                         num='Single Element Beamprofile')
-        bpu.add_logo(fig)
-
-        gs = GridSpec(2, 6, figure=fig)
-        axes = {'element': fig.add_subplot(gs[0, 0:2]),
-                'axial': fig.add_subplot(gs[0, 2:7]),
-                'lateral': fig.add_subplot(gs[1, 2:4]),
-                'beamprofile': fig.add_subplot(gs[1, 4:7])}
-
-        graphs = {}
-
-        # Transducer element illustration
-        graphs['element'] = self._create_element(axes['element'])
-
-        # Axial intensity plot
-        axes['axial'].set(aspect='equal',
-                          xlabel='Depth (z) [m]',
-                          ylabel='Lateral position (Azimuth or Elevation) [m]',
-                          facecolor=COLOR['intensity_background'])
-
-        x_coords = self.z()
-        y_coords = self.x()
+        x_coords = self.x_axis
+        y_coords = self.z_axis
         dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
-        graphs['axial'] = axes['axial'].pcolormesh(x_coords,
-                                                   y_coords,
-                                                   dummy_data,
-                                                   clim=self._db_scale(),
-                                                   cmap=self.colormap)
-
-        graphs['refline'] = axes['axial'].axvline(x=self.z_reference(),
-                                                  **LINE['orientation'])
-
-        graphs['colorbar'] = fig.colorbar(graphs['axial'], ax=axes['axial'])
-        graphs['colorbar'].set_ticks(np.arange(-96, 30, 6))
-
-        # Lateral intensity plot
-        axes['lateral'].set(box_aspect=1,
-                            xlabel='Azimuth [m]',
-                            ylabel='Elevation [m]')
-
-        x_coords = self.xy()[0][0, :]
-        y_coords = self.xy()[1][:, 0]
-        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
-
-        graphs['lateral'] = axes['lateral'].pcolormesh(
+        graph = ax.pcolormesh(
             x_coords,
             y_coords,
             dummy_data,
-            clim=self._db_scale(),
+            clim=self.db_scale,
             cmap=self.colormap,
-            shading='auto')
+            shading="auto",
+        )
 
-        # Beam profile  graphs
-        axes['beamprofile'].set(xlabel='Distance [m]',
-                                ylabel='Power [dB re. max]')
-        axes['beamprofile'].grid(visible=True,
-                                 which='major',
-                                 axis='x')
-        graphs['beamprofile'], = axes['beamprofile'].plot([], [],
-                                                          **LINE['main'])
-        # Orientation indicator lines
-        graphs['azimuth'] = []
-        graphs['elevation'] = []
-        for ax in (axes['element'], axes['lateral']):
-            graphs['azimuth'].append(ax.axhline(y=0, **LINE['orientation']))
-            graphs['elevation'].append(ax.axvline(x=0, **LINE['orientation']))
+        return graph
 
-        return fig, axes, graphs
+    def _create_beamprofile_plot(self, ax):
+        """
+        Create axis for beam profile graphs.
 
-    # Interactive widgets
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
+
+        Returns
+        -------
+            Matplotlib Line2D
+        """
+        ax.set(
+            box_aspect=0.9,
+            xlabel="Distance [m]",
+            ylabel="Power [dB re. max]",
+            title="Lateral beam profile",
+        )
+
+        ax.grid(
+            visible=True,
+            which="major",
+            axis="x",
+        )
+
+        (graph,) = ax.plot([], [], **LINE["main"])
+
+        return graph
+
+    def _create_lateral_plot(self, ax):
+        """Create axis for lateral intensity plots.
+
+        Parameters
+        ----------
+        ax : Axis object
+            Axis where lateral intensity image is shown
+
+        Returns
+        -------
+        Matplotlib QuadMesh
+            Handle to fill with intensity data
+        """
+        ax.set(box_aspect=1, xlabel="Azimuth [m]", ylabel="Elevation [m]")
+
+        x, y = self.xy_plane
+        x_coords = x[0, :]
+        y_coords = y[:, 0]
+        dummy_data = np.full((len(y_coords), len(x_coords)), np.nan)
+
+        graph = ax.pcolormesh(
+            x_coords,
+            y_coords,
+            dummy_data,
+            clim=self.db_scale,
+            cmap=self.colormap,
+            shading="auto",
+        )
+
+        return graph
+
+    def _create_orientation_lines(self, axs):
+        """
+        Create azimuth and elevation reference lines.
+
+        Parameters
+        ----------
+        axs : List of axis objects
+            Axes where orientation lines are drawn
+
+        Returns
+        -------
+        azimuth_lines : list of Matplotlib Line2D
+            Handle to azimuth line data
+        elevation_lines : list of Matplotlib Line2D
+            Handle to elevation line data
+        """
+
+        azimuth_lines = []
+        elevation_lines = []
+        for ax in axs:
+            azimuth_lines.append(
+                ax.axhline(
+                    y=0,
+                    **LINE["orientation"],
+                )
+            )
+            elevation_lines.append(
+                ax.axvline(
+                    x=0,
+                    **LINE["orientation"],
+                )
+            )
+        return azimuth_lines, elevation_lines
+
+    # --- Callbacks -------------------------------------------------
+    def _frequency_change_callback(self, change):
+        self.frequency = float(change["new"]) * 1e3
+        self.update_values()
+
+    def _shape_change_callback(self, change):
+        self.circular = change["new"]
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _orientation_change_callback(self, change):
+        self.azimuth = change["new"]
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _width_change_callback(self, change):
+        self.width = float(change["new"]) * 1e-3
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _height_change_callback(self, change):
+        self.height = float(change["new"]) * 1e-3
+        self.update_transducer_illustration()
+        self.update_values()
+
+    def _distance_change_callback(self, change):
+        self.distance = float(change["new"])
+        self.update_values()
+
+    def _db_gain_change_callback(self, change):
+        self.db_gain = change["new"]
+        self.update_intensity_scale()
+
+    def _db_range_change_callback(self, change):
+        self.db_range = change["new"]
+        self.update_intensity_scale()
+
+    # --- Widget layout ---------------------------------------------
+
     def _create_widgets(self):
-        """Create widgets for interactive operation."""
-        title = 'Beam-profile from Single Element Transducer'
-        title_widget = widgets.Label(title, style=dict(font_weight='bold'))
+        """
+        Create widgets for interactive operation.
 
-        left_layout = {'continuous_update': True,
-                       'layout': widgets.Layout(width='95%'),
-                       'style': {'description_width': '50%'}}
+        Returns
+        -------
+        widget_layout : ipywidgets widget box
+            Widget layout for use in Jupyter Notebook
+        """
+        title = "Beam-profile from Single Element Transducer"
+        title_widget = widgets.HTML(
+            f"<div style='font-weight:bold; font-size:120%;'>{title}</div>"
+        )
 
-        right_layout = {'continuous_update': True,
-                        'layout': widgets.Layout(width='95%'),
-                        'style': {'description_width': '30%'}}
+        dropdown_layout = {
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "80px"},
+        }
 
-        left_width = '25%'
-        right_width = '75%'
+        textbox_layout = {
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "80px"},
+        }
 
-        # Left column widgets (Dropboxes, number boxes)
-        shape_widget = widgets.Dropdown(options=[('Rectangular', False),
-                                                 ('Circular', True)],
-                                        value=True,
-                                        description='Shape',
-                                        **left_layout)
+        slider_layout = {
+            "continuous_update": True,
+            "layout": widgets.Layout(width="95%"),
+            "style": {"description_width": "160px"},
+        }
+
+        # Left column of dropdowns: Shape and orientation
+        shape_widget = widgets.Dropdown(
+            options=[
+                ("Rectangular", False),
+                ("Circular", True),
+            ],
+            value=True,
+            description="Shape",
+            **dropdown_layout,
+        )
+        shape_widget.observe(
+            self._shape_change_callback,
+            names="value",
+        )
 
         orientation_widget = widgets.Dropdown(
-            options=[('Azimuth (width)', True),
-                     ('Elevation (height)', False)],
+            options=[
+                ("Azimuth (width)", True),
+                ("Elevation (height)", False),
+            ],
             value=True,
-            description='Orientation',
-            **left_layout)
+            description="Orientation",
+            **dropdown_layout,
+        )
+        orientation_widget.observe(
+            self._orientation_change_callback,
+            names="value",
+        )
 
+        # Last column of widgets: Scaling
         db_range_widget = widgets.BoundedFloatText(
-            value=60, min=6, max=120, step=6,
-            description='Range [dB]',
-            **left_layout)
+            value=self.db_range,
+            min=6,
+            max=120,
+            step=6,
+            description="Range [dB]",
+            **textbox_layout,
+        )
+        db_range_widget.observe(
+            self._db_range_change_callback,
+            names="value",
+        )
 
         db_gain_widget = widgets.BoundedFloatText(
-            value=12, min=-120, max=120, step=6,
-            description='Gain [dB]',
-            **left_layout)
+            value=self.db_gain,
+            min=-120,
+            max=120,
+            step=6,
+            description="Gain [dB]",
+            **textbox_layout,
+        )
+        db_gain_widget.observe(
+            self._db_gain_change_callback,
+            names="value",
+        )
 
-        left_col = widgets.VBox([shape_widget,
-                                 orientation_widget,
-                                 db_range_widget,
-                                 db_gain_widget],
-                                layout=widgets.Layout(width=left_width))
+        # First column of sliders: Dimensions
+        width_widget = widgets.FloatSlider(
+            value=self.width * 1e3,
+            min=10,
+            max=400,
+            step=5,
+            readout_format=".0f",
+            description="Width / Diameter [mm]",
+            **slider_layout,
+        )
+        width_widget.observe(
+            self._width_change_callback,
+            names="value",
+        )
 
-        # Right column widgets (Sliders)
-        frequency_widget = widgets.FloatSlider(min=1, max=400,
-                                               value=100, step=1,
-                                               readout_format='.0f',
-                                               description='Frequency [kHz]',
-                                               **right_layout)
+        height_widget = widgets.FloatSlider(
+            value=self.height * 1e3,
+            min=5,
+            max=400,
+            step=10,
+            readout_format=".0f",
+            description="Height [mm]",
+            **slider_layout,
+        )
+        height_widget.observe(
+            self._height_change_callback,
+            names="value",
+        )
 
-        width_widget = widgets.FloatSlider(min=10, max=400,
-                                           value=100, step=10,
-                                           readout_format='.0f',
-                                           description='Width (Diameter) [mm]',
-                                           **right_layout)
+        # Second column of sliders: Frequency and depth
+        frequency_widget = widgets.FloatSlider(
+            value=self.frequency / 1e3,
+            min=1,
+            max=400,
+            step=1,
+            readout_format=".0f",
+            description="Frequency [kHz]",
+            **slider_layout,
+        )
+        frequency_widget.observe(
+            self._frequency_change_callback,
+            names="value",
+        )
 
-        height_widget = widgets.FloatSlider(min=10, max=400,
-                                            value=150, step=10,
-                                            readout_format='.0f',
-                                            description='Height [mm]',
-                                            **right_layout)
+        distance_widget = widgets.FloatSlider(
+            value=self.distance,
+            min=1.0,
+            max=self.z_max,
+            step=1.0,
+            readout_format=".0f",
+            description="Distance [m]",
+            **slider_layout,
+        )
+        distance_widget.observe(
+            self._distance_change_callback,
+            names="value",
+        )
 
-        distance_widget = widgets.FloatSlider(min=1.0, max=self.z_max,
-                                              value=20.0, step=1.0,
-                                              readout_format='.0f',
-                                              description='Distance [m]',
-                                              **right_layout)
+        # Arrange widgets
+        dropdown_col = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Shape</b></div>"
+                ),
+                shape_widget,
+                orientation_widget,
+            ]
+        )
 
-        right_col = widgets.VBox([frequency_widget,
-                                  width_widget,
-                                  height_widget,
-                                  distance_widget],
-                                 layout=widgets.Layout(width=right_width))
+        left_sliders = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Dimensions</b></div>"
+                ),
+                width_widget,
+                height_widget,
+            ],
+        )
 
-        widget_layout = widgets.HBox([left_col, right_col],
-                                     layout=widgets.Layout(width='80%'))
+        right_sliders = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Frequency and Distance</b></div>"
+                ),
+                frequency_widget,
+                distance_widget,
+            ],
+        )
 
-        widget_layout = widgets.VBox([title_widget, widget_layout])
+        textbox_col = widgets.VBox(
+            [
+                widgets.HTML(
+                    "<div style='text-align:center'><b>Display</b></div>"
+                ),
+                db_range_widget,
+                db_gain_widget,
+            ]
+        )
 
-        widget = {'circular': shape_widget,
-                  'azimuth': orientation_widget,
-                  'db_range': db_range_widget,
-                  'db_gain': db_gain_widget,
-                  'frequency': frequency_widget,
-                  'width': width_widget,
-                  'height': height_widget,
-                  'distance': distance_widget,
-                  }
+        dropdown_col.layout = widgets.Layout(width="240px")
+        textbox_col.layout = widgets.Layout(width="180px")
+        left_sliders.layout = widgets.Layout(flex="1")
+        right_sliders.layout = widgets.Layout(flex="1")
 
-        w = WidgetLayout(widget_layout, widget)
+        widget_layout = widgets.HBox(
+            [
+                dropdown_col,
+                left_sliders,
+                right_sliders,
+                textbox_col,
+            ],
+            layout=widgets.Layout(
+                width="100%",
+                display="flex",
+                gap="20px",
+                align_items="flex-start",
+            ),
+        )
 
-        return w
+        return widgets.VBox([title_widget, widget_layout])

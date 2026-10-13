@@ -545,7 +545,7 @@ class Transducer:
                 ["text", "beamprofile", "axial"],
                 ["logo", "beamprofile", "axial"],
             ],
-            figsize=(12, 6),
+            figsize=(16, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )
@@ -602,7 +602,7 @@ class Transducer:
 
         resulttext = [
             ["Frequency", "$f$", "-", ""],
-            ["Wavelenght", r"$\lambda$", "-", ""],
+            ["Wavelength", r"$\lambda$", "-", ""],
             ["Width", "$w$", "-", "-"],
             ["Height", "$h$", "-", "-"],
             ["Rayleigh distance ", r"$z_R$", "-", ""],

@@ -52,7 +52,7 @@ class Array:
         # Grid and display settings, normally fixed
         self.db_range = 60  # dB   Dynamic gange on dB-scales
         self.db_gain = 6  # dB   Max. on dB-scales
-        self.db_polar = 30  # dB   Dynamic range on polar plot
+        self.db_polar = 40  # dB   Dynamic range on polar plot
 
         self.x_max = 70.0  # m    Max. lateral dimension to calculate
         self.z_max = 140.0  # m    Max. depth to calculate
@@ -377,7 +377,7 @@ class Array:
 
         resulttext = [
             ["Frequency", "$f$", "-", ""],
-            ["Wavelenght", r"$\lambda$", "-", ""],
+            ["Wavelength", r"$\lambda$", "-", ""],
             ["No. of elements", "$N_{el}$", "-", ""],
             ["Element width", "$w$", "-", "-"],
             ["Kerf", "$k$", "-", ""],
@@ -529,7 +529,7 @@ class Array:
             thetamax=+90,
             rmin=-self.db_polar,
             rmax=0.0,
-            rticks=[-20, -6, 0],
+            rticks=[-30, -20, -10, 0],
         )
         ax.set_theta_zero_location("S")  # Unreliable in ax.set()
 
@@ -562,7 +562,7 @@ class Array:
                 ["logo", "beamprofile", "axial", "axial"],
             ],
             per_subplot_kw={"beamprofile": {"projection": "polar"}},
-            figsize=(12, 6),
+            figsize=(16, 6),
             layout="constrained",
             num=FIGURE_NAME,
         )

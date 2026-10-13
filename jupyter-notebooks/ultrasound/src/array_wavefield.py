@@ -52,18 +52,18 @@ FIGURE_NAME = "Transducer Array Beamprofile"
 
 class ArrayWaves:
     def __init__(self, create_widgets=False):
-        self.n_elements = 6
+        self.n_elements = 8
         self.c = 1500
         self.frequency = 100e3
         self.steering_angle = 0
 
         # Timing
-        self.time_step = 0.10
-        self.duration = 10.0
+        self.time_step = 0.05
+        self.duration = 12.0
         self.animation = None
 
         # Display
-        self.pitch = 1.0  # Large pitch for demonstration
+        self.pitch = 1.5  # Large pitch for demonstration
         self.x_max = 18.0
         self.z_max = 24.0
         self.x_ax_range = self.x_max * np.array([-1, 1])
